@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="About">
+  <rect width="900" height="600" fill="#111827"/>
+  <rect x="125" y="120" width="650" height="330" rx="44" fill="#ffffff" opacity="0.1"/>
+  <path d="M210 380V245l240-100 240 100v135" fill="none" stroke="#fb923c" stroke-width="28" stroke-linejoin="round"/>
+  <path d="M360 380V270h180v110" fill="none" stroke="#ffffff" stroke-width="24" opacity="0.3"/>
+  <text x="450" y="535" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="56" font-weight="700">About</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Teacher Work">
+  <rect width="900" height="600" fill="#f1f5f9"/>
+  <!-- Book stack (3 pages at offsets) -->
+  <!-- Bottom page -->
+  <rect x="326" y="355" width="248" height="50" rx="12" fill="#dde4ed"/>
+  <!-- Middle page -->
+  <rect x="316" y="292" width="268" height="68" rx="13" fill="#e2e8f0"/>
+  <!-- Top page (front) -->
+  <rect x="306" y="210" width="288" height="90" rx="14" fill="white" stroke="#e2e8f0" stroke-width="3"/>
+  <!-- Text lines on top page -->
+  <rect x="326" y="237" width="196" height="10" rx="5" fill="#e2e8f0"/>
+  <rect x="326" y="258" width="160" height="8" rx="4" fill="#e2e8f0"/>
+  <rect x="326" y="276" width="178" height="8" rx="4" fill="#e2e8f0"/>
+  <!-- Orange bookmark on top page right edge -->
+  <rect x="536" y="210" width="24" height="60" rx="4" fill="#fed7aa"/>
+  <path d="M536 270 L548 284 L560 270" fill="#fed7aa"/>
+</svg>

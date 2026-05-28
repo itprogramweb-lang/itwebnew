@@ -1,0 +1,86 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.admin-accounts.local.txt
+*.local.txt
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+.claude/
+
+# ===== Local env / secrets =====
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development.local
+.admin-accounts.local.txt
+
+# ===== Supabase migration backups / DB dumps =====
+_migration_backup/
+*.bak
+*.backup
+*.dump
+old_schema*.sql
+old_data*.sql
+restore_log*.txt
+row_count*.txt
+
+# ===== Build / dependencies =====
+node_modules/
+.next/
+out/
+dist/
+build/
+tsconfig.tsbuildinfo
+
+# ===== Logs =====
+*.log
+dev_server_*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ===== AI assistant local files =====
+.claude/
+.codex/
+round*_partial_from_claude.patch
+*.patch
+
+# ===== Editor / OS =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ===== Optional docs / temporary notes =====
+docs/

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Program">
+  <rect width="900" height="600" fill="#f1f5f9"/>
+  <!-- Graduation cap (mortarboard) -->
+  <!-- Cap top board: rhombus/diamond -->
+  <polygon points="450,194 556,232 450,270 344,232" fill="#cbd5e1"/>
+  <!-- Hat body under board -->
+  <path d="M392 232 H508 L508 312 Q508 330 450 330 Q392 330 392 312 Z" fill="#e2e8f0"/>
+  <!-- Inner cap highlight -->
+  <path d="M408 248 H492 L492 308 Q492 320 450 320 Q408 320 408 308 Z" fill="#dde4ed"/>
+  <!-- Tassel string from right corner -->
+  <line x1="556" y1="232" x2="578" y2="324" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/>
+  <!-- Tassel end: orange circle -->
+  <circle cx="578" cy="332" r="11" fill="#f97316" opacity="0.45"/>
+</svg>

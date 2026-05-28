@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Staff">
+  <rect width="900" height="600" fill="#f1f5f9"/>
+  <!-- Head circle -->
+  <circle cx="450" cy="252" r="68" fill="#e2e8f0"/>
+  <circle cx="450" cy="249" r="52" fill="#dde4ed"/>
+  <!-- Shoulder / body arc -->
+  <path d="M296 430 Q296 352 374 338 Q412 330 450 333 Q488 330 526 338 Q604 352 604 430" fill="#e2e8f0"/>
+  <path d="M318 430 Q318 366 386 353 Q418 346 450 349 Q482 346 514 353 Q582 366 582 430" fill="#dde4ed"/>
+</svg>

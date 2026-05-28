@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Student Work">
+  <rect width="900" height="600" fill="#f1f5f9"/>
+  <!-- Code frame -->
+  <rect x="310" y="210" width="280" height="180" rx="18" fill="#e2e8f0"/>
+  <!-- Inner screen area -->
+  <rect x="326" y="226" width="248" height="148" rx="10" fill="#f0f4f8"/>
+  <!-- Left bracket < -->
+  <path d="M390 278 L364 307 L390 336" fill="none" stroke="#94a3b8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right bracket > -->
+  <path d="M510 278 L536 307 L510 336" fill="none" stroke="#94a3b8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Slash / in brand orange -->
+  <line x1="428" y1="272" x2="472" y2="342" stroke="#f97316" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+</svg>

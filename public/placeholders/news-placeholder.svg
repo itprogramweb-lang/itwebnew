@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="News">
+  <rect width="900" height="600" fill="#f1f5f9"/>
+  <!-- Photo frame icon centered -->
+  <rect x="310" y="200" width="280" height="200" rx="20" fill="#e2e8f0"/>
+  <!-- Sun/circle top-left of frame -->
+  <circle cx="374" cy="248" r="26" fill="#cbd5e1"/>
+  <!-- Mountain landscape fill -->
+  <path d="M318 386 L374 330 L410 358 L434 332 L576 386 Z" fill="#c8d0dc"/>
+  <!-- Frame border -->
+  <rect x="310" y="200" width="280" height="200" rx="20" fill="none" stroke="#c8d0dc" stroke-width="3"/>
+</svg>

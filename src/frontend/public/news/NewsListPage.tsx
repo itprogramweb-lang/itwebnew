@@ -1,0 +1,279 @@
+import Link from "next/link";
+import { Calendar, Tag, ArrowRight, Newspaper, Megaphone } from "lucide-react";
+import { getNews } from "@/lib/supabase/queries";
+import { PageHeader } from "@/components/ui/primitives";
+import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import CroppedImage from "@/components/ui/CroppedImage";
+
+const CATEGORY_COLORS: Record<string, string> = {
+  รับสมัคร: "bg-blue-50 text-blue-700 border-blue-200",
+  ความสำเร็จ: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  ประกาศ: "bg-amber-50 text-amber-700 border-amber-200",
+  กิจกรรม: "bg-purple-50 text-purple-700 border-purple-200",
+  ทุน: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+function categoryClass(cat: string | null) {
+  if (!cat) return "bg-slate-50 text-slate-600 border-slate-200";
+
+  return (
+    CATEGORY_COLORS[cat] ??
+    "bg-slate-50 text-slate-600 border-slate-200"
+  );
+}
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "";
+
+  return new Date(dateStr).toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function NewsFallback({ large = false }: { large?: boolean }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-50 via-white to-brand-50">
+      <div className="flex flex-col items-center gap-2 text-slate-300">
+        <Newspaper className={large ? "h-14 w-14" : "h-10 w-10"} />
+        {large && (
+          <span className="text-xs font-medium text-slate-400">
+            Computer Technology News
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default async function NewsListPage() {
+  const newsList = await getNews().catch(() => []);
+
+  const featured =
+    newsList.filter((n) => n.is_featured).slice(0, 1)[0] ?? null;
+
+  const rest = featured
+    ? newsList.filter((n) => n.id !== featured.id)
+    : newsList;
+
+  return (
+    <>
+      <PageHeader
+        dark
+        eyebrow="ข่าวสารและประกาศ"
+        title="ข่าวจากสาขา"
+        description="ติดตามข่าวประกาศ กิจกรรม ทุนการศึกษา และความสำเร็จของสาขาวิชา"
+        breadcrumb={
+          <BreadcrumbTrail
+            dark
+            backHref="/"
+            items={[
+              { label: "หน้าแรก", href: "/" },
+              { label: "ข่าวสาร" },
+            ]}
+          />
+        }
+      />
+
+      <section className="bg-gradient-to-b from-white via-white to-slate-50 py-12 sm:py-14 lg:py-16">
+        <div className="container-wide">
+          {newsList.length === 0 ? (
+            <div className="mx-auto max-w-3xl rounded-[2rem] border border-dashed border-slate-200 bg-white px-6 py-20 text-center shadow-sm">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50">
+                <Newspaper className="h-9 w-9 text-slate-300" />
+              </div>
+
+              <h2 className="text-xl font-semibold text-slate-700">
+                ยังไม่มีข่าวสารในขณะนี้
+              </h2>
+
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                โปรดติดตามข่าวสาร ประกาศ และกิจกรรมจากสาขาวิชาได้เร็ว ๆ นี้
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-14">
+              {/* Featured news */}
+              {featured && (
+                <div>
+                  <div className="mb-6 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                      <Megaphone className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                        Featured News
+                      </p>
+                      <h2 className="text-2xl font-bold text-slate-950">
+                        ข่าวเด่น
+                      </h2>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={featured.slug ? `/news/${featured.slug}` : "/news"}
+                    className="group block"
+                  >
+                    <article className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.04] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-slate-950/[0.08]">
+                      <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
+                        <div className="relative aspect-[16/9] overflow-hidden bg-slate-50 lg:h-full lg:min-h-[360px]">
+                          {featured.image_url ? (
+                            <CroppedImage
+                              src={featured.image_url}
+                              alt={featured.image_alt ?? featured.title}
+                              crop={featured.image_crop_settings}
+                              className="h-full w-full rounded-none object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                          ) : (
+                            <NewsFallback large />
+                          )}
+
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
+
+                          <div className="absolute left-5 top-5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur">
+                            ข่าวเด่น
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[360px] flex-col p-6 sm:p-8 lg:p-9">
+                          <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            {featured.category && (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium ${categoryClass(
+                                  featured.category
+                                )}`}
+                              >
+                                <Tag className="h-3 w-3" />
+                                {featured.category}
+                              </span>
+                            )}
+
+                            {featured.published_at && (
+                              <span className="inline-flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                {formatDate(featured.published_at)}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="line-clamp-3 text-2xl font-bold leading-snug text-slate-950 transition-colors group-hover:text-brand-700 sm:text-3xl">
+                            {featured.title}
+                          </h3>
+
+                          {featured.excerpt && (
+                            <p className="mt-4 line-clamp-4 text-base leading-8 text-slate-600">
+                              {featured.excerpt}
+                            </p>
+                          )}
+
+                          <div className="mt-auto pt-7">
+                            <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors group-hover:bg-brand-100">
+                              อ่านรายละเอียด
+                              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  </Link>
+                </div>
+              )}
+
+              {/* News grid */}
+              {rest.length > 0 && (
+                <div>
+                  <div className="mb-7 flex items-end justify-between gap-4 border-t border-slate-200 pt-10">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-600">
+                        All News
+                      </p>
+                      <h2 className="mt-1 text-2xl font-bold text-slate-950">
+                        ข่าวสารทั้งหมด
+                      </h2>
+                    </div>
+
+                    <p className="hidden text-sm text-slate-400 sm:block">
+                      ทั้งหมด {rest.length} รายการ
+                    </p>
+                  </div>
+
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {rest.map((item) => {
+                      const href = item.slug ? `/news/${item.slug}` : "/news";
+
+                      return (
+                        <Link
+                          key={item.id}
+                          href={href}
+                          className="group block h-full"
+                        >
+                          <article className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-slate-950/[0.07]">
+                            <div className="relative aspect-[16/10] overflow-hidden bg-slate-50">
+                              {item.image_url ? (
+                                <CroppedImage
+                                  src={item.image_url}
+                                  alt={item.image_alt ?? item.title}
+                                  crop={item.image_crop_settings}
+                                  className="h-full w-full rounded-none object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                              ) : (
+                                <NewsFallback />
+                              )}
+
+                              {item.category && (
+                                <div className="absolute left-4 top-4">
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full border bg-white/95 px-2.5 py-1 text-xs font-medium backdrop-blur ${categoryClass(
+                                      item.category
+                                    )}`}
+                                  >
+                                    <Tag className="h-3 w-3" />
+                                    {item.category}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-1 flex-col p-5">
+                              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                                {item.published_at && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    {formatDate(item.published_at)}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h3 className="line-clamp-2 text-lg font-bold leading-snug text-slate-950 transition-colors group-hover:text-brand-700">
+                                {item.title}
+                              </h3>
+
+                              {item.excerpt && (
+                                <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">
+                                  {item.excerpt}
+                                </p>
+                              )}
+
+                              <div className="mt-auto pt-5">
+                                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600">
+                                  อ่านต่อ
+                                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                </span>
+                              </div>
+                            </div>
+                          </article>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
