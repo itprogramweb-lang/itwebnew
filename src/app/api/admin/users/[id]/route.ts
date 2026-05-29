@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { UserRole } from "@/types";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile, isAllowedUserRole, isSuperAdmin } from "@/lib/serverAuth";
+import { hasPermission } from "@/lib/permissions";
+import { getAuthenticatedProfile, isAllowedUserRole } from "@/lib/serverAuth";
 import { normalizeRole } from "@/lib/roles";
 
 type UpdatePayload = {
@@ -10,20 +11,68 @@ type UpdatePayload = {
   is_active?: boolean;
 };
 
-async function countActiveSuperAdmins() {
-  const admin = createSupabaseAdminClient();
-  const { count, error } = await admin
+const USER_MANAGEMENT_NOT_CONFIGURED = "User management is not configured on the server.";
+
+function isAdminClientConfigError(error: unknown) {
+  return error instanceof Error && error.message.includes("Missing Supabase admin env vars");
+}
+
+async function requireUserManager(request: NextRequest) {
+  try {
+    const requester = await getAuthenticatedProfile(request);
+    if (!requester) {
+      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    }
+    if (!hasPermission(requester.role, "manage_users")) {
+      return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+    return { requester };
+  } catch (error) {
+    if (isAdminClientConfigError(error)) {
+      return {
+        error: NextResponse.json({ error: USER_MANAGEMENT_NOT_CONFIGURED }, { status: 500 }),
+      };
+    }
+    throw error;
+  }
+}
+
+function getAdminClientOrResponse() {
+  try {
+    return { admin: createSupabaseAdminClient() };
+  } catch (error) {
+    if (isAdminClientConfigError(error)) {
+      return {
+        error: NextResponse.json({ error: USER_MANAGEMENT_NOT_CONFIGURED }, { status: 500 }),
+      };
+    }
+    throw error;
+  }
+}
+
+const superAdminRoleValues = ["super_admin", "superadmin", "super-admin"];
+
+async function countActiveSuperAdmins(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  excludeId?: string
+) {
+  let query = admin
     .from("profiles")
     .select("id", { count: "exact", head: true })
-    .eq("role", "super_admin")
+    .in("role", superAdminRoleValues)
     .eq("is_active", true);
+
+  if (excludeId) {
+    query = query.neq("id", excludeId);
+  }
+
+  const { count, error } = await query;
 
   if (error) return 0;
   return count ?? 0;
 }
 
-async function getTargetProfile(id: string) {
-  const admin = createSupabaseAdminClient();
+async function getTargetProfile(admin: ReturnType<typeof createSupabaseAdminClient>, id: string) {
   const { data } = await admin
     .from("profiles")
     .select("id,email,full_name,role,is_active")
@@ -36,15 +85,14 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const requester = await getAuthenticatedProfile(request);
-  if (!requester) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isSuperAdmin(requester)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireUserManager(request);
+  if (auth.error) return auth.error;
 
-  const target = await getTargetProfile(params.id);
+  const adminResult = getAdminClientOrResponse();
+  if (adminResult.error) return adminResult.error;
+  const admin = adminResult.admin;
+
+  const target = await getTargetProfile(admin, params.id);
   if (!target) {
     return NextResponse.json({ error: "ไม่พบบัญชีผู้ใช้" }, { status: 404 });
   }
@@ -57,16 +105,16 @@ export async function PATCH(
     return NextResponse.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
   }
 
+  const targetRole = normalizeRole(target.role);
   const demotesOrDisablesSuperAdmin =
-    target.role === "super_admin" && (nextRole !== "super_admin" || !nextActive);
-  if (demotesOrDisablesSuperAdmin && (await countActiveSuperAdmins()) <= 1) {
+    targetRole === "super_admin" && target.is_active !== false && (nextRole !== "super_admin" || !nextActive);
+  if (demotesOrDisablesSuperAdmin && (await countActiveSuperAdmins(admin, params.id)) <= 0) {
     return NextResponse.json(
       { error: "ไม่สามารถแก้ไข super_admin คนสุดท้ายให้หมดสิทธิ์หรือปิดใช้งานได้" },
       { status: 400 }
     );
   }
 
-  const admin = createSupabaseAdminClient();
   const { error: authError } = await admin.auth.admin.updateUserById(params.id, {
     app_metadata: { role: nextRole },
   });
@@ -97,35 +145,46 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const requester = await getAuthenticatedProfile(request);
-  if (!requester) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isSuperAdmin(requester)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireUserManager(request);
+  if (auth.error) return auth.error;
 
-  const target = await getTargetProfile(params.id);
+  const adminResult = getAdminClientOrResponse();
+  if (adminResult.error) return adminResult.error;
+  const admin = adminResult.admin;
+
+  const target = await getTargetProfile(admin, params.id);
   if (!target) {
     return NextResponse.json({ error: "ไม่พบบัญชีผู้ใช้" }, { status: 404 });
   }
 
-  if (target.role === "super_admin" && target.is_active !== false && (await countActiveSuperAdmins()) <= 1) {
+  if (auth.requester.id === params.id) {
     return NextResponse.json(
-      { error: "ไม่สามารถปิดใช้งาน super_admin คนสุดท้ายได้" },
+      { error: "ไม่สามารถลบบัญชีของตัวเองได้" },
       { status: 400 }
     );
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
-    .from("profiles")
-    .update({ is_active: false, status: "inactive" })
-    .eq("id", params.id);
-
-  if (error) {
-    return NextResponse.json({ error: "ไม่สามารถปิดใช้งานผู้ใช้งานได้" }, { status: 400 });
+  const targetRole = normalizeRole(target.role);
+  if (targetRole === "super_admin" && target.is_active !== false && (await countActiveSuperAdmins(admin, params.id)) <= 0) {
+    return NextResponse.json(
+      { error: "ไม่สามารถลบ super admin คนสุดท้ายได้" },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({ ok: true });
+  const { error: authError } = await admin.auth.admin.deleteUser(params.id);
+  if (authError) {
+    return NextResponse.json({ error: "ไม่สามารถลบบัญชี Auth ได้" }, { status: 400 });
+  }
+
+  const { error: profileError } = await admin
+    .from("profiles")
+    .delete()
+    .eq("id", params.id);
+
+  if (profileError) {
+    return NextResponse.json({ error: "ลบบัญชี Auth แล้ว แต่ไม่สามารถลบ profile ได้" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, deleted: true });
 }

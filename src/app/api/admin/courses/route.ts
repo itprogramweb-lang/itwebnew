@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedProfile } from "@/lib/serverAuth";
 
@@ -34,7 +34,19 @@ const SETUP_REQUIRED_MESSAGE = "ยังไม่ได้สร้างตา
 async function requireCourseManager(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_student_works") && !can(profile.role, "edit_advised_student_works")) {
+  if (!hasPermission(profile.role, "manage_student_works")) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { profile };
+}
+
+async function requireCourseReader(request: NextRequest) {
+  const profile = await getAuthenticatedProfile(request);
+  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (
+    !hasPermission(profile.role, "manage_student_works") &&
+    !hasPermission(profile.role, "edit_advised_student_works")
+  ) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   return { profile };
@@ -109,7 +121,7 @@ function toPayload(body: Record<string, unknown>): CoursePayloadResult {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireCourseManager(request);
+  const auth = await requireCourseReader(request);
   if (auth.error) return auth.error;
 
   const admin = createSupabaseAdminClient();

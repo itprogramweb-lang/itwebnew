@@ -299,6 +299,7 @@ export default function StudentWorksDashboard() {
 
   const handlePdfUpload = async () => {
     const uploadErrors: string[] = [];
+    if (!editingId) uploadErrors.push("กรุณาบันทึกผลงานก่อนอัปโหลด PDF");
     if (!pdfFile) uploadErrors.push("ไม่พบไฟล์ PDF");
     if (pdfFile && pdfFile.type !== "application/pdf" && !pdfFile.name.toLowerCase().endsWith(".pdf")) {
       uploadErrors.push("รองรับเฉพาะไฟล์ PDF เท่านั้น");
@@ -311,8 +312,12 @@ export default function StudentWorksDashboard() {
       return;
     }
 
+    const workId = editingId;
+    if (!workId) return;
+
     const data = new FormData();
     data.append("file", pdfFile!);
+    data.append("work_id", workId);
     data.append("work_type", form.work_type);
     data.append("course_id", form.course_id);
     data.append("academic_year", form.academic_year);

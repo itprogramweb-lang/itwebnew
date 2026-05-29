@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessDashboardRoute } from "@/lib/permissions";
+import { can, canAccessDashboardRoute } from "@/lib/permissions";
 import type { User } from "@/types";
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
@@ -47,7 +47,31 @@ export default function DashboardLayout({
   if (!user) return null;
 
   const hasAccess = canAccessDashboardRoute(user.role, pathname);
-  const isStudent = user.role === "student";
+  const canViewDashboard = can(user.role, "view_dashboard");
+
+  if (!canViewDashboard) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4">
+        <div className="max-w-md mx-auto mt-10 bg-white border border-slate-100 rounded-3xl p-8 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 grid place-items-center text-slate-500 mb-4">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            ยังไม่มีพื้นที่สำหรับนักศึกษาในขณะนี้
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            บัญชีนักศึกษายังไม่สามารถใช้งาน dashboard หลักได้
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 mt-5 h-10 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand"
+          >
+            กลับสู่เว็บไซต์
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-slate-50 flex overflow-hidden">
@@ -61,25 +85,7 @@ export default function DashboardLayout({
         <DashboardHeader user={user} onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto overflow-x-hidden">
-          {isStudent ? (
-            <div className="max-w-md mx-auto mt-10 bg-white border border-slate-100 rounded-3xl p-8 text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 grid place-items-center text-slate-500 mb-4">
-                <ShieldAlert className="w-7 h-7" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                ยังไม่มีพื้นที่สำหรับนักศึกษาในขณะนี้
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                บัญชีนักศึกษายังไม่สามารถใช้งาน dashboard หลักได้
-              </p>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 mt-5 h-10 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand"
-              >
-                กลับสู่เว็บไซต์
-              </Link>
-            </div>
-          ) : hasAccess ? (
+          {hasAccess ? (
             children
           ) : (
             <div className="max-w-md mx-auto mt-10 bg-white border border-rose-100 rounded-3xl p-8 text-center">

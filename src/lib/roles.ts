@@ -31,8 +31,12 @@ export function isAllowedRole(role: string | null | undefined): role is UserRole
 }
 
 export function normalizeRole(role: string | null | undefined): UserRole {
-  if (role === "admin") return "website_admin";
-  return isAllowedRole(role) ? role : "student";
+  const normalized = role?.trim().toLowerCase();
+  if (normalized === "superadmin" || normalized === "super-admin") {
+    return "super_admin";
+  }
+  if (normalized === "admin") return "website_admin";
+  return isAllowedRole(normalized) ? normalized : "student";
 }
 
 export function isProfileActive(profile: Pick<ProfileRow, "is_active" | "status">): boolean {

@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { hasPermission } from "@/lib/permissions";
+import { getAuthenticatedProfile, type AdminProfile } from "@/lib/serverAuth";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { R2ConfigError, R2UploadError, uploadStudentWorkPdf } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
 const MAX_PDF_SIZE = 25 * 1024 * 1024;
 
+type StudentWorkAccessRow = {
+  id: string;
+  advisor_name: string | null;
+};
+
 async function requireAuth(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
   if (!profile) return { error: NextResponse.json({ error: "กรุณาเข้าสู่ระบบใหม่" }, { status: 401 }) };
-  if (!can(profile.role, "manage_student_works")) {
+  if (
+    !hasPermission(profile.role, "manage_student_works") &&
+    !hasPermission(profile.role, "edit_advised_student_works")
+  ) {
     return { error: NextResponse.json({ error: "ไม่มีสิทธิ์จัดการผลงานนักศึกษา" }, { status: 403 }) };
   }
   return { profile };
@@ -18,6 +27,38 @@ async function requireAuth(request: NextRequest) {
 
 function cleanText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizedName(value: string | null | undefined) {
+  return value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("th") ?? "";
+}
+
+function isAdvisedStudentWork(profile: AdminProfile, work: StudentWorkAccessRow) {
+  const profileName = normalizedName(profile.full_name);
+  return !!profileName && normalizedName(work.advisor_name) === profileName;
+}
+
+function canManageAllStudentWorks(profile: AdminProfile) {
+  return hasPermission(profile.role, "manage_student_works");
+}
+
+async function requireStudentWorkUploadAccess(profile: AdminProfile, workId: string) {
+  const admin = createSupabaseAdminClient();
+  const { data: work, error } = await admin
+    .from("student_works")
+    .select("id,advisor_name")
+    .eq("id", workId)
+    .maybeSingle<StudentWorkAccessRow>();
+
+  if (error) return { error: NextResponse.json({ error: "โหลดข้อมูลไม่สำเร็จ" }, { status: 500 }) };
+  if (!work) return { error: NextResponse.json({ error: "ไม่พบผลงาน" }, { status: 404 }) };
+
+  if (canManageAllStudentWorks(profile)) return { admin, work };
+  if (hasPermission(profile.role, "edit_advised_student_works") && isAdvisedStudentWork(profile, work)) {
+    return { admin, work };
+  }
+
+  return { error: NextResponse.json({ error: "ไม่มีสิทธิ์อัปโหลดไฟล์ผลงานนี้" }, { status: 403 }) };
 }
 
 function sanitizeSegment(value: string) {
@@ -63,6 +104,14 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const workId = cleanText(formData.get("work_id") ?? formData.get("id"));
+
+    if (!workId) {
+      return NextResponse.json({ error: "ไม่พบ work_id" }, { status: 400 });
+    }
+
+    const access = await requireStudentWorkUploadAccess(auth.profile, workId);
+    if (access.error) return access.error;
 
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: "ไม่พบไฟล์ PDF" }, { status: 400 });
@@ -113,6 +162,15 @@ export async function POST(request: NextRequest) {
       body: buffer,
       contentType: "application/pdf",
     });
+
+    const { error: updateError } = await access.admin
+      .from("student_works")
+      .update({ pdf_url: pdfUrl, pdf_filename: safeFilename })
+      .eq("id", workId);
+
+    if (updateError) {
+      return NextResponse.json({ error: "อัปเดตข้อมูล PDF ไม่สำเร็จ" }, { status: 500 });
+    }
 
     return NextResponse.json({
       ok: true,

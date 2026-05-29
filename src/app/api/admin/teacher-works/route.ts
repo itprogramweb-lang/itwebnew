@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { getAuthenticatedProfile, type AdminProfile } from "@/lib/serverAuth";
+
+type TeacherWorkAccessRow = {
+  id: string;
+  teacher_name: string | null;
+};
 
 async function requireAuth(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_teacher_works")) {
+  if (
+    !hasPermission(profile.role, "manage_teacher_works") &&
+    !hasPermission(profile.role, "edit_own_teacher_works")
+  ) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   return { profile };
@@ -25,6 +33,53 @@ function cleanOptionalText(v: unknown): string | null {
 
 function cleanBoolean(v: unknown, fallback: boolean) {
   return typeof v === "boolean" ? v : fallback;
+}
+
+function normalizedName(value: string | null | undefined) {
+  return value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("th") ?? "";
+}
+
+function teacherProfileName(profile: AdminProfile) {
+  return normalizedName(profile.full_name);
+}
+
+function isOwnTeacherWork(profile: AdminProfile, work: TeacherWorkAccessRow) {
+  const profileName = teacherProfileName(profile);
+  return !!profileName && normalizedName(work.teacher_name) === profileName;
+}
+
+function canManageAllTeacherWorks(profile: AdminProfile) {
+  return hasPermission(profile.role, "manage_teacher_works");
+}
+
+async function fetchTeacherWorkForAccess(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  id: string
+) {
+  const { data, error } = await admin
+    .from("teacher_works")
+    .select("id,teacher_name")
+    .eq("id", id)
+    .maybeSingle<TeacherWorkAccessRow>();
+
+  return { data, error };
+}
+
+async function requireTeacherWorkMutationAccess(
+  profile: AdminProfile,
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  id: string
+) {
+  const { data: work, error } = await fetchTeacherWorkForAccess(admin, id);
+  if (error) return { error: NextResponse.json({ error: "โหลดข้อมูลไม่สำเร็จ" }, { status: 500 }) };
+  if (!work) return { error: NextResponse.json({ error: "ไม่พบผลงาน" }, { status: 404 }) };
+
+  if (canManageAllTeacherWorks(profile)) return { work };
+  if (hasPermission(profile.role, "edit_own_teacher_works") && isOwnTeacherWork(profile, work)) {
+    return { work };
+  }
+
+  return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
 }
 
 function isSafePdfPath(v: string) {
@@ -84,10 +139,18 @@ export async function GET(request: NextRequest) {
   if (auth.error) return auth.error;
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("teacher_works")
     .select("*")
     .order("is_featured", { ascending: false });
+
+  if (!canManageAllTeacherWorks(auth.profile)) {
+    const profileName = auth.profile.full_name?.trim();
+    if (!profileName) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    query = query.eq("teacher_name", profileName);
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: "โหลดข้อมูลไม่สำเร็จ" }, { status: 500 });
   return NextResponse.json({ works: data ?? [] });
@@ -100,6 +163,12 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as Record<string, unknown>;
   const sanitized = buildTeacherWorkPayload(body);
   if ("error" in sanitized) return NextResponse.json({ error: sanitized.error }, { status: 400 });
+
+  if (!canManageAllTeacherWorks(auth.profile)) {
+    const profileName = auth.profile.full_name?.trim();
+    if (!profileName) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    sanitized.payload.teacher_name = profileName;
+  }
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
@@ -124,6 +193,13 @@ export async function PATCH(request: NextRequest) {
   if ("error" in sanitized) return NextResponse.json({ error: sanitized.error }, { status: 400 });
 
   const admin = createSupabaseAdminClient();
+  const access = await requireTeacherWorkMutationAccess(auth.profile, admin, id);
+  if (access.error) return access.error;
+
+  if (!canManageAllTeacherWorks(auth.profile)) {
+    sanitized.payload.teacher_name = auth.profile.full_name?.trim() ?? null;
+  }
+
   const { data, error } = await admin
     .from("teacher_works")
     .update(sanitized.payload)
@@ -144,6 +220,9 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ error: "ไม่พบ id" }, { status: 400 });
 
   const admin = createSupabaseAdminClient();
+  const access = await requireTeacherWorkMutationAccess(auth.profile, admin, id);
+  if (access.error) return access.error;
+
   const { error } = await admin
     .from("teacher_works")
     .update({ is_active: false })

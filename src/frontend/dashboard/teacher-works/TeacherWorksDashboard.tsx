@@ -216,6 +216,7 @@ export default function TeacherWorksDashboard() {
 
   const handlePdfUpload = async () => {
     const uploadErrors: string[] = [];
+    if (!editingId) uploadErrors.push("กรุณาบันทึกผลงานก่อนอัปโหลด PDF");
     if (!pdfFile) uploadErrors.push("ไม่พบไฟล์ PDF");
     if (pdfFile && pdfFile.type !== "application/pdf" && !pdfFile.name.toLowerCase().endsWith(".pdf")) {
       uploadErrors.push("รองรับเฉพาะไฟล์ PDF เท่านั้น");
@@ -229,6 +230,9 @@ export default function TeacherWorksDashboard() {
       return;
     }
 
+    const workId = editingId;
+    if (!workId) return;
+
     setPdfUploading(true);
     setPdfUploadMessage(null);
 
@@ -238,6 +242,7 @@ export default function TeacherWorksDashboard() {
 
       const data = new FormData();
       data.append("file", pdfFile!);
+      data.append("work_id", workId);
       data.append("year", form.year.trim());
 
       const res = await fetch("/api/admin/teacher-works/upload-pdf", {

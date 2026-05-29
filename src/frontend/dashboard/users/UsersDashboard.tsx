@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, PowerOff } from "lucide-react";
+import { Edit3, PowerOff, RotateCcw, Trash2 } from "lucide-react";
 import type { UserRole } from "@/types";
 import {
   DashboardPageHeader,
@@ -37,6 +37,11 @@ type UserForm = {
   role: UserRole;
   is_active: boolean;
 };
+
+type ConfirmAction =
+  | { type: "deactivate"; user: AdminUser }
+  | { type: "reactivate"; user: AdminUser }
+  | { type: "delete"; user: AdminUser };
 
 const initialForm: UserForm = {
   email: "",
@@ -161,7 +166,7 @@ export default function UsersDashboard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [form, setForm] = useState<UserForm>(initialForm);
 
   const loadUsers = async () => {
@@ -263,28 +268,84 @@ export default function UsersDashboard() {
     }
   };
 
-  const deactivateUser = async () => {
-    if (!confirmId) return;
+  const toggleUserActive = async () => {
+    if (!confirmAction || confirmAction.type === "delete") return;
     setSaving(true);
     setError(null);
     setNotice(null);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`/api/admin/users/${confirmId}`, {
+      const nextActive = confirmAction.type === "reactivate";
+      const res = await fetch(`/api/admin/users/${confirmAction.user.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          data.error || (nextActive ? "ไม่สามารถเปิดใช้งานผู้ใช้ได้" : "ไม่สามารถปิดใช้งานผู้ใช้ได้")
+        );
+      }
+      setNotice(nextActive ? "เปิดใช้งานผู้ใช้เรียบร้อยแล้ว" : "ปิดใช้งานผู้ใช้เรียบร้อยแล้ว");
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ไม่สามารถอัปเดตสถานะผู้ใช้ได้");
+    } finally {
+      setSaving(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const deleteUserPermanently = async () => {
+    if (!confirmAction || confirmAction.type !== "delete") return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/users/${confirmAction.user.id}`, {
         method: "DELETE",
         headers,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "ไม่สามารถปิดใช้งานผู้ใช้ได้");
-      setNotice("ปิดใช้งานผู้ใช้เรียบร้อยแล้ว");
+      if (!res.ok) throw new Error(data.error || "ไม่สามารถลบผู้ใช้ถาวรได้");
+      setNotice("ลบผู้ใช้ถาวรเรียบร้อยแล้ว");
       await loadUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถปิดใช้งานผู้ใช้ได้");
+      setError(err instanceof Error ? err.message : "ไม่สามารถลบผู้ใช้ถาวรได้");
     } finally {
       setSaving(false);
-      setConfirmId(null);
+      setConfirmAction(null);
     }
   };
+
+  const confirmModalCopy = (() => {
+    if (!confirmAction) return null;
+    if (confirmAction.type === "delete") {
+      return {
+        title: "ต้องการลบผู้ใช้นี้ถาวรหรือไม่?",
+        description:
+          "บัญชีนี้จะถูกลบจาก Supabase Auth และไม่สามารถเข้าสู่ระบบได้อีก การกระทำนี้ไม่ควรใช้แทนการปิดใช้งานบัญชี",
+        confirmLabel: "ลบถาวร",
+        onConfirm: deleteUserPermanently,
+      };
+    }
+    if (confirmAction.type === "reactivate") {
+      return {
+        title: "ต้องการเปิดใช้งานผู้ใช้นี้หรือไม่?",
+        description: "ผู้ใช้นี้จะสามารถกลับมาใช้งานหลังบ้านได้ตาม role ที่กำหนดไว้",
+        confirmLabel: "เปิดใช้งาน",
+        onConfirm: toggleUserActive,
+      };
+    }
+    return {
+      title: "ต้องการปิดใช้งานผู้ใช้นี้หรือไม่?",
+      description: "ผู้ใช้นี้จะไม่สามารถใช้งานหลังบ้านได้ แต่ข้อมูลบัญชียังถูกเก็บไว้",
+      confirmLabel: "ปิดใช้งาน",
+      onConfirm: toggleUserActive,
+    };
+  })();
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -377,21 +438,47 @@ export default function UsersDashboard() {
                   {u.created_at ? formatDate(u.created_at) : "-"}
                 </Td>
                 <Td className="text-right">
-                  <div className="inline-flex gap-1">
+                  <div className="inline-flex flex-wrap justify-end gap-1">
                     <button
                       onClick={() => openEdit(u)}
-                      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-slate-500 hover:bg-slate-100 hover:text-brand-600"
                       title="แก้ไข"
+                      aria-label="แก้ไข"
                     >
                       <Edit3 className="h-4 w-4" />
+                      แก้ไข
                     </button>
                     <button
-                      onClick={() => setConfirmId(u.id)}
-                      disabled={!u.is_active}
-                      className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
-                      title="ปิดใช้งาน"
+                      onClick={() =>
+                        setConfirmAction({
+                          type: u.is_active ? "deactivate" : "reactivate",
+                          user: u,
+                        })
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs",
+                        u.is_active
+                          ? "text-slate-500 hover:bg-amber-50 hover:text-amber-700"
+                          : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-700"
+                      )}
+                      title={u.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                      aria-label={u.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                     >
-                      <PowerOff className="h-4 w-4" />
+                      {u.is_active ? (
+                        <PowerOff className="h-4 w-4" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      {u.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmAction({ type: "delete", user: u })}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      title="ลบถาวร"
+                      aria-label="ลบถาวร"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      ลบถาวร
                     </button>
                   </div>
                 </Td>
@@ -413,13 +500,13 @@ export default function UsersDashboard() {
       />
 
       <ConfirmModal
-        open={!!confirmId}
-        title="ปิดใช้งานผู้ใช้?"
-        description="บัญชีนี้จะไม่สามารถเข้าระบบได้ แต่ข้อมูล profile จะยังอยู่ในระบบ"
+        open={!!confirmModalCopy}
+        title={confirmModalCopy?.title ?? ""}
+        description={confirmModalCopy?.description ?? ""}
         variant="danger"
-        confirmLabel="ปิดใช้งาน"
-        onClose={() => setConfirmId(null)}
-        onConfirm={deactivateUser}
+        confirmLabel={confirmModalCopy?.confirmLabel ?? "ยืนยัน"}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => confirmModalCopy?.onConfirm()}
       />
     </div>
   );

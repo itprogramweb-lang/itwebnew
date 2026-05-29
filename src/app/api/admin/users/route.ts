@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { UserRole } from "@/types";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile, isAllowedUserRole, isSuperAdmin } from "@/lib/serverAuth";
+import { hasPermission } from "@/lib/permissions";
+import { getAuthenticatedProfile, isAllowedUserRole } from "@/lib/serverAuth";
 import { normalizeRole } from "@/lib/roles";
 
 type UserPayload = {
@@ -13,6 +14,7 @@ type UserPayload = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USER_CREATION_NOT_CONFIGURED = "User creation is not configured on the server.";
 
 function safeUser(profile: {
   id: string;
@@ -34,16 +36,50 @@ function safeUser(profile: {
   };
 }
 
-export async function GET(request: NextRequest) {
-  const requester = await getAuthenticatedProfile(request);
-  if (!requester) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isSuperAdmin(requester)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+function isAdminClientConfigError(error: unknown) {
+  return error instanceof Error && error.message.includes("Missing Supabase admin env vars");
+}
 
-  const admin = createSupabaseAdminClient();
+async function requireUserManager(request: NextRequest) {
+  try {
+    const requester = await getAuthenticatedProfile(request);
+    if (!requester) {
+      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    }
+    if (!hasPermission(requester.role, "manage_users")) {
+      return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
+    return { requester };
+  } catch (error) {
+    if (isAdminClientConfigError(error)) {
+      return {
+        error: NextResponse.json({ error: USER_CREATION_NOT_CONFIGURED }, { status: 500 }),
+      };
+    }
+    throw error;
+  }
+}
+
+function getAdminClientOrResponse() {
+  try {
+    return { admin: createSupabaseAdminClient() };
+  } catch (error) {
+    if (isAdminClientConfigError(error)) {
+      return {
+        error: NextResponse.json({ error: USER_CREATION_NOT_CONFIGURED }, { status: 500 }),
+      };
+    }
+    throw error;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await requireUserManager(request);
+  if (auth.error) return auth.error;
+
+  const adminResult = getAdminClientOrResponse();
+  if (adminResult.error) return adminResult.error;
+  const admin = adminResult.admin;
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const role = searchParams.get("role")?.trim();
@@ -76,13 +112,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const requester = await getAuthenticatedProfile(request);
-  if (!requester) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isSuperAdmin(requester)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const auth = await requireUserManager(request);
+  if (auth.error) return auth.error;
 
   const body = (await request.json()) as UserPayload;
   const email = body.email?.trim().toLowerCase();
@@ -101,7 +132,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const admin = createSupabaseAdminClient();
+  const adminResult = getAdminClientOrResponse();
+  if (adminResult.error) return adminResult.error;
+  const admin = adminResult.admin;
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password,
