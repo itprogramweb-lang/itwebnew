@@ -1,9 +1,17 @@
 "use client";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  AlertCircle, ArrowRight, CheckCircle2, Image as ImageIcon,
-  Loader2, Palette, Phone, Save, Settings2, Users, GraduationCap,
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Image as ImageIcon,
+  Loader2,
+  Palette,
+  Phone,
+  Save,
+  Settings2,
   RotateCcw,
 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -13,7 +21,6 @@ import Button from "@/components/ui/Button";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import LogoCropEditor from "@/components/dashboard/LogoCropEditor";
 import LogoPreviewPanel from "@/components/dashboard/LogoPreviewPanel";
-import ImageCropControls from "@/components/dashboard/ImageCropControls";
 import { LOGO_PRESETS, getLogoImgStyle, getPresetById } from "@/lib/logoPresets";
 import { cropToJson, getDefaultImageCrop, type ImageCropSettings } from "@/lib/imageCrop";
 import { DEFAULT_DESIGN_TOKENS } from "@/lib/designTokens";
@@ -63,7 +70,13 @@ type SettingsForm = {
 };
 
 type SiteSettingsResponse = {
-  settings: (SettingsForm & { id: string; theme: Record<string, unknown>; design_tokens?: Record<string, unknown> | null }) | null;
+  settings:
+    | (SettingsForm & {
+        id: string;
+        theme: Record<string, unknown>;
+        design_tokens?: Record<string, unknown> | null;
+      })
+    | null;
   error?: string;
 };
 
@@ -96,78 +109,139 @@ const DEFAULT_SETTINGS: SettingsForm = {
   loan_external_url: "https://sd.rmutt.ac.th/?page_id=2274",
   welfare_external_url: "https://sd.rmutt.ac.th/",
   apply_hero_image_url: "",
-  apply_image_crop_settings: getDefaultImageCrop({ frameShape: "banner", aspectPreset: "16:9" }),
+  apply_image_crop_settings: getDefaultImageCrop({
+    frameShape: "banner",
+    aspectPreset: "16:9",
+  }),
   apply_hero_template: "no-image-clean",
   apply_title: "สมัครเรียนกับเรา ก้าวเข้าสู่โลก IT",
   apply_eyebrow: "ปีการศึกษา 2568",
-  apply_description: "ครบทุกขั้นตอน คุณสมบัติ เอกสาร และรอบรับสมัคร พร้อมคำตอบสำหรับคำถามที่พบบ่อย เพื่อให้คุณสมัครได้อย่างราบรื่น",
+  apply_description:
+    "ครบทุกขั้นตอน คุณสมบัติ เอกสาร และรอบรับสมัคร พร้อมคำตอบสำหรับคำถามที่พบบ่อย เพื่อให้คุณสมัครได้อย่างราบรื่น",
   staff_intro_title: "บุคลากรสาขา",
-  staff_intro_description: "พบกับทีมอาจารย์และเจ้าหน้าที่ผู้เชี่ยวชาญที่จะร่วมเป็นเส้นทางการเรียนรู้และพัฒนาคุณ",
-  staff_position_order: "ผู้บริหารสาขา\nหัวหน้าสาขาวิชา\nรองหัวหน้าสาขา\nผู้ช่วยศาสตราจารย์\nอาจารย์ประจำ\nเจ้าหน้าที่",
+  staff_intro_description:
+    "พบกับทีมอาจารย์และเจ้าหน้าที่ผู้เชี่ยวชาญที่จะร่วมเป็นเส้นทางการเรียนรู้และพัฒนาคุณ",
+  staff_position_order:
+    "ผู้บริหารสาขา\nหัวหน้าสาขาวิชา\nรองหัวหน้าสาขา\nผู้ช่วยศาสตราจารย์\nอาจารย์ประจำ\nเจ้าหน้าที่",
   phone: "0-2549-xxxx",
   email: "ct@rmutt.ac.th",
-  address: "เลขที่ 39 หมู่ 1 ถนนรังสิต-นครนายก ตำบลคลองหก อำเภอธัญบุรี จังหวัดปทุมธานี 12110",
+  address:
+    "เลขที่ 39 หมู่ 1 ถนนรังสิต-นครนายก ตำบลคลองหก อำเภอธัญบุรี จังหวัดปทุมธานี 12110",
   facebook_url: "https://facebook.com/",
   line_url: "@rmutt-ct",
 };
 
-function tokenString(tokens: Record<string, unknown> | null | undefined, key: string, fallback: string) {
+function tokenString(
+  tokens: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: string
+) {
   const value = tokens?.[key];
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function tokenNumber(tokens: Record<string, unknown> | null | undefined, key: string, fallback: string, min: number, max: number) {
+function tokenNumber(
+  tokens: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: string,
+  min: number,
+  max: number
+) {
   const n = Number(tokens?.[key] ?? fallback);
-  return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : Number(fallback);
+  return Number.isFinite(n)
+    ? Math.max(min, Math.min(max, Math.round(n)))
+    : Number(fallback);
 }
 
 function normalizeSettings(s: SiteSettingsResponse["settings"]): SettingsForm {
   if (!s) return DEFAULT_SETTINGS;
+
   const tokens = s.design_tokens;
-  const displayMode = tokenString(tokens, "logoNavbarDisplayMode", DEFAULT_DESIGN_TOKENS.logoNavbarDisplayMode);
-  const overflow = tokenString(tokens, "logoNavbarOverflow", DEFAULT_DESIGN_TOKENS.logoNavbarOverflow);
+  const displayMode = tokenString(
+    tokens,
+    "logoNavbarDisplayMode",
+    DEFAULT_DESIGN_TOKENS.logoNavbarDisplayMode
+  );
+  const overflow = tokenString(
+    tokens,
+    "logoNavbarOverflow",
+    DEFAULT_DESIGN_TOKENS.logoNavbarOverflow
+  );
+
   return {
-    site_name:            s.site_name             ?? DEFAULT_SETTINGS.site_name,
-    faculty_name:         s.faculty_name          ?? DEFAULT_SETTINGS.faculty_name,
-    university_name:      s.university_name       ?? DEFAULT_SETTINGS.university_name,
-    logo_url:             s.logo_url              ?? "",
-    logo_alt:             s.logo_alt              ?? DEFAULT_SETTINGS.logo_alt,
-    logo_desktop_size:    s.logo_desktop_size     ?? DEFAULT_SETTINGS.logo_desktop_size,
-    logo_mobile_size:     s.logo_mobile_size      ?? DEFAULT_SETTINGS.logo_mobile_size,
-    logo_crop_preset:     s.logo_crop_preset      ?? DEFAULT_SETTINGS.logo_crop_preset,
-    logo_object_position: s.logo_object_position  ?? DEFAULT_SETTINGS.logo_object_position,
-    logo_fit_mode:        s.logo_fit_mode         ?? DEFAULT_SETTINGS.logo_fit_mode,
-    logo_pos_x:           s.logo_pos_x            ?? DEFAULT_SETTINGS.logo_pos_x,
-    logo_pos_y:           s.logo_pos_y            ?? DEFAULT_SETTINGS.logo_pos_y,
-    logo_zoom:            s.logo_zoom             ?? DEFAULT_SETTINGS.logo_zoom,
-    show_logo:            s.show_logo             ?? true,
-    show_brand_name:      s.show_brand_name       ?? true,
+    site_name: s.site_name ?? DEFAULT_SETTINGS.site_name,
+    faculty_name: s.faculty_name ?? DEFAULT_SETTINGS.faculty_name,
+    university_name: s.university_name ?? DEFAULT_SETTINGS.university_name,
+    logo_url: s.logo_url ?? "",
+    logo_alt: s.logo_alt ?? DEFAULT_SETTINGS.logo_alt,
+    logo_desktop_size: s.logo_desktop_size ?? DEFAULT_SETTINGS.logo_desktop_size,
+    logo_mobile_size: s.logo_mobile_size ?? DEFAULT_SETTINGS.logo_mobile_size,
+    logo_crop_preset: s.logo_crop_preset ?? DEFAULT_SETTINGS.logo_crop_preset,
+    logo_object_position:
+      s.logo_object_position ?? DEFAULT_SETTINGS.logo_object_position,
+    logo_fit_mode: s.logo_fit_mode ?? DEFAULT_SETTINGS.logo_fit_mode,
+    logo_pos_x: s.logo_pos_x ?? DEFAULT_SETTINGS.logo_pos_x,
+    logo_pos_y: s.logo_pos_y ?? DEFAULT_SETTINGS.logo_pos_y,
+    logo_zoom: s.logo_zoom ?? DEFAULT_SETTINGS.logo_zoom,
+    show_logo: s.show_logo ?? true,
+    show_brand_name: s.show_brand_name ?? true,
     logo_navbar_display_mode: displayMode === "free" ? "free" : "contained",
-    logo_navbar_visual_size_desktop: tokenNumber(tokens, "logoNavbarVisualSizeDesktop", DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeDesktop, 24, 800),
-    logo_navbar_visual_size_mobile: tokenNumber(tokens, "logoNavbarVisualSizeMobile", DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeMobile, 20, 400),
-    logo_navbar_offset_x: tokenNumber(tokens, "logoNavbarOffsetX", DEFAULT_DESIGN_TOKENS.logoNavbarOffsetX, -300, 300),
-    logo_navbar_offset_y: tokenNumber(tokens, "logoNavbarOffsetY", DEFAULT_DESIGN_TOKENS.logoNavbarOffsetY, -200, 200),
+    logo_navbar_visual_size_desktop: tokenNumber(
+      tokens,
+      "logoNavbarVisualSizeDesktop",
+      DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeDesktop,
+      24,
+      800
+    ),
+    logo_navbar_visual_size_mobile: tokenNumber(
+      tokens,
+      "logoNavbarVisualSizeMobile",
+      DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeMobile,
+      20,
+      400
+    ),
+    logo_navbar_offset_x: tokenNumber(
+      tokens,
+      "logoNavbarOffsetX",
+      DEFAULT_DESIGN_TOKENS.logoNavbarOffsetX,
+      -300,
+      300
+    ),
+    logo_navbar_offset_y: tokenNumber(
+      tokens,
+      "logoNavbarOffsetY",
+      DEFAULT_DESIGN_TOKENS.logoNavbarOffsetY,
+      -200,
+      200
+    ),
     logo_navbar_overflow: overflow === "contained" ? "contained" : "visible",
-    brand_name:           s.brand_name            ?? DEFAULT_SETTINGS.brand_name,
-    brand_short_name:     s.brand_short_name      ?? DEFAULT_SETTINGS.brand_short_name,
-    department_name_th:   s.department_name_th    ?? DEFAULT_SETTINGS.department_name_th,
-    department_name_en:   s.department_name_en    ?? DEFAULT_SETTINGS.department_name_en,
-    loan_external_url:    s.loan_external_url     ?? DEFAULT_SETTINGS.loan_external_url,
-    welfare_external_url: s.welfare_external_url  ?? DEFAULT_SETTINGS.welfare_external_url,
-    apply_hero_image_url: s.apply_hero_image_url  ?? "",
+    brand_name: s.brand_name ?? DEFAULT_SETTINGS.brand_name,
+    brand_short_name: s.brand_short_name ?? DEFAULT_SETTINGS.brand_short_name,
+    department_name_th:
+      s.department_name_th ?? DEFAULT_SETTINGS.department_name_th,
+    department_name_en:
+      s.department_name_en ?? DEFAULT_SETTINGS.department_name_en,
+    loan_external_url: s.loan_external_url ?? DEFAULT_SETTINGS.loan_external_url,
+    welfare_external_url:
+      s.welfare_external_url ?? DEFAULT_SETTINGS.welfare_external_url,
+    apply_hero_image_url: s.apply_hero_image_url ?? "",
     apply_image_crop_settings: cropToJson(s.apply_image_crop_settings),
-    apply_hero_template:  s.apply_hero_template   ?? "no-image-clean",
-    apply_title:          s.apply_title           ?? DEFAULT_SETTINGS.apply_title,
-    apply_eyebrow:        s.apply_eyebrow         ?? DEFAULT_SETTINGS.apply_eyebrow,
-    apply_description:    s.apply_description     ?? DEFAULT_SETTINGS.apply_description,
-    staff_intro_title:    s.staff_intro_title     ?? DEFAULT_SETTINGS.staff_intro_title,
-    staff_intro_description: s.staff_intro_description ?? DEFAULT_SETTINGS.staff_intro_description,
-    staff_position_order: s.staff_position_order  ?? DEFAULT_SETTINGS.staff_position_order,
-    phone:                s.phone                 ?? "",
-    email:                s.email                 ?? "",
-    address:              s.address               ?? "",
-    facebook_url:         s.facebook_url          ?? "",
-    line_url:             s.line_url              ?? "",
+    apply_hero_template: s.apply_hero_template ?? "no-image-clean",
+    apply_title: s.apply_title ?? DEFAULT_SETTINGS.apply_title,
+    apply_eyebrow: s.apply_eyebrow ?? DEFAULT_SETTINGS.apply_eyebrow,
+    apply_description:
+      s.apply_description ?? DEFAULT_SETTINGS.apply_description,
+    staff_intro_title:
+      s.staff_intro_title ?? DEFAULT_SETTINGS.staff_intro_title,
+    staff_intro_description:
+      s.staff_intro_description ?? DEFAULT_SETTINGS.staff_intro_description,
+    staff_position_order:
+      s.staff_position_order ?? DEFAULT_SETTINGS.staff_position_order,
+    phone: s.phone ?? "",
+    email: s.email ?? "",
+    address: s.address ?? "",
+    facebook_url: s.facebook_url ?? "",
+    line_url: s.line_url ?? "",
   };
 }
 
@@ -175,8 +249,13 @@ async function getAuthHeaders() {
   const supabase = createBrowserSupabaseClient();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
+
   if (!token) throw new Error("กรุณาเข้าสู่ระบบใหม่");
-  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 }
 
 export default function SettingsDashboard() {
@@ -187,23 +266,36 @@ export default function SettingsDashboard() {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isDirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(original), [form, original]);
+  const isDirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(original),
+    [form, original]
+  );
+
   const canSave = isDirty && !loading && !saving;
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/admin/settings", { headers });
       const data = (await res.json()) as SiteSettingsResponse;
-      if (!res.ok) throw new Error(data.error || "ไม่สามารถโหลดข้อมูลเว็บไซต์ได้");
+
+      if (!res.ok) {
+        throw new Error(data.error || "ไม่สามารถโหลดข้อมูลเว็บไซต์ได้");
+      }
+
       const normalized = normalizeSettings(data.settings);
       setForm(normalized);
       setOriginal(normalized);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถโหลดข้อมูลเว็บไซต์ได้");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "ไม่สามารถโหลดข้อมูลเว็บไซต์ได้"
+      );
       setForm(DEFAULT_SETTINGS);
       setOriginal(DEFAULT_SETTINGS);
     } finally {
@@ -211,16 +303,23 @@ export default function SettingsDashboard() {
     }
   }, []);
 
-  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
-  const setField = useCallback(<K extends keyof SettingsForm>(key: K) => (value: SettingsForm[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setSuccess(null);
-    setError(null);
-  }, []);
+  const setField = useCallback(
+    <K extends keyof SettingsForm>(key: K) =>
+      (value: SettingsForm[K]) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+        setSuccess(null);
+        setError(null);
+      },
+    []
+  );
 
   const applyPreset = useCallback((presetId: string) => {
     const p = getPresetById(presetId);
+
     setForm((prev) => ({
       ...prev,
       logo_crop_preset: presetId,
@@ -229,39 +328,64 @@ export default function SettingsDashboard() {
       logo_pos_y: p.defaultPosY,
       logo_zoom: 1,
     }));
+
     setSuccess(null);
     setError(null);
   }, []);
 
   const handleSave = async () => {
     if (!canSave) return;
-    if (!form.site_name.trim()) { setError("กรุณากรอกชื่อสาขา"); return; }
+
+    if (!form.site_name.trim()) {
+      setError("กรุณากรอกชื่อสาขา");
+      return;
+    }
+
     setSaving(true);
     setSuccess(null);
     setError(null);
+
     try {
       const headers = await getAuthHeaders();
+
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers,
         body: JSON.stringify(form),
       });
+
       const data = (await res.json()) as SiteSettingsResponse;
-      if (!res.ok) throw new Error(data.error || "บันทึกข้อมูลเว็บไซต์ไม่สำเร็จ");
+
+      if (!res.ok) {
+        throw new Error(data.error || "บันทึกข้อมูลเว็บไซต์ไม่สำเร็จ");
+      }
+
       const normalized = normalizeSettings(data.settings);
       setForm(normalized);
       setOriginal(normalized);
       setSuccess("บันทึกข้อมูลเว็บไซต์เรียบร้อยแล้ว");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "บันทึกข้อมูลเว็บไซต์ไม่สำเร็จ");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "บันทึกข้อมูลเว็บไซต์ไม่สำเร็จ"
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const saveButton = (
-    <Button onClick={handleSave} disabled={!canSave} title={!isDirty ? "ยังไม่มีการเปลี่ยนแปลง" : undefined}>
-      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+    <Button
+      onClick={handleSave}
+      disabled={!canSave}
+      title={!isDirty ? "ยังไม่มีการเปลี่ยนแปลง" : undefined}
+    >
+      {saving ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Save className="w-4 h-4" />
+      )}
       {saving ? "กำลังบันทึก..." : "บันทึก"}
     </Button>
   );
@@ -269,10 +393,17 @@ export default function SettingsDashboard() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
-        <DashboardPageHeader title="ตั้งค่าเว็บไซต์" description="กำลังโหลดข้อมูลจาก Supabase..." />
+        <DashboardPageHeader
+          title="ตั้งค่าเว็บไซต์"
+          description="กำลังโหลดข้อมูลจาก Supabase..."
+        />
+
         <div className="space-y-3">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="h-28 rounded-3xl bg-slate-100 animate-pulse" />
+            <div
+              key={item}
+              className="h-28 rounded-3xl bg-slate-100 animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -280,17 +411,24 @@ export default function SettingsDashboard() {
   }
 
   const desktopSizeWarning =
-    form.logo_desktop_size > 180 ? "ถ้าใช้ Free mode โลโก้จะลอยได้โดยไม่เพิ่มความสูง Navbar" :
-    form.logo_desktop_size < 28 ? "เล็กมาก อาจมองไม่ชัด" : "";
+    form.logo_desktop_size > 180
+      ? "ถ้าใช้ Free mode โลโก้จะลอยได้โดยไม่เพิ่มความสูง Navbar"
+      : form.logo_desktop_size < 28
+        ? "เล็กมาก อาจมองไม่ชัด"
+        : "";
+
   const mobileSizeWarning =
-    form.logo_mobile_size > 140 ? "ถ้าใช้ Free mode โลโก้จะลอยได้โดยไม่เพิ่มความสูง Navbar" :
-    form.logo_mobile_size < 24 ? "เล็กมาก" : "";
+    form.logo_mobile_size > 140
+      ? "ถ้าใช้ Free mode โลโก้จะลอยได้โดยไม่เพิ่มความสูง Navbar"
+      : form.logo_mobile_size < 24
+        ? "เล็กมาก"
+        : "";
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <DashboardPageHeader
         title="ตั้งค่าเว็บไซต์"
-        description="ข้อมูลพื้นฐาน, branding, โลโก้ และช่องทางติดต่อ"
+        description="ข้อมูลพื้นฐาน, Branding, โลโก้ และช่องทางติดต่อ"
         action={saveButton}
       />
 
@@ -300,23 +438,85 @@ export default function SettingsDashboard() {
       {/* Branding */}
       <Section icon={<Settings2 className="w-5 h-5" />} title="ข้อมูล Branding">
         <div className="grid sm:grid-cols-2 gap-4">
-          <FormInput label="ชื่อสาขา (ภาษาไทย)" required value={form.department_name_th} onChange={(e) => setField("department_name_th")(e.target.value)} />
-          <FormInput label="ชื่อสาขา (ภาษาอังกฤษ)" value={form.department_name_en} onChange={(e) => setField("department_name_en")(e.target.value)} />
-          <FormInput label="ชื่อย่อ (แสดงใน Navbar)" placeholder="เช่น CT" value={form.brand_short_name} onChange={(e) => setField("brand_short_name")(e.target.value)} />
-          <FormInput label="ชื่อ Brand หลัก" placeholder="เช่น Computer Technology" value={form.brand_name} onChange={(e) => setField("brand_name")(e.target.value)} />
-          <FormInput label="ชื่อคณะ" value={form.faculty_name} onChange={(e) => setField("faculty_name")(e.target.value)} />
-          <FormInput label="ชื่อมหาวิทยาลัย" value={form.university_name} onChange={(e) => setField("university_name")(e.target.value)} />
-          <FormInput label="ชื่อสาขา (เก็บใน site_name)" required value={form.site_name} onChange={(e) => setField("site_name")(e.target.value)} />
-          <FormInput label="URL กยศ. (เปิดเว็บภายนอก)" placeholder="https://sd.rmutt.ac.th/..." value={form.loan_external_url} onChange={(e) => setField("loan_external_url")(e.target.value)} />
-          <FormInput label="URL สวัสดิการนักศึกษา (เปิดเว็บภายนอก)" placeholder="https://sd.rmutt.ac.th/" value={form.welfare_external_url} onChange={(e) => setField("welfare_external_url")(e.target.value)} />
+          <FormInput
+            label="ชื่อสาขา (ภาษาไทย)"
+            required
+            value={form.department_name_th}
+            onChange={(e) => setField("department_name_th")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อสาขา (ภาษาอังกฤษ)"
+            value={form.department_name_en}
+            onChange={(e) => setField("department_name_en")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อย่อ (แสดงใน Navbar)"
+            placeholder="เช่น CT"
+            value={form.brand_short_name}
+            onChange={(e) => setField("brand_short_name")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อ Brand หลัก"
+            placeholder="เช่น Computer Technology"
+            value={form.brand_name}
+            onChange={(e) => setField("brand_name")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อคณะ"
+            value={form.faculty_name}
+            onChange={(e) => setField("faculty_name")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อมหาวิทยาลัย"
+            value={form.university_name}
+            onChange={(e) => setField("university_name")(e.target.value)}
+          />
+
+          <FormInput
+            label="ชื่อสาขา (เก็บใน site_name)"
+            required
+            value={form.site_name}
+            onChange={(e) => setField("site_name")(e.target.value)}
+          />
+
+          <FormInput
+            label="URL กยศ. (เปิดเว็บภายนอก)"
+            placeholder="https://sd.rmutt.ac.th/..."
+            value={form.loan_external_url}
+            onChange={(e) => setField("loan_external_url")(e.target.value)}
+          />
+
+          <FormInput
+            label="URL สวัสดิการนักศึกษา (เปิดเว็บภายนอก)"
+            placeholder="https://sd.rmutt.ac.th/"
+            value={form.welfare_external_url}
+            onChange={(e) => setField("welfare_external_url")(e.target.value)}
+          />
         </div>
+
         <div className="flex gap-6 mt-4">
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <input type="checkbox" checked={form.show_logo} onChange={(e) => setField("show_logo")(e.target.checked)} className="rounded" />
+            <input
+              type="checkbox"
+              checked={form.show_logo}
+              onChange={(e) => setField("show_logo")(e.target.checked)}
+              className="rounded"
+            />
             แสดงโลโก้ใน Navbar/Footer
           </label>
+
           <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <input type="checkbox" checked={form.show_brand_name} onChange={(e) => setField("show_brand_name")(e.target.checked)} className="rounded" />
+            <input
+              type="checkbox"
+              checked={form.show_brand_name}
+              onChange={(e) => setField("show_brand_name")(e.target.checked)}
+              className="rounded"
+            />
             แสดงชื่อ Brand ข้างโลโก้
           </label>
         </div>
@@ -326,12 +526,19 @@ export default function SettingsDashboard() {
       <Section icon={<ImageIcon className="w-5 h-5" />} title="โลโก้เว็บไซต์">
         <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
           <p className="font-medium text-slate-800">โครงสร้างค่าที่ใช้จริง</p>
-          <p>รูปต้นฉบับคือไฟล์โลโก้, Crop คือการตัด/ขยับ/ซูมรูป, Frame size คือกรอบ crop, Visual size คือขนาดที่เห็นจริงใน Navbar, ส่วน Navbar height คุมแถบเมนูแยกจากโลโก้</p>
+          <p>
+            รูปต้นฉบับคือไฟล์โลโก้, Crop คือการตัด/ขยับ/ซูมรูป, Frame size
+            คือกรอบ crop, Visual size คือขนาดที่เห็นจริงใน Navbar, ส่วน Navbar
+            height คุมแถบเมนูแยกจากโลโก้
+          </p>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
           <div className="space-y-5">
-            <LogoSubsection title="A) รูปโลโก้" description="อัปโหลดรูปต้นฉบับและกำหนดข้อความ alt สำหรับผู้ใช้ screen reader">
+            <LogoSubsection
+              title="A) รูปโลโก้"
+              description="อัปโหลดรูปต้นฉบับและกำหนดข้อความ alt สำหรับผู้ใช้ screen reader"
+            >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                 <CloudinaryImageUploader
                   value={form.logo_url}
@@ -339,17 +546,26 @@ export default function SettingsDashboard() {
                   folder="logos"
                   label="อัปโหลดโลโก้สาขา"
                 />
+
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <p className="mb-3 text-xs font-medium text-slate-600">Current logo</p>
+                  <p className="mb-3 text-xs font-medium text-slate-600">
+                    Current logo
+                  </p>
+
                   <div className="grid min-h-[160px] place-items-center rounded-xl bg-slate-50">
                     {form.logo_url ? (
-                      <img src={form.logo_url} alt="" className="max-h-32 max-w-[160px] object-contain" />
+                      <img
+                        src={form.logo_url}
+                        alt=""
+                        className="max-h-32 max-w-[160px] object-contain"
+                      />
                     ) : (
                       <div className="grid h-24 w-24 place-items-center rounded-2xl bg-brand-gradient text-lg font-bold text-white">
                         {form.brand_short_name.slice(0, 2)}
                       </div>
                     )}
                   </div>
+
                   {form.logo_url && (
                     <button
                       type="button"
@@ -361,10 +577,18 @@ export default function SettingsDashboard() {
                   )}
                 </div>
               </div>
-              <FormInput label="Alt Text โลโก้" value={form.logo_alt} onChange={(e) => setField("logo_alt")(e.target.value)} />
+
+              <FormInput
+                label="Alt Text โลโก้"
+                value={form.logo_alt}
+                onChange={(e) => setField("logo_alt")(e.target.value)}
+              />
             </LogoSubsection>
 
-            <LogoSubsection title="B) Template เริ่มต้น" description="Preset เป็นค่าเริ่มต้นของกรอบและโฟกัส ไม่ได้ล็อกค่า หลังเลือกแล้วยังปรับเองต่อได้">
+            <LogoSubsection
+              title="B) Template เริ่มต้น"
+              description="Preset เป็นค่าเริ่มต้นของกรอบและโฟกัส ไม่ได้ล็อกค่า หลังเลือกแล้วยังปรับเองต่อได้"
+            >
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {LOGO_PRESETS.map((preset) => (
                   <button
@@ -378,19 +602,37 @@ export default function SettingsDashboard() {
                     }`}
                   >
                     {form.logo_url ? (
-                      <img src={form.logo_url} alt="" style={getLogoImgStyle(preset.id, 32)} className="shrink-0" />
+                      <img
+                        src={form.logo_url}
+                        alt=""
+                        style={getLogoImgStyle(preset.id, 32)}
+                        className="shrink-0"
+                      />
                     ) : (
-                      <div style={{ width: 32, height: 32, borderRadius: preset.borderRadius }} className="grid shrink-0 place-items-center bg-brand-gradient">
-                        <span className="text-[9px] font-bold text-white">CT</span>
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: preset.borderRadius,
+                        }}
+                        className="grid shrink-0 place-items-center bg-brand-gradient"
+                      >
+                        <span className="text-[9px] font-bold text-white">
+                          CT
+                        </span>
                       </div>
                     )}
+
                     <span className="leading-snug">{preset.labelTh}</span>
                   </button>
                 ))}
               </div>
             </LogoSubsection>
 
-            <LogoSubsection title="C) Crop รูป" description="คุม contain/cover, ตำแหน่งโฟกัส และ zoom ของรูปในกรอบ crop">
+            <LogoSubsection
+              title="C) Crop รูป"
+              description="คุม contain/cover, ตำแหน่งโฟกัส และ zoom ของรูปในกรอบ crop"
+            >
               <LogoCropEditor
                 logoUrl={form.logo_url || undefined}
                 brandShortName={form.brand_short_name}
@@ -404,7 +646,9 @@ export default function SettingsDashboard() {
                 onChange={(v) => {
                   setForm((prev) => ({
                     ...prev,
-                    ...(v.fitMode !== undefined ? { logo_fit_mode: v.fitMode } : {}),
+                    ...(v.fitMode !== undefined
+                      ? { logo_fit_mode: v.fitMode }
+                      : {}),
                     ...(v.posX !== undefined ? { logo_pos_x: v.posX } : {}),
                     ...(v.posY !== undefined ? { logo_pos_y: v.posY } : {}),
                     ...(v.zoom !== undefined ? { logo_zoom: v.zoom } : {}),
@@ -416,7 +660,10 @@ export default function SettingsDashboard() {
               />
             </LogoSubsection>
 
-            <LogoSubsection title="D) ขนาดกรอบรูป" description="Frame size คือขนาดกรอบ crop ของโลโก้ ไม่ใช่ความสูงของ Navbar">
+            <LogoSubsection
+              title="D) ขนาดกรอบรูป"
+              description="Frame size คือขนาดกรอบ crop ของโลโก้ ไม่ใช่ความสูงของ Navbar"
+            >
               <div className="grid gap-4 md:grid-cols-2">
                 <NumberControl
                   label="Desktop frame size"
@@ -427,6 +674,7 @@ export default function SettingsDashboard() {
                   hint={desktopSizeWarning}
                   onChange={(value) => setField("logo_desktop_size")(value)}
                 />
+
                 <NumberControl
                   label="Mobile frame size"
                   value={form.logo_mobile_size}
@@ -439,17 +687,25 @@ export default function SettingsDashboard() {
               </div>
             </LogoSubsection>
 
-            <LogoSubsection title="E) การแสดงผลใน Navbar" description="Contained อยู่ในกรอบ Navbar แบบปลอดภัย ส่วน Free ให้โลโก้ลอยใหญ่ได้โดยไม่ดันความสูงแถบเมนู">
+            <LogoSubsection
+              title="E) การแสดงผลใน Navbar"
+              description="Contained อยู่ในกรอบ Navbar แบบปลอดภัย ส่วน Free ให้โลโก้ลอยใหญ่ได้โดยไม่ดันความสูงแถบเมนู"
+            >
               <div className="space-y-4">
                 <SegmentedButtons
                   label="Navbar logo mode"
                   value={form.logo_navbar_display_mode}
-                  onChange={(value) => setField("logo_navbar_display_mode")(value as "contained" | "free")}
+                  onChange={(value) =>
+                    setField("logo_navbar_display_mode")(
+                      value as "contained" | "free"
+                    )
+                  }
                   options={[
                     { value: "contained", label: "Contained / Safe" },
                     { value: "free", label: "Free / Overflow" },
                   ]}
                 />
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <NumberControl
                     label="Desktop visual size"
@@ -457,18 +713,32 @@ export default function SettingsDashboard() {
                     min={24}
                     max={800}
                     suffix="px"
-                    hint={form.logo_navbar_visual_size_desktop > 180 ? "ใหญ่กว่า 180px อาจทับ Hero หรือเมนู" : ""}
-                    onChange={(value) => setField("logo_navbar_visual_size_desktop")(value)}
+                    hint={
+                      form.logo_navbar_visual_size_desktop > 180
+                        ? "ใหญ่กว่า 180px อาจทับ Hero หรือเมนู"
+                        : ""
+                    }
+                    onChange={(value) =>
+                      setField("logo_navbar_visual_size_desktop")(value)
+                    }
                   />
+
                   <NumberControl
                     label="Mobile visual size"
                     value={form.logo_navbar_visual_size_mobile}
                     min={20}
                     max={400}
                     suffix="px"
-                    hint={form.logo_navbar_visual_size_mobile > 140 ? "ใหญ่กว่า 140px อาจบังพื้นที่เมนูมือถือ" : ""}
-                    onChange={(value) => setField("logo_navbar_visual_size_mobile")(value)}
+                    hint={
+                      form.logo_navbar_visual_size_mobile > 140
+                        ? "ใหญ่กว่า 140px อาจบังพื้นที่เมนูมือถือ"
+                        : ""
+                    }
+                    onChange={(value) =>
+                      setField("logo_navbar_visual_size_mobile")(value)
+                    }
                   />
+
                   <NumberControl
                     label="Offset X"
                     value={form.logo_navbar_offset_x}
@@ -477,6 +747,7 @@ export default function SettingsDashboard() {
                     suffix="px"
                     onChange={(value) => setField("logo_navbar_offset_x")(value)}
                   />
+
                   <NumberControl
                     label="Offset Y"
                     value={form.logo_navbar_offset_y}
@@ -486,17 +757,27 @@ export default function SettingsDashboard() {
                     onChange={(value) => setField("logo_navbar_offset_y")(value)}
                   />
                 </div>
+
                 <SegmentedButtons
                   label="Free mode overflow"
                   value={form.logo_navbar_overflow}
-                  onChange={(value) => setField("logo_navbar_overflow")(value as "visible" | "contained")}
+                  onChange={(value) =>
+                    setField("logo_navbar_overflow")(
+                      value as "visible" | "contained"
+                    )
+                  }
                   options={[
                     { value: "visible", label: "Visible" },
                     { value: "contained", label: "Contained" },
                   ]}
                 />
+
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  <span>Free mode ใช้ขนาด visual และ offset จริง แต่ Navbar height จะไม่สูงตามโลโก้</span>
+                  <span>
+                    Free mode ใช้ขนาด visual และ offset จริง แต่ Navbar height
+                    จะไม่สูงตามโลโก้
+                  </span>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -548,99 +829,54 @@ export default function SettingsDashboard() {
         </div>
       </Section>
 
-      {/* Apply Page */}
-      <Section icon={<GraduationCap className="w-5 h-5" />} title="หน้าสมัครเรียน">
-        <div className="space-y-5">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput label="หัวข้อหลัก" value={form.apply_title} onChange={(e) => setField("apply_title")(e.target.value)} />
-            <FormInput label="ป้ายเล็กเหนือหัวข้อ (eyebrow)" placeholder="เช่น ปีการศึกษา 2568" value={form.apply_eyebrow} onChange={(e) => setField("apply_eyebrow")(e.target.value)} />
-          </div>
-          <FormTextarea label="คำอธิบาย" rows={3} value={form.apply_description} onChange={(e) => setField("apply_description")(e.target.value)} />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">รูป Hero หน้าสมัครเรียน</label>
-            <CloudinaryImageUploader
-              value={form.apply_hero_image_url}
-              onChange={(url) => setField("apply_hero_image_url")(url)}
-              folder="apply"
-              label="อัปโหลดรูปหน้าสมัครเรียน"
-            />
-            {form.apply_hero_image_url && (
-              <div className="mt-3">
-                <ImageCropControls
-                  imageUrl={form.apply_hero_image_url}
-                  alt={form.apply_title}
-                  value={form.apply_image_crop_settings}
-                  onChange={(crop) => setField("apply_image_crop_settings")(crop)}
-                  frameShape="banner"
-                  aspectPreset="16:9"
-                />
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Layout / Template</label>
-            <select
-              value={form.apply_hero_template}
-              onChange={(e) => setField("apply_hero_template")(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              <option value="no-image-clean">ไม่มีรูป (แบบสะอาด)</option>
-              <option value="wide-banner">แบนเนอร์กว้าง</option>
-              <option value="split-left">รูปซ้ายข้อความขวา</option>
-              <option value="split-right">ข้อความซ้ายรูปขวา</option>
-              <option value="background-overlay">รูปพื้นหลังทับข้อความ</option>
-              <option value="top-image">รูปด้านบน</option>
-              <option value="side-card">การ์ดด้านข้าง</option>
-              <option value="grid-card">กริดการ์ด</option>
-              <option value="compact-banner">แบนเนอร์เล็ก</option>
-              <option value="poster-style">โปสเตอร์</option>
-            </select>
-            <p className="text-xs text-slate-400 mt-1">ถ้าไม่มีรูป template จะใช้แบบสะอาดโดยอัตโนมัติ</p>
-          </div>
-        </div>
-      </Section>
-
-      {/* Staff */}
-      <Section icon={<Users className="w-5 h-5" />} title="บุคลากร">
-        <div className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput label="หัวข้อหน้าบุคลากร" value={form.staff_intro_title} onChange={(e) => setField("staff_intro_title")(e.target.value)} />
-            <FormInput label="คำอธิบายหน้าบุคลากร" value={form.staff_intro_description} onChange={(e) => setField("staff_intro_description")(e.target.value)} />
-          </div>
-          <FormTextarea
-            label="ลำดับตำแหน่งบุคลากร (หนึ่งบรรทัดต่อหนึ่งตำแหน่ง)"
-            rows={8}
-            hint="บุคลากรจะเรียงตามลำดับตำแหน่งในรายการนี้ก่อน แล้วจึงเรียงตาม sort_order และชื่อ"
-            value={form.staff_position_order}
-            onChange={(e) => setField("staff_position_order")(e.target.value)}
-          />
-        </div>
-      </Section>
-
       {/* Contact */}
       <Section icon={<Phone className="w-5 h-5" />} title="ช่องทางติดต่อ">
         <div className="space-y-4">
-          <FormTextarea label="ที่อยู่" rows={3} value={form.address} onChange={(e) => setField("address")(e.target.value)} />
+          <FormTextarea
+            label="ที่อยู่"
+            rows={3}
+            value={form.address}
+            onChange={(e) => setField("address")(e.target.value)}
+          />
+
           <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput label="เบอร์โทร" value={form.phone} onChange={(e) => setField("phone")(e.target.value)} />
-            <FormInput label="อีเมล" type="email" value={form.email} onChange={(e) => setField("email")(e.target.value)} />
-            <FormInput label="Facebook URL" value={form.facebook_url} onChange={(e) => setField("facebook_url")(e.target.value)} />
-            <FormInput label="LINE Official" value={form.line_url} onChange={(e) => setField("line_url")(e.target.value)} />
+            <FormInput
+              label="เบอร์โทร"
+              value={form.phone}
+              onChange={(e) => setField("phone")(e.target.value)}
+            />
           </div>
         </div>
       </Section>
 
       {/* Theme link */}
       <Section icon={<Palette className="w-5 h-5" />} title="ธีมสีเว็บไซต์">
-        <p className="text-sm text-slate-600 mb-4">จัดการสีธีมแยกที่หน้าปรับธีม</p>
-        <Link href="/dashboard/theme" className="inline-flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-medium text-white bg-brand-gradient shadow-brand hover:opacity-95 transition">
-          <Palette className="w-4 h-4" />ไปที่หน้าปรับธีม<ArrowRight className="w-4 h-4" />
+        <p className="text-sm text-slate-600 mb-4">
+          จัดการสีธีมแยกที่หน้าปรับธีม
+        </p>
+
+        <Link
+          href="/dashboard/theme"
+          className="inline-flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-medium text-white bg-brand-gradient shadow-brand hover:opacity-95 transition"
+        >
+          <Palette className="w-4 h-4" />
+          ไปที่หน้าปรับธีม
+          <ArrowRight className="w-4 h-4" />
         </Link>
       </Section>
 
       <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={!canSave} size="lg" title={!isDirty ? "ยังไม่มีการเปลี่ยนแปลง" : undefined}>
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        <Button
+          onClick={handleSave}
+          disabled={!canSave}
+          size="lg"
+          title={!isDirty ? "ยังไม่มีการเปลี่ยนแปลง" : undefined}
+        >
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
           {saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่าทั้งหมด"}
         </Button>
       </div>
@@ -648,23 +884,53 @@ export default function SettingsDashboard() {
   );
 }
 
-function StatusBox({ type, message }: { type: "success" | "error"; message: string }) {
+function StatusBox({
+  type,
+  message,
+}: {
+  type: "success" | "error";
+  message: string;
+}) {
   const ok = type === "success";
+
   return (
-    <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${ok ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
-      {ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+    <div
+      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${
+        ok
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-rose-200 bg-rose-50 text-rose-700"
+      }`}
+    >
+      {ok ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+      ) : (
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      )}
+
       <span>{message}</span>
     </div>
   );
 }
 
-function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bg-white border border-slate-100 rounded-3xl p-6 lg:p-8">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-brand-gradient grid place-items-center text-white">{icon}</div>
+        <div className="w-10 h-10 rounded-xl bg-brand-gradient grid place-items-center text-white">
+          {icon}
+        </div>
+
         <h2 className="font-semibold text-slate-900">{title}</h2>
       </div>
+
       {children}
     </div>
   );
@@ -683,8 +949,11 @@ function LogoSubsection({
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+          {description}
+        </p>
       </div>
+
       {children}
     </div>
   );
@@ -707,15 +976,21 @@ function NumberControl({
   hint?: string;
   onChange: (value: number) => void;
 }) {
-  const safeValue = Number.isFinite(value) ? Math.max(min, Math.min(max, Math.round(value))) : min;
+  const safeValue = Number.isFinite(value)
+    ? Math.max(min, Math.min(max, Math.round(value)))
+    : min;
+
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <label className="text-xs font-medium text-slate-700">{label}</label>
+
         <span className="font-mono text-[10px] text-slate-400">
-          {safeValue}{suffix}
+          {safeValue}
+          {suffix}
         </span>
       </div>
+
       <div className="flex items-center gap-2">
         <input
           type="range"
@@ -725,6 +1000,7 @@ function NumberControl({
           onChange={(e) => onChange(Number(e.target.value))}
           className="h-2 flex-1 rounded-full bg-slate-200 accent-brand-500"
         />
+
         <input
           type="number"
           min={min}
@@ -734,7 +1010,12 @@ function NumberControl({
           className="h-9 w-20 rounded-xl border border-slate-200 px-2 text-center text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
       </div>
-      {hint && <p className="mt-1 text-[10px] leading-relaxed text-amber-600">{hint}</p>}
+
+      {hint && (
+        <p className="mt-1 text-[10px] leading-relaxed text-amber-600">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -753,6 +1034,7 @@ function SegmentedButtons({
   return (
     <div>
       <div className="mb-1.5 text-xs font-medium text-slate-700">{label}</div>
+
       <div className="grid overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:inline-grid sm:auto-cols-fr sm:grid-flow-col">
         {options.map((option) => (
           <button

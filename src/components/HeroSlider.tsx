@@ -238,7 +238,7 @@ export default function HeroSlider({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative aspect-[16/9] min-h-[240px] sm:min-h-[320px] lg:aspect-auto lg:min-h-[680px]">
+     <div className="relative aspect-[1024/431] min-h-0 sm:aspect-[16/9] sm:min-h-[320px] lg:aspect-auto lg:min-h-[680px]">
         {/* Slide backgrounds */}
         {slides.map((slide, index) => {
           const ss = parseSettings(slide.settings ?? {});
@@ -299,12 +299,12 @@ export default function HeroSlider({
         })}
 
         {/* Content layer */}
-        <div
-          className={cn(
-            "container-wide relative z-10 flex min-h-[240px] sm:min-h-[320px] lg:min-h-[680px]",
-            verticalClass
-          )}
-        >
+<div
+  className={cn(
+    "container-wide absolute inset-0 z-10 flex min-h-0 sm:relative sm:inset-auto sm:min-h-[320px] lg:min-h-[680px]",
+    verticalClass
+  )}
+>
           <div
             className={cn(
               "w-full text-white",

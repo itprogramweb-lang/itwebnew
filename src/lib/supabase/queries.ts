@@ -146,6 +146,60 @@ export type StudentWorkRow = {
   slug: string | null;
 };
 
+export type LearningFacilityGalleryImage = {
+  url: string;
+  alt?: string | null;
+  caption?: string | null;
+  sort_order?: number;
+};
+
+export type LearningFacilityRow = {
+  id: string;
+  type: string;
+  title: string;
+  slug: string | null;
+
+  short_description: string | null;
+  description: string | null;
+
+  cover_image_url: string | null;
+  cover_image_alt: string | null;
+  cover_image_crop: unknown | null;
+
+  gallery_images: LearningFacilityGalleryImage[] | null;
+
+  location: string | null;
+  capacity: string | null;
+
+  highlights: string[] | null;
+  equipment_list: string[] | null;
+
+  is_featured: boolean | null;
+  is_active: boolean | null;
+  sort_order: number | null;
+
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export async function getLearningFacilities(): Promise<LearningFacilityRow[]> {
+  const supabase = createServerSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("learning_facilities")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getLearningFacilities error:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
 export type CourseWorkSubject = {
   course_id: string;
   course_name: string;

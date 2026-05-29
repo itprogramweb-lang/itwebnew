@@ -24,21 +24,22 @@ type PageSetting = {
   sort_order: number | null;
 };
 
-const PAGE_LABEL: Record<string, string> = {
-  home: "หน้าแรก",
-  apply: "สมัครเรียน",
-  about: "เกี่ยวกับสาขา",
-  contact: "ติดต่อเรา",
-  programs_bachelor: "หลักสูตรปริญญาตรี",
-  programs_master: "หลักสูตรปริญญาโท",
-  students_registration: "ทะเบียนนักศึกษา",
-  students_registrar: "งานทะเบียน",
-  students_loan: "กองทุน กยศ.",
-  students_welfare: "สวัสดิการนักศึกษา",
-  students_feedback: "ความคิดเห็น / ข้อเสนอแนะ",
-  students_complaint: "ร้องเรียน / ความคิดเห็น",
-};
+const PAGE_ITEMS = [
+  { key: "home", label: "หน้าแรก" },
+  { key: "apply", label: "สมัครเรียน" },
+  { key: "about", label: "เกี่ยวกับสาขา" },
+  { key: "contact", label: "ติดต่อเรา" },
+  { key: "programs_bachelor", label: "หลักสูตรปริญญาตรี" },
+  { key: "programs_master", label: "หลักสูตรปริญญาโท" },
+  { key: "students_registration", label: "ทะเบียนนักศึกษา" },
+  { key: "students_registrar", label: "งานทะเบียน" },
+  { key: "students_feedback", label: "ความคิดเห็น / ข้อเสนอแนะ" },
+  { key: "students_complaint", label: "ร้องเรียน / ความคิดเห็น" },
+] as const;
 
+const PAGE_LABEL: Record<string, string> = Object.fromEntries(
+  PAGE_ITEMS.map((item) => [item.key, item.label])
+);
 const APPLY_LAYOUTS = [
   { value: "default", label: "ใช้ค่าจาก ตั้งค่าเว็บไซต์ (fallback)" },
   { value: "no-image-clean", label: "ไม่มีรูป — สะอาด" },
@@ -126,25 +127,28 @@ export default function PagesDashboard() {
     loadPages();
   }, [loadPages]);
 
-  function selectPage(key: string) {
-    const found = pages.find((p) => p.page_key === key);
-    setSelectedKey(key);
-    setSaveStatus("idle");
-    setErrorMsg(null);
-    if (found) {
-      setForm({
-        ...emptyForm(),
-        ...found,
-        hero_image_crop_settings: found.hero_image_crop_settings ?? null,
-        hero_layout: found.hero_layout ?? "default",
-        is_active: found.is_active !== false,
-        cta_external: found.cta_external === true,
-      });
-    } else {
-      setForm({ ...emptyForm(), page_key: key });
-    }
-  }
+function selectPage(key: string) {
+  if (!PAGE_LABEL[key]) return;
 
+  const found = pages.find((p) => p.page_key === key);
+
+  setSelectedKey(key);
+  setSaveStatus("idle");
+  setErrorMsg(null);
+
+  if (found) {
+    setForm({
+      ...emptyForm(),
+      ...found,
+      hero_image_crop_settings: found.hero_image_crop_settings ?? null,
+      hero_layout: found.hero_layout ?? "default",
+      is_active: found.is_active !== false,
+      cta_external: found.cta_external === true,
+    });
+  } else {
+    setForm({ ...emptyForm(), page_key: key });
+  }
+}
   function setField<K extends keyof PageSetting>(key: K, value: PageSetting[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (saveStatus !== "idle") setSaveStatus("idle");
@@ -180,8 +184,14 @@ export default function PagesDashboard() {
     }
   }
 
-  const isApplyPage = selectedKey === "apply";
-  const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
+const pageList = PAGE_ITEMS.map((item) => {
+  const found = pages.find((p) => p.page_key === item.key);
+
+  return found ?? { ...emptyForm(), page_key: item.key };
+});
+
+const isApplyPage = selectedKey === "apply";
+const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -216,8 +226,8 @@ export default function PagesDashboard() {
               </div>
             ) : (
               <ul className="py-1">
-                {pages.map((p) => (
-                  <li key={p.page_key}>
+             {pageList.map((p) => (
+  <li key={p.page_key}>
                     <button
                       type="button"
                       onClick={() => selectPage(p.page_key)}
