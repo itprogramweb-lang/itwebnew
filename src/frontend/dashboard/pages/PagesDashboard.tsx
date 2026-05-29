@@ -21,6 +21,7 @@ type PageSetting = {
   cta_url: string | null;
   cta_external: boolean | null;
   is_active: boolean | null;
+  sort_order: number | null;
 };
 
 const PAGE_LABEL: Record<string, string> = {
@@ -57,6 +58,18 @@ const OTHER_LAYOUTS = [
   { value: "no-image", label: "ไม่แสดงรูป" },
 ];
 
+function sortPages(pages: PageSetting[]) {
+  return [...pages].sort((a, b) => {
+    const aSort = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+    const bSort = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+    if (aSort !== bSort) return aSort - bSort;
+    return (PAGE_LABEL[a.page_key] ?? a.page_key).localeCompare(
+      PAGE_LABEL[b.page_key] ?? b.page_key,
+      "th"
+    );
+  });
+}
+
 function emptyForm(): PageSetting {
   return {
     page_key: "",
@@ -71,6 +84,7 @@ function emptyForm(): PageSetting {
     cta_url: null,
     cta_external: false,
     is_active: true,
+    sort_order: null,
   };
 }
 
@@ -100,7 +114,7 @@ export default function PagesDashboard() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "โหลดไม่สำเร็จ");
-      setPages(json.pages ?? []);
+      setPages(sortPages(json.pages ?? []));
     } catch (e) {
       setListError(e instanceof Error ? e.message : "ไม่สามารถโหลดรายการหน้าเว็บได้");
     } finally {
@@ -214,8 +228,13 @@ export default function PagesDashboard() {
                       }`}
                     >
                       {PAGE_LABEL[p.page_key] ?? p.page_key}
-                      {!p.is_active && (
-                        <span className="ml-2 text-[10px] text-slate-400">(ซ่อน)</span>
+                      <span className="ml-2 text-[10px] text-slate-400">
+                        {p.sort_order !== null && p.sort_order !== undefined
+                          ? `#${p.sort_order}`
+                          : "ไม่กำหนดลำดับ"}
+                      </span>
+                      {p.is_active === false && (
+                        <span className="ml-2 text-[10px] text-slate-400">(ปิดใช้งานหน้า)</span>
                       )}
                     </button>
                   </li>
@@ -409,17 +428,40 @@ export default function PagesDashboard() {
                 </section>
 
                 <section>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={form.is_active !== false}
-                      onChange={(e) => setField("is_active", e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 accent-brand-500"
-                    />
-                    <span className="text-sm text-slate-700">หน้าเว็บนี้ Active (เปิดใช้งาน)</span>
-                  </label>
-                  <p className="text-xs text-slate-400 mt-1 ml-6">
-                    ปิด = public page ไม่สามารถอ่านค่าจาก page_settings ได้ (ใช้ fallback แทน)
+                  <h3 className="text-sm font-semibold text-slate-800 mb-3">การแสดงผลในเมนู</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.is_active !== false}
+                        onChange={(e) => setField("is_active", e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 accent-brand-500"
+                      />
+                      <span className="text-sm text-slate-700">เปิดใช้งานหน้า / page settings</span>
+                    </label>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                        ลำดับในตัวจัดการ
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={form.sort_order ?? ""}
+                        onChange={(e) =>
+                          setField(
+                            "sort_order",
+                            e.target.value === "" ? null : Number(e.target.value)
+                          )
+                        }
+                        placeholder="ไม่กำหนด"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    เมนูหลักของเว็บไซต์ยังใช้โครงสร้างคงที่ในรอบนี้ ค่าเหล่านี้ใช้จัดการ page settings และลำดับในตัวจัดการเท่านั้น
                   </p>
                 </section>
 

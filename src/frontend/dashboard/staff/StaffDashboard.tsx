@@ -20,6 +20,7 @@ import Button from "@/components/ui/Button";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { cropToJson, getDefaultImageCrop, type ImageCropSettings } from "@/lib/imageCrop";
+import { sortStaffMembersWithDepartmentHeadFirst } from "@/lib/staffOrdering";
 
 const FALLBACK = "/placeholders/staff-placeholder.svg";
 
@@ -169,8 +170,8 @@ export default function StaffDashboard() {
   useEffect(() => { loadStaff(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const filtered = useMemo(
     () =>
-      items
-        .filter((s) => {
+      sortStaffMembersWithDepartmentHeadFirst(
+        items.filter((s) => {
           const matchQ =
             !q ||
             s.full_name.toLowerCase().includes(q.toLowerCase()) ||
@@ -186,14 +187,7 @@ export default function StaffDashboard() {
 
           return matchQ && matchR && matchS;
         })
-        .sort((a, b) => {
-          const aS = a.sort_order ?? 999;
-          const bS = b.sort_order ?? 999;
-
-          if (aS !== bS) return aS - bS;
-
-          return a.full_name.localeCompare(b.full_name, "th");
-        }),
+      ),
     [items, q, roleFilter, statusFilter]
   );
 

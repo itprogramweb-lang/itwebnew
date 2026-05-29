@@ -24,6 +24,13 @@ function cleanJson(v: unknown): Record<string, unknown> {
     : {};
 }
 
+function cleanSortOrder(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const value = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value);
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requirePagesManager(request);
   if (auth.error) return auth.error;
@@ -79,6 +86,7 @@ export async function PATCH(request: NextRequest) {
   if ("cta_url" in updates) payload.cta_url = cleanText(updates.cta_url);
   if ("cta_external" in updates) payload.cta_external = updates.cta_external === true;
   if ("is_active" in updates) payload.is_active = updates.is_active !== false;
+  if ("sort_order" in updates) payload.sort_order = cleanSortOrder(updates.sort_order);
   if ("settings" in updates) {
     const existingSettings = cleanJson(
       (existing as { settings?: unknown } | null)?.settings

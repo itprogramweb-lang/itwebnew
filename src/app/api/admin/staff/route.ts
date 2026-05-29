@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { sortStaffMembersWithDepartmentHeadFirst } from "@/lib/staffOrdering";
 
 async function requireAuth(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
@@ -29,7 +30,9 @@ export async function GET(request: NextRequest) {
     .order("sort_order", { ascending: true });
 
   if (error) return NextResponse.json({ error: "โหลดข้อมูลไม่สำเร็จ" }, { status: 500 });
-  return NextResponse.json({ staff: data ?? [] });
+  return NextResponse.json({
+    staff: sortStaffMembersWithDepartmentHeadFirst(data ?? []),
+  });
 }
 
 export async function POST(request: NextRequest) {

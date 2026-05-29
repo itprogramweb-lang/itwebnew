@@ -2,7 +2,8 @@ import { Mail, MapPin, Phone, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/primitives";
 import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import CroppedImage from "@/components/ui/CroppedImage";
-import { getStaffMembers, getSiteSettings, type StaffMemberRow } from "@/lib/supabase/queries";
+import { getStaffMembers, getSiteSettings } from "@/lib/supabase/queries";
+import { sortStaffMembersWithDepartmentHeadFirst } from "@/lib/staffOrdering";
 
 export const dynamic = "force-dynamic";
 
@@ -21,24 +22,13 @@ function splitMultiValue(value: string) {
     .filter(Boolean);
 }
 
-function sortStaff(staff: StaffMemberRow[]): StaffMemberRow[] {
-  return [...staff].sort((a, b) => {
-    const aSort = a.sort_order ?? 999;
-    const bSort = b.sort_order ?? 999;
-
-    if (aSort !== bSort) return aSort - bSort;
-
-    return a.full_name.localeCompare(b.full_name, "th");
-  });
-}
-
 export default async function StaffPage() {
   const [staff, settings] = await Promise.all([
     getStaffMembers(),
     getSiteSettings().catch(() => null),
   ]);
 
-  const sortedStaff = sortStaff(staff);
+  const sortedStaff = sortStaffMembersWithDepartmentHeadFirst(staff);
 
   const pageTitle = settings?.staff_intro_title ?? "บุคลากรสาขา";
   const pageDesc =
