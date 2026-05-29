@@ -48,10 +48,12 @@ const navItems: NavItem[] = [
 
 export default function DashboardSidebar({
   user,
+  canViewComplaints = false,
   open,
   onClose,
 }: {
   user: User;
+  canViewComplaints?: boolean;
   open: boolean;
   onClose: () => void;
 }) {
@@ -64,9 +66,12 @@ export default function DashboardSidebar({
     router.replace("/login");
   };
 
-  const allowedItems = navItems.filter((n) =>
-    canAccessDashboardRoute(user.role, n.href)
-  );
+  const allowedItems = navItems.filter((n) => {
+    if (n.href === "/dashboard/complaints") {
+      return canAccessDashboardRoute(user.role, n.href) || canViewComplaints;
+    }
+    return canAccessDashboardRoute(user.role, n.href);
+  });
 
   return (
     <>

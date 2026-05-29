@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
+import { getComplaintAccessForProfile } from "@/lib/complaintAccess";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getAuthenticatedProfile } from "@/lib/serverAuth";
 import type { ComplaintStatus } from "@/types";
@@ -19,12 +19,14 @@ type UpdatePayload = {
 async function requireComplaintViewer(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "view_complaints") && !can(profile.role, "manage_complaints")) {
+  const access = await getComplaintAccessForProfile(profile);
+  if (!access.canViewComplaints) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   return {
     profile,
-    canUpdate: can(profile.role, "manage_complaints"),
+    access,
+    canUpdate: access.canManageComplaints,
   };
 }
 
@@ -37,6 +39,17 @@ function cleanOptionalText(value: unknown) {
 export async function GET(request: NextRequest) {
   const auth = await requireComplaintViewer(request);
   if (auth.error) return auth.error;
+
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get("access") === "1") {
+    return NextResponse.json({
+      permissions: {
+        canView: auth.access.canViewComplaints,
+        canUpdate: auth.access.canManageComplaints,
+        isDepartmentHead: auth.access.isDepartmentHead,
+      },
+    });
+  }
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
