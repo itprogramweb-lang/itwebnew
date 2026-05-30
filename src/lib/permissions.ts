@@ -89,6 +89,7 @@ const dashboardRoutePermissions: Record<string, readonly Permission[]> = {
   "/dashboard/settings": ["manage_settings"],
   "/dashboard/theme": ["manage_settings"],
   "/dashboard/pages": ["manage_pages"],
+  "/dashboard/navigation": ["manage_pages"],
 };
 
 const normalizeDashboardRoute = (route: string) => {

@@ -1,0 +1,106 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  navigationItemHasChildren,
+  parseNavigationPayload,
+} from "@/backend/services/navigation";
+import { hasPermission } from "@/lib/permissions";
+import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import type { NavigationItem } from "@/types";
+
+const NAVIGATION_SELECT =
+  "id,label,href,type,parent_id,sort_order,is_active,is_external,is_core,location,target,description,created_at,updated_at";
+
+async function requireNavigationManager(request: NextRequest) {
+  const profile = await getAuthenticatedProfile(request);
+  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  if (!hasPermission(profile.role, "manage_pages")) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { profile };
+}
+
+async function getNavigationItem(id: string) {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("navigation_items")
+    .select(NAVIGATION_SELECT)
+    .eq("id", id)
+    .maybeSingle<NavigationItem>();
+  return { admin, data, error };
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireNavigationManager(request);
+  if (auth.error) return auth.error;
+
+  const { admin, data: current, error: currentError } = await getNavigationItem(params.id);
+  if (currentError) return NextResponse.json({ error: "โหลดเมนูไม่สำเร็จ" }, { status: 500 });
+  if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
+
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const parsed = parseNavigationPayload(body, current);
+  if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+  if (parsed.payload.parent_id === params.id) {
+    return NextResponse.json({ error: "ไม่สามารถตั้ง parent_id เป็นรายการตัวเองได้" }, { status: 400 });
+  }
+
+  if (
+    current.is_core &&
+    "parent_id" in parsed.payload &&
+    parsed.payload.parent_id !== current.parent_id
+  ) {
+    return NextResponse.json({ error: "ไม่อนุญาตให้ย้าย parent ของเมนูหลัก" }, { status: 400 });
+  }
+
+  const { data, error } = await admin
+    .from("navigation_items")
+    .update(parsed.payload)
+    .eq("id", params.id)
+    .select(NAVIGATION_SELECT)
+    .single<NavigationItem>();
+
+  if (error) {
+    console.error("Admin navigation PATCH failed:", error.message);
+    return NextResponse.json({ error: "บันทึกเมนูไม่สำเร็จ" }, { status: 500 });
+  }
+
+  return NextResponse.json({ navigation_item: data });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const auth = await requireNavigationManager(request);
+  if (auth.error) return auth.error;
+
+  const { admin, data: current, error: currentError } = await getNavigationItem(params.id);
+  if (currentError) return NextResponse.json({ error: "โหลดเมนูไม่สำเร็จ" }, { status: 500 });
+  if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
+
+  if (current.is_core) {
+    return NextResponse.json({ error: "ไม่สามารถลบเมนูหลักของระบบได้" }, { status: 403 });
+  }
+
+  const hasChildren = await navigationItemHasChildren(params.id);
+  if (hasChildren) {
+    return NextResponse.json({ error: "ไม่สามารถลบเมนูที่มีเมนูย่อยได้" }, { status: 400 });
+  }
+
+  const { error } = await admin
+    .from("navigation_items")
+    .update({ is_active: false })
+    .eq("id", params.id);
+
+  if (error) {
+    console.error("Admin navigation DELETE failed:", error.message);
+    return NextResponse.json({ error: "ปิดใช้งานเมนูไม่สำเร็จ" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, disabled: true });
+}

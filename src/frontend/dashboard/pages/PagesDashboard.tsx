@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import ImageCropControls from "@/components/dashboard/ImageCropControls";
 import type { ImageCropSettings } from "@/lib/imageCrop";
+import NavigationDashboard from "@/frontend/dashboard/navigation/NavigationDashboard";
 
 type PageSetting = {
   id?: string;
@@ -95,6 +96,7 @@ async function getToken(): Promise<string | null> {
 }
 
 export default function PagesDashboard() {
+  const [activeTab, setActiveTab] = useState<"pages" | "navigation">("pages");
   const [pages, setPages] = useState<PageSetting[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [form, setForm] = useState<PageSetting>(emptyForm());
@@ -192,18 +194,47 @@ export default function PagesDashboard() {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-slate-900">จัดการหน้าเว็บ</h1>
-          <p className="text-sm text-slate-500">แก้ title / description / รูป hero / CTA ของแต่ละหน้าสาธารณะ</p>
+          <p className="text-sm text-slate-500">แก้ title / description / รูป hero / CTA และจัดการข้อมูลเมนูเว็บไซต์</p>
         </div>
       </div>
 
-      {listError && (
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-rose-700">{listError}</p>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm shadow-slate-950/[0.03]">
+        <button
+          type="button"
+          onClick={() => setActiveTab("pages")}
+          className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+            activeTab === "pages"
+              ? "bg-brand-gradient text-white shadow-brand"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          ตั้งค่าหน้าเว็บ
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("navigation")}
+          className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+            activeTab === "navigation"
+              ? "bg-brand-gradient text-white shadow-brand"
+              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          จัดการเมนู
+        </button>
+      </div>
 
-      <div className="grid lg:grid-cols-4 gap-5">
+      {activeTab === "navigation" ? (
+        <NavigationDashboard embedded />
+      ) : (
+        <>
+          {listError && (
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-rose-700">{listError}</p>
+            </div>
+          )}
+
+          <div className="grid lg:grid-cols-4 gap-5">
         {/* Page list */}
         <div className="lg:col-span-1">
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm shadow-slate-950/[0.03]">
@@ -487,7 +518,9 @@ export default function PagesDashboard() {
             </div>
           )}
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

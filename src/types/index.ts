@@ -168,3 +168,30 @@ export interface SiteSettings {
   workingHours: string;
   themeColor: string;
 }
+
+export type NavigationItemType = "link" | "dropdown" | "heading";
+
+export type NavigationLocation = "navbar" | "footer_main" | "footer_students" | "both";
+
+export type NavigationTarget = "_self" | "_blank";
+
+export interface NavigationItem {
+  id: string;
+  label: string;
+  href: string | null;
+  type: NavigationItemType;
+  parent_id: string | null;
+  sort_order: number;
+  is_active: boolean;
+  is_external: boolean;
+  is_core: boolean;
+  location: NavigationLocation;
+  target: NavigationTarget | null;
+  description: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export type NavigationTreeItem = NavigationItem & {
+  children: NavigationTreeItem[];
+};

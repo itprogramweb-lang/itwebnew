@@ -9,137 +9,28 @@ import { cn } from "@/lib/utils";
 import { buildNavbarLogoStyle } from "@/lib/logoPresets";
 import type { BrandingData } from "@/lib/brandingTypes";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
+import {
+  buildStaticMenuItems,
+  getFallbackMenuItems,
+  type MenuItem,
+} from "@/lib/navigationMenu";
 import MobileMenu from "./MobileMenu";
 
-export type MenuItem =
-  | {
-      type: "link";
-      label: string;
-      href: string;
-      external?: boolean;
-    }
-  | {
-      type: "dropdown";
-      label: string;
-      items: {
-        label: string;
-        href: string;
-        description?: string;
-        external?: boolean;
-      }[];
-    };
-
-
-function buildMenuItems(loanUrl: string, welfareUrl: string): MenuItem[] {
-  return [
-    {
-      type: "link",
-      label: "หน้าแรก",
-      href: "/",
-    },
-    {
-      type: "link",
-      label: "สมัครเรียน",
-      href: "/apply",
-    },
-    {
-      type: "link",
-      label: "ข่าวสาร",
-      href: "/news",
-    },
-    
-{
-  type: "dropdown",
-  label: "เกี่ยวกับสาขา",
-  items: [
-    {
-      label: "เกี่ยวกับสาขา",
-      href: "/about",
-      description: "วิสัยทัศน์ พันธกิจ และจุดเด่น",
-    },
-    {
-      label: "บุคลากร",
-      href: "/about/staff",
-      description: "อาจารย์และเจ้าหน้าที่",
-    },
-    {
-      label: "อุปกรณ์การเรียนและห้องปฏิบัติการ",
-      href: "/about/facilities",
-      description: "ห้องเรียน ห้องปฏิบัติการ และอุปกรณ์สนับสนุนการเรียน",
-    },
-    {
-      label: "ติดต่อ",
-      href: "/about/contact",
-      description: "ที่อยู่ และแผนที่",
-    },
-  ],
-},
-    {
-      type: "dropdown",
-      label: "หลักสูตร",
-      items: [
-        {
-          label: "ปริญญาตรี",
-          href: "/programs/bachelor",
-          description: "หลักสูตร 4 ปี",
-        },
-        {
-          label: "ปริญญาโท",
-          href: "/programs/master",
-          description: "หลักสูตร 2 ปี",
-        },
-      ],
-    },
-    {
-      type: "dropdown",
-      label: "ผลงาน",
-      items: [
-        {
-          label: "ผลงานนักศึกษา",
-          href: "/works/students",
-          description: "ปริญญานิพนธ์ (Thesis) และรางวัล",
-        },
-        {
-          label: "ผลงานอาจารย์",
-          href: "/works/teachers",
-          description: "งานวิจัยและบทความ",
-        },
-      ],
-    },
-    {
-      type: "dropdown",
-      label: "นักศึกษาปัจจุบัน",
-      items: [
-        {
-          label: "ทะเบียน",
-          href: "/students/registration",
-        },
-        {
-          label: "กยศ.",
-          href: loanUrl,
-          external: true,
-        },
-        {
-          label: "สวัสดิการ",
-          href: welfareUrl,
-          external: true,
-        },
-        {
-          label: "ร้องเรียน/ความคิดเห็น",
-          href: "/students/complaint",
-        },
-      ],
-    },
-  ];
-}
+export type { MenuItem };
 
 // static export for backward compatibility
-export const menuItems: MenuItem[] = buildMenuItems(
+export const menuItems: MenuItem[] = buildStaticMenuItems(
   DEFAULT_BRANDING.loanExternalUrl,
   DEFAULT_BRANDING.welfareExternalUrl
 );
 
-export default function Navbar({ branding }: { branding?: BrandingData }) {
+export default function Navbar({
+  branding,
+  menuItems: dynamicMenuItems,
+}: {
+  branding?: BrandingData;
+  menuItems?: MenuItem[];
+}) {
   const b = branding ?? DEFAULT_BRANDING;
   const pathname = usePathname();
 
@@ -147,10 +38,9 @@ export default function Navbar({ branding }: { branding?: BrandingData }) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-const items = buildMenuItems(
-  b.loanExternalUrl,
-  b.welfareExternalUrl
-);
+const items = dynamicMenuItems && dynamicMenuItems.length > 0
+  ? dynamicMenuItems
+  : getFallbackMenuItems(b);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

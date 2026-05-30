@@ -3,8 +3,10 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ThemeLoader from "@/components/ThemeLoader";
+import { getPublicNavigationItems } from "@/backend/services/navigation";
 import { getBranding } from "@/lib/branding";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
+import { navigationItemsToMenuItems, type MenuItem } from "@/lib/navigationMenu";
 
 export async function generateMetadata(): Promise<Metadata> {
   let branding = DEFAULT_BRANDING;
@@ -35,10 +37,21 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   let branding = DEFAULT_BRANDING;
+  let navbarMenuItems: MenuItem[] | undefined;
   try {
     branding = await getBranding();
   } catch {
     // silent fallback — ใช้ DEFAULT_BRANDING
+  }
+
+  try {
+    const navigationItems = await getPublicNavigationItems("navbar");
+    const convertedItems = navigationItemsToMenuItems(navigationItems);
+    if (convertedItems.length > 0) {
+      navbarMenuItems = convertedItems;
+    }
+  } catch {
+    console.warn("Failed to load dynamic navigation, using fallback.");
   }
 
   return (
@@ -53,7 +66,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
         <ThemeLoader />
-        <Navbar branding={branding} />
+        <Navbar branding={branding} menuItems={navbarMenuItems} />
         <main className="flex-1">{children}</main>
         <Footer branding={branding} />
       </body>
