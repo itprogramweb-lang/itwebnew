@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, ExternalLink, Upload } from "lucide-react";
+import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload } from "lucide-react";
 import { teacherWorksApi } from "@/frontend/api/teacherWorks";
 import { getAuthToken } from "@/frontend/api/http";
 import { TeacherWorkRow } from "@/lib/supabase/queries";
@@ -68,6 +68,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   service: "บริการวิชาการ",
   other: "อื่น ๆ",
 };
+
+const DEFAULT_CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }));
+
+const categoryLabel = (value: string) => CATEGORY_LABELS[value] ?? value;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -155,9 +159,40 @@ export default function TeacherWorksDashboard() {
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
+  const dataCategoryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of items) {
+      const value = item.category?.trim();
+      if (value) seen.add(value);
+    }
+    return [...seen]
+      .sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b), "th"))
+      .map((value) => ({ value, label: categoryLabel(value) }));
+  }, [items]);
+
+  const categoryFilterOptions = useMemo(
+    () => [{ value: "all", label: "ทุกประเภท" }, ...dataCategoryOptions],
+    [dataCategoryOptions]
+  );
+
+  const formCategoryOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const option of DEFAULT_CATEGORY_OPTIONS) options.set(option.value, option.label);
+    for (const option of dataCategoryOptions) options.set(option.value, option.label);
+    return [...options].map(([value, label]) => ({ value, label }));
+  }, [dataCategoryOptions]);
+
+  useEffect(() => {
+    if (catFilter === "all") return;
+    if (!dataCategoryOptions.some((option) => option.value === catFilter)) {
+      setCatFilter("all");
+    }
+  }, [catFilter, dataCategoryOptions]);
+
   const filtered = useMemo(() => {
     return items.filter((w) => {
       const needle = q.trim().toLowerCase();
+      const category = w.category?.trim() ?? "";
       const haystack = [
         w.title,
         w.description,
@@ -176,7 +211,7 @@ export default function TeacherWorksDashboard() {
         .join(" ")
         .toLowerCase();
       const matchQ = !needle || haystack.includes(needle);
-      const matchCat = catFilter === "all" || w.category === catFilter;
+      const matchCat = catFilter === "all" || category === catFilter;
       const matchStatus =
         statusFilter === "all" ||
         (statusFilter === "active" ? w.is_active !== false : w.is_active === false);
@@ -325,14 +360,7 @@ export default function TeacherWorksDashboard() {
         <FilterSelect
           value={catFilter}
           onChange={setCatFilter}
-          options={[
-            { value: "all", label: "ทุกประเภท" },
-            { value: "research", label: "งานวิจัย" },
-            { value: "article", label: "บทความวิชาการ" },
-            { value: "award", label: "รางวัล" },
-            { value: "service", label: "บริการวิชาการ" },
-            { value: "other", label: "อื่น ๆ" },
-          ]}
+          options={categoryFilterOptions}
         />
         <FilterSelect
           value={statusFilter}
@@ -405,16 +433,6 @@ export default function TeacherWorksDashboard() {
                     <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-sky-50 text-sky-700 border border-sky-100">
                       มี PDF
                     </span>
-                  ) : w.external_url || w.project_url ? (
-                    <a
-                      href={w.external_url ?? w.project_url ?? "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"
-                    >
-                      เปิด
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
                   ) : (
                     <span className="text-xs text-slate-400">-</span>
                   )}
@@ -520,13 +538,7 @@ export default function TeacherWorksDashboard() {
                   label="ประเภทผลงาน"
                   value={form.category}
                   onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                  options={[
-                    { value: "research", label: "งานวิจัย" },
-                    { value: "article", label: "บทความวิชาการ" },
-                    { value: "award", label: "รางวัล" },
-                    { value: "service", label: "บริการวิชาการ" },
-                    { value: "other", label: "อื่น ๆ" },
-                  ]}
+                  options={formCategoryOptions}
                 />
                 <FormInput label="ปี (เช่น 2566)" {...FI("year")} />
               </div>

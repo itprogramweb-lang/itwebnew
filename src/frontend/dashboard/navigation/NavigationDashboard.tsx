@@ -369,7 +369,14 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
       )}
 
       <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        รอบนี้เป็นการจัดการข้อมูลเมนูในระบบหลังบ้าน เมนูหลัก: ลบไม่ได้ แต่ยังสามารถปรับลำดับ/เปิดปิดได้ตามสิทธิ์ผู้ดูแล สามารถรีเซตเมนูหลักกลับเป็นค่าเริ่มต้นได้ เมนูที่เพิ่มเองจะไม่ถูกลบ
+        <div className="space-y-1">
+          <p className="font-semibold text-amber-900">
+            เมนู Navbar และ MobileMenu ใช้ข้อมูลจากหน้านี้แล้ว ส่วน Footer ยังใช้โครงสร้างเดิมอยู่
+          </p>
+          <p>
+            ถ้าข้อมูลเมนูโหลดไม่ได้ หน้าเว็บจะใช้เมนูสำรองเดิมอัตโนมัติ เมนูหลัก (Core Item) ไม่สามารถลบได้ แต่ยังสามารถปรับลำดับหรือปิดการใช้งานได้ตามปกติ และสามารถรีเซตเป็นค่าเริ่มต้นได้เสมอ
+          </p>
+        </div>
       </div>
 
       {listError && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Pencil, Power, Save } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Pencil, Save, Trash2 } from "lucide-react";
 import { AddButton, DashboardPageHeader, EmptyRow, FilterSelect, SearchFilter, TableShell, Td, Th } from "@/components/ui/DataTable";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { FormInput } from "@/components/ui/Form";
@@ -29,6 +29,46 @@ const EMPTY_FORM: CourseForm = {
   sort_order: "0",
   is_active: true,
 };
+
+const PROTECTED_COURSE_IDS = new Set([
+  "09-142-203",
+  "09-142-204",
+  "09-142-205",
+  "09-142-214",
+  "09-142-302",
+  "09-142-306",
+  "09-142-313",
+  "09-142-316",
+  "09-142-321",
+  "09-142-325",
+  "09-142-361",
+  "09-142-364",
+  "09-142-365",
+  "09-142-393",
+  "09-142-394",
+  "09-142-415",
+  "09-142-417",
+  "09-142-433",
+  "09-142-460",
+  "09-142-461",
+  "09-143-301",
+  "09-143-322",
+  "09-143-420",
+  "09-143-302",
+  "09-143-439",
+  "09-143-497",
+  "09-143-209",
+  "09-143-211",
+  "09-143-362",
+  "09-144-301",
+  "09-144-402",
+  "09-144-403",
+  "09-144-304",
+  "09-144-305",
+  "09-144-406",
+  "09-144-407",
+  "09-144-408",
+]);
 
 async function requestCoursesApi<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
@@ -58,7 +98,7 @@ export default function CoursesDashboard() {
   const [form, setForm] = useState<CourseForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CourseRow | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
@@ -159,20 +199,56 @@ export default function CoursesDashboard() {
     }
   };
 
-  const disableCourse = async () => {
-    if (!confirmId) return;
+  const toggleCourseActive = async (course: CourseRow) => {
+    const nextActive = !course.is_active;
+    setSaving(true);
     try {
-      const json = await requestCoursesApi<{ ok: boolean; message?: string }>(`/api/admin/courses?id=${encodeURIComponent(confirmId)}`, {
-        method: "DELETE",
+      const json = await requestCoursesApi<{ course: CourseRow }>("/api/admin/courses", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: course.id,
+          course_id: course.course_id,
+          course_name: course.course_name,
+          sort_order: course.sort_order,
+          is_active: nextActive,
+        }),
       });
       setCourses((prev) =>
-        prev.map((course) => (course.id === confirmId ? { ...course, is_active: false } : course))
+        prev.map((item) => (item.id === course.id ? json.course : item))
       );
-      showToast(json.message ?? "ปิดใช้งานรายวิชาแล้ว");
+      showToast(nextActive ? "แสดงรายวิชาแล้ว" : "ซ่อนรายวิชาแล้ว");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "ปิดใช้งานรายวิชาไม่สำเร็จ", false);
+      showToast(error instanceof Error ? error.message : "เปลี่ยนสถานะรายวิชาไม่สำเร็จ", false);
     } finally {
-      setConfirmId(null);
+      setSaving(false);
+    }
+  };
+
+  const isProtectedCourse = (course: CourseRow) => PROTECTED_COURSE_IDS.has(course.course_id);
+
+  const getDeleteTitle = (course: CourseRow) => {
+    if (isProtectedCourse(course)) return "รายวิชาเดิมไม่สามารถลบได้";
+    if ((course.work_count ?? 0) > 0) return "มีผลงานรายวิชาใช้งานอยู่ ไม่สามารถลบได้";
+    return "ลบรายวิชา";
+  };
+
+  const canDeleteCourse = (course: CourseRow) => !isProtectedCourse(course) && (course.work_count ?? 0) === 0;
+
+  const deleteCourse = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      const json = await requestCoursesApi<{ ok: boolean; message?: string }>(
+        `/api/admin/courses?id=${encodeURIComponent(deleteTarget.id)}`,
+        { method: "DELETE" }
+      );
+      setCourses((prev) => prev.filter((course) => course.id !== deleteTarget.id));
+      showToast(json.message ?? "ลบรายวิชาเรียบร้อยแล้ว");
+      setDeleteTarget(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "ลบรายวิชาไม่สำเร็จ", false);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -265,12 +341,29 @@ export default function CoursesDashboard() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmId(course.id)}
-                      disabled={!course.is_active}
-                      className="rounded-lg p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:text-slate-200"
-                      title={course.work_count > 0 ? "มีผลงานผูกอยู่ ระบบจะปิดใช้งานแทนการลบ" : "ปิดใช้งาน"}
+                      onClick={() => toggleCourseActive(course)}
+                      disabled={saving}
+                      className={`rounded-lg p-2 transition disabled:cursor-not-allowed disabled:text-slate-200 ${
+                        course.is_active
+                          ? "text-emerald-600 hover:bg-amber-50 hover:text-amber-600"
+                          : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                      }`}
+                      title={course.is_active ? "ซ่อนรายวิชา" : "แสดงรายวิชา"}
                     >
-                      <Power className="h-4 w-4" />
+                      {course.is_active ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => canDeleteCourse(course) && setDeleteTarget(course)}
+                      disabled={saving || !canDeleteCourse(course)}
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:text-slate-200"
+                      title={getDeleteTitle(course)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </Td>
@@ -358,13 +451,13 @@ export default function CoursesDashboard() {
       )}
 
       <ConfirmModal
-        open={!!confirmId}
-        title="ปิดใช้งานรายวิชานี้?"
-        description="ถ้ามีผลงานผูกอยู่ ระบบจะปิดใช้งานรายวิชาแทนการลบ เพื่อไม่กระทบข้อมูลผลงานเดิม"
-        confirmLabel="ปิดใช้งาน"
-        variant="warning"
-        onClose={() => setConfirmId(null)}
-        onConfirm={disableCourse}
+        open={!!deleteTarget}
+        title="ต้องการลบรายวิชานี้ถาวรหรือไม่?"
+        description={deleteTarget ? `${deleteTarget.course_id} ${deleteTarget.course_name}` : ""}
+        confirmLabel="ลบรายวิชา"
+        variant="danger"
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={deleteCourse}
       />
     </div>
   );

@@ -30,6 +30,45 @@ type CoursePayloadResult =
     };
 
 const SETUP_REQUIRED_MESSAGE = "ยังไม่ได้สร้างตารางรายวิชาใน Supabase";
+const PROTECTED_COURSE_IDS = new Set([
+  "09-142-203",
+  "09-142-204",
+  "09-142-205",
+  "09-142-214",
+  "09-142-302",
+  "09-142-306",
+  "09-142-313",
+  "09-142-316",
+  "09-142-321",
+  "09-142-325",
+  "09-142-361",
+  "09-142-364",
+  "09-142-365",
+  "09-142-393",
+  "09-142-394",
+  "09-142-415",
+  "09-142-417",
+  "09-142-433",
+  "09-142-460",
+  "09-142-461",
+  "09-143-301",
+  "09-143-322",
+  "09-143-420",
+  "09-143-302",
+  "09-143-439",
+  "09-143-497",
+  "09-143-209",
+  "09-143-211",
+  "09-143-362",
+  "09-144-301",
+  "09-144-402",
+  "09-144-403",
+  "09-144-304",
+  "09-144-305",
+  "09-144-406",
+  "09-144-407",
+  "09-144-408",
+]);
 
 async function requireCourseManager(request: NextRequest) {
   const profile = await getAuthenticatedProfile(request);
@@ -78,7 +117,6 @@ async function getWorkCounts(admin: ReturnType<typeof createSupabaseAdminClient>
     .from("student_works")
     .select("course_id")
     .eq("work_type", "course")
-    .eq("is_active", true)
     .not("course_id", "is", null)
     .returns<Pick<CourseRow, "course_id">[]>();
 
@@ -98,6 +136,17 @@ async function countLinkedWorks(admin: ReturnType<typeof createSupabaseAdminClie
     .eq("course_id", courseId);
 
   if (error) return 0;
+  return count ?? 0;
+}
+
+async function countLinkedWorksForDelete(admin: ReturnType<typeof createSupabaseAdminClient>, courseId: string) {
+  const { count, error } = await admin
+    .from("student_works")
+    .select("id", { count: "exact", head: true })
+    .eq("work_type", "course")
+    .eq("course_id", courseId);
+
+  if (error) throw error;
   return count ?? 0;
 }
 
@@ -230,16 +279,27 @@ export async function DELETE(request: NextRequest) {
   if (isMissingCoursesTable(currentError)) return safeCourseError(SETUP_REQUIRED_MESSAGE, 503);
   if (currentError || !current) return safeCourseError("ไม่พบรายวิชา", 404);
 
-  const linkedCount = await countLinkedWorks(admin, current.course_id);
-  const { error } = await admin.from("courses").update({ is_active: false }).eq("id", id);
-  if (error) return NextResponse.json({ error: "ปิดใช้งานรายวิชาไม่สำเร็จ" }, { status: 500 });
+  if (PROTECTED_COURSE_IDS.has(current.course_id)) {
+    return safeCourseError("รายวิชาเดิมไม่สามารถลบได้", 403);
+  }
+
+  let linkedCount = 0;
+  try {
+    linkedCount = await countLinkedWorksForDelete(admin, current.course_id);
+  } catch {
+    return NextResponse.json({ error: "ตรวจสอบผลงานที่ผูกกับรายวิชาไม่สำเร็จ" }, { status: 500 });
+  }
+
+  if (linkedCount > 0) {
+    return safeCourseError("มีผลงานรายวิชาใช้งานอยู่ ไม่สามารถลบได้", 400);
+  }
+
+  const { error } = await admin.from("courses").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: "ลบรายวิชาไม่สำเร็จ" }, { status: 500 });
 
   return NextResponse.json({
     ok: true,
-    disabled: true,
-    message:
-      linkedCount > 0
-        ? "รายวิชานี้มีผลงานผูกอยู่ จึงปิดใช้งานแทนการลบ"
-        : "ปิดใช้งานรายวิชาแล้ว",
+    deleted: true,
+    message: "ลบรายวิชาเรียบร้อยแล้ว",
   });
 }

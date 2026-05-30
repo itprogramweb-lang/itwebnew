@@ -142,7 +142,10 @@ export async function GET(request: NextRequest) {
   let query = admin
     .from("teacher_works")
     .select("*")
-    .order("is_featured", { ascending: false });
+    .order("is_featured", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (!canManageAllTeacherWorks(auth.profile)) {
     const profileName = auth.profile.full_name?.trim();

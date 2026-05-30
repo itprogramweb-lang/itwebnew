@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, ExternalLink, Upload } from "lucide-react";
+import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload } from "lucide-react";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import ImageCropControls from "@/components/dashboard/ImageCropControls";
 import { studentWorksApi } from "@/frontend/api/studentWorks";
@@ -48,7 +48,7 @@ type FormData = {
   is_active: boolean;
 };
 
-type WorkTypeTab = "course" | "final_project";
+type WorkTypeTab = "all" | "course" | "final_project";
 
 const EMPTY_FORM: FormData = {
   title: "",
@@ -83,6 +83,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   design: "Design",
   other: "อื่น ๆ",
 };
+
+const DEFAULT_CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }));
+
+const categoryLabel = (value: string) => CATEGORY_LABELS[value] ?? value;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -185,7 +189,7 @@ export default function StudentWorksDashboard() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState("all");
-  const [workTypeTab, setWorkTypeTab] = useState<WorkTypeTab>("final_project");
+  const [workTypeTab, setWorkTypeTab] = useState<WorkTypeTab>("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -223,14 +227,45 @@ export default function StudentWorksDashboard() {
         acc[type] += 1;
         return acc;
       },
-      { course: 0, final_project: 0 }
+      { all: items.length, course: 0, final_project: 0 }
     );
   }, [items]);
+
+  const dataCategoryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of items) {
+      const value = item.category?.trim();
+      if (value) seen.add(value);
+    }
+    return [...seen]
+      .sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b), "th"))
+      .map((value) => ({ value, label: categoryLabel(value) }));
+  }, [items]);
+
+  const categoryFilterOptions = useMemo(
+    () => [{ value: "all", label: "ทุกหมวด" }, ...dataCategoryOptions],
+    [dataCategoryOptions]
+  );
+
+  const formCategoryOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const option of DEFAULT_CATEGORY_OPTIONS) options.set(option.value, option.label);
+    for (const option of dataCategoryOptions) options.set(option.value, option.label);
+    return [...options].map(([value, label]) => ({ value, label }));
+  }, [dataCategoryOptions]);
+
+  useEffect(() => {
+    if (catFilter === "all") return;
+    if (!dataCategoryOptions.some((option) => option.value === catFilter)) {
+      setCatFilter("all");
+    }
+  }, [catFilter, dataCategoryOptions]);
 
   const filtered = useMemo(() => {
     return items.filter((w) => {
       const needle = q.trim().toLowerCase();
       const workType = w.work_type === "course" ? "course" : "final_project";
+      const category = w.category?.trim() ?? "";
       const haystack = [
         w.title,
         w.slug,
@@ -255,8 +290,8 @@ export default function StudentWorksDashboard() {
         .toLowerCase();
       const matchQ =
         !needle || haystack.includes(needle);
-      const matchCat = catFilter === "all" || w.category === catFilter;
-      const matchWorkType = workType === workTypeTab;
+      const matchCat = catFilter === "all" || category === catFilter;
+      const matchWorkType = workTypeTab === "all" || workType === workTypeTab;
       const matchStatus =
         statusFilter === "all" ||
         (statusFilter === "active" ? w.is_active !== false : w.is_active === false);
@@ -278,7 +313,7 @@ export default function StudentWorksDashboard() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, work_type: workTypeTab });
+    setForm({ ...EMPTY_FORM, work_type: workTypeTab === "course" ? "course" : "final_project" });
     setErrors([]);
     setPdfFile(null);
     setPdfUploadMessage(null);
@@ -286,6 +321,7 @@ export default function StudentWorksDashboard() {
   };
 
   const isCourseTab = workTypeTab === "course";
+  const isAllTab = workTypeTab === "all";
   const tableColSpan = isCourseTab ? 8 : 9;
 
   const openEdit = (w: StudentWorkRow) => {
@@ -409,6 +445,7 @@ export default function StudentWorksDashboard() {
       <div className="mb-4 max-w-full overflow-x-auto">
         <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
           {[
+            { value: "all" as const, label: "ทั้งหมด", count: typeCounts.all },
             { value: "final_project" as const, label: "ปริญญานิพนธ์ (Thesis)", count: typeCounts.final_project },
             { value: "course" as const, label: "ผลงานรายวิชา", count: typeCounts.course },
           ].map((tab) => (
@@ -435,15 +472,7 @@ export default function StudentWorksDashboard() {
         <FilterSelect
           value={catFilter}
           onChange={setCatFilter}
-          options={[
-            { value: "all", label: "ทุกหมวด" },
-            { value: "web", label: "เว็บแอป" },
-            { value: "mobile", label: "โมบายแอป" },
-            { value: "ai", label: "AI/Data" },
-            { value: "iot", label: "IoT" },
-            { value: "design", label: "Design" },
-            { value: "other", label: "อื่น ๆ" },
-          ]}
+          options={categoryFilterOptions}
         />
         <FilterSelect
           value={statusFilter}
@@ -460,7 +489,7 @@ export default function StudentWorksDashboard() {
         <thead className="bg-slate-50/60">
           <tr>
             <Th>ชื่อผลงาน</Th>
-            {isCourseTab ? <Th>รายวิชา</Th> : <Th>ประเภท</Th>}
+            {isCourseTab ? <Th>รายวิชา</Th> : <Th>{isAllTab ? "ประเภท/รายวิชา" : "ประเภท"}</Th>}
             <Th>นักศึกษา</Th>
             <Th>ที่ปรึกษา</Th>
             <Th>หมวด</Th>
@@ -507,7 +536,7 @@ export default function StudentWorksDashboard() {
                     </div>
                   </div>
                 </Td>
-                {isCourseTab ? (
+                {isCourseTab || w.work_type === "course" ? (
                   <Td className="text-slate-600 text-xs">
                     <div className="font-medium text-slate-800">{w.course_name ?? "-"}</div>
                     <div className="mt-0.5 text-[11px] text-slate-500">{w.course_id ?? "-"}</div>
@@ -553,17 +582,6 @@ export default function StudentWorksDashboard() {
                 </Td>
                 <Td className="text-right">
                   <div className="inline-flex gap-1">
-                    {w.project_url || w.external_url ? (
-                      <a
-                        href={w.external_url ?? w.project_url ?? "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-2 rounded-lg text-slate-400 hover:bg-brand-50 hover:text-brand-600"
-                        title="เปิดลิงก์"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    ) : null}
                     <button
                       onClick={() => openEdit(w)}
                       className="p-2 rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-600"
@@ -669,14 +687,7 @@ export default function StudentWorksDashboard() {
                   label="หมวดหมู่"
                   value={form.category}
                   onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                  options={[
-                    { value: "web", label: "เว็บแอป" },
-                    { value: "mobile", label: "โมบายแอป" },
-                    { value: "ai", label: "AI/Data" },
-                    { value: "iot", label: "IoT" },
-                    { value: "design", label: "Design" },
-                    { value: "other", label: "อื่น ๆ" },
-                  ]}
+                  options={formCategoryOptions}
                 />
                 <FormInput
                   label={form.work_type === "course" ? "ปีการศึกษา (ใช้สำหรับจัดหน้า public)" : "ปีการศึกษา * (เช่น 2566)"}
@@ -699,7 +710,6 @@ export default function StudentWorksDashboard() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <FormInput label="ชื่ออาจารย์ที่ปรึกษา" {...FI("advisor_name")} />
-                <FormInput label="ลำดับการแสดงผล" {...FI("sort_order")} />
               </div>
 
               <FormTextarea

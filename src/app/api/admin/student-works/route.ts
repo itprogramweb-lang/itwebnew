@@ -209,7 +209,9 @@ export async function GET(request: NextRequest) {
   let query = admin
     .from("student_works")
     .select("*")
-    .order("sort_order", { ascending: true });
+    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false });
 
   if (!canManageAllStudentWorks(auth.profile)) {
     const profileName = auth.profile.full_name?.trim();
