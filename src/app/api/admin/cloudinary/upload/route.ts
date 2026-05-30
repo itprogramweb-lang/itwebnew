@@ -9,6 +9,7 @@ const ALLOWED_FOLDERS = new Set([
   "uploads",
   "logos",
   "news",
+  "news/content",
   "apply",
   "programs",
   "staff",
@@ -16,6 +17,10 @@ const ALLOWED_FOLDERS = new Set([
   "teacher-works",
   "hero-slides",
   "page-heroes",
+
+  // เพิ่มใหม่
+  "facilities",
+  "facilities/gallery",
 ]);
 
 export async function POST(request: NextRequest) {

@@ -114,19 +114,33 @@ export default async function ApplyPage() {
   ]);
 
   // page_settings takes priority over site_settings (round 37 compat)
-  const heroTemplate =
-    (ps?.hero_layout && ps.hero_layout !== "default")
-      ? ps.hero_layout
-      : settings?.apply_hero_template ?? "no-image-clean";
-  const heroImageUrl = ps?.hero_image_url ?? settings?.apply_hero_image_url ?? null;
-  const heroImageCrop = ps?.hero_image_crop_settings ?? settings?.apply_image_crop_settings ?? null;
-  const heroTitle = ps?.title ?? settings?.apply_title ?? "สมัครเรียนกับเรา ก้าวเข้าสู่โลก IT";
-  const heroEyebrow = ps?.subtitle ?? settings?.apply_eyebrow ?? "ปีการศึกษา 2568";
-  const heroDescription =
-    ps?.description ??
-    settings?.apply_description ??
-    "ครบทุกขั้นตอน คุณสมบัติ เอกสาร และรอบรับสมัคร พร้อมคำตอบสำหรับคำถามที่พบบ่อย เพื่อให้คุณสมัครได้อย่างราบรื่น";
+ const heroImageUrl = ps?.hero_image_url ?? settings?.apply_hero_image_url ?? null;
 
+const rawHeroTemplate =
+  ps?.hero_layout && ps.hero_layout !== "default"
+    ? ps.hero_layout
+    : settings?.apply_hero_template ?? null;
+
+const heroTemplate =
+  rawHeroTemplate && rawHeroTemplate !== "default" && rawHeroTemplate !== "no-image-clean"
+    ? rawHeroTemplate
+    : heroImageUrl
+      ? "background-overlay"
+      : "no-image-clean";
+
+const heroImageCrop =
+  ps?.hero_image_crop_settings ?? settings?.apply_image_crop_settings ?? null;
+
+const heroTitle =
+  ps?.title ?? settings?.apply_title ?? "สมัครเรียนกับเรา ก้าวเข้าสู่โลก IT";
+
+const heroEyebrow =
+  ps?.subtitle ?? settings?.apply_eyebrow ?? "ปีการศึกษา 2568";
+
+const heroDescription =
+  ps?.description ??
+  settings?.apply_description ??
+  "ครบทุกขั้นตอน คุณสมบัติ เอกสาร และรอบรับสมัคร พร้อมคำตอบสำหรับคำถามที่พบบ่อย เพื่อให้คุณสมัครได้อย่างราบรื่น";
   return (
     <>
       <ApplyHero

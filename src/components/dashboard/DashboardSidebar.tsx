@@ -7,7 +7,6 @@ import {
   Users,
   GraduationCap,
   FolderKanban,
-  BookOpen,
   MessageSquareWarning,
   UserCog,
   Settings,
@@ -16,6 +15,9 @@ import {
   MonitorPlay,
   Palette,
   LayoutTemplate,
+  Award,
+  Bookmark,
+  Monitor, // 🌟 เปลี่ยนมา Import ไอคอน Monitor (หน้าจอคอมพิวเตอร์) แทน Cctv
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -35,8 +37,16 @@ const navItems: NavItem[] = [
   { href: "/dashboard/hero-slides", label: "สไลด์หน้าแรก", icon: <MonitorPlay className="w-4 h-4" /> },
   { href: "/dashboard/news", label: "ข่าว/ประกาศ", icon: <Newspaper className="w-4 h-4" /> },
   { href: "/dashboard/staff", label: "บุคลากร", icon: <Users className="w-4 h-4" /> },
-  { href: "/dashboard/programs", label: "หลักสูตร", icon: <BookOpen className="w-4 h-4" /> },
-  { href: "/dashboard/courses", label: "รายวิชา", icon: <BookOpen className="w-4 h-4" /> },
+  { href: "/dashboard/programs", label: "หลักสูตร", icon: <Award className="w-4 h-4" /> },
+  { href: "/dashboard/courses", label: "รายวิชา", icon: <Bookmark className="w-4 h-4" /> },
+  
+  // 🌟 จุดที่แก้ไข: เปลี่ยนเป็นไอคอน Monitor หน้าจอคอมพิวเตอร์เรียบร้อยครับ
+  { 
+    href: "/dashboard/learning-facilities", 
+    label: "อุปกรณ์และห้องปฏิบัติการ", 
+    icon: <Monitor className="w-4 h-4" /> 
+  },
+
   { href: "/dashboard/student-works", label: "ผลงานนักศึกษา", icon: <FolderKanban className="w-4 h-4" /> },
   { href: "/dashboard/teacher-works", label: "ผลงานอาจารย์", icon: <GraduationCap className="w-4 h-4" /> },
   { href: "/dashboard/complaints", label: "ข้อร้องเรียน", icon: <MessageSquareWarning className="w-4 h-4" /> },
@@ -110,7 +120,6 @@ export default function DashboardSidebar({
             <X className="w-5 h-5" />
           </button>
         </div>
-
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3">
