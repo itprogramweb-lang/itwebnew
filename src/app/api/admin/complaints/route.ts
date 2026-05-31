@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getComplaintAccessForProfile } from "@/lib/complaintAccess";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { getAuthenticatedProfileWithPermissions } from "@/lib/serverAuth";
 import type { ComplaintStatus } from "@/types";
 
 const COMPLAINT_COLUMNS =
@@ -17,7 +17,7 @@ type UpdatePayload = {
 };
 
 async function requireComplaintViewer(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
+  const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   const access = await getComplaintAccessForProfile(profile);
   if (!access.canViewComplaints) {

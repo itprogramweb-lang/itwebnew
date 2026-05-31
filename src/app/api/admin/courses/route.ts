@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasPermission } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import {
+  requireAnyEffectivePermission,
+  requireEffectivePermission,
+} from "@/lib/serverAuth";
 
 type CourseRow = {
   id: string;
@@ -71,24 +73,14 @@ const PROTECTED_COURSE_IDS = new Set([
 ]);
 
 async function requireCourseManager(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!hasPermission(profile.role, "manage_student_works")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_student_works");
 }
 
 async function requireCourseReader(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (
-    !hasPermission(profile.role, "manage_student_works") &&
-    !hasPermission(profile.role, "edit_advised_student_works")
-  ) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireAnyEffectivePermission(request, [
+    "manage_student_works",
+    "edit_advised_student_works",
+  ]);
 }
 
 function isMissingCoursesTable(error: SupabaseError | null) {

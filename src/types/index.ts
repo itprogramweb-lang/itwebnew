@@ -18,6 +18,7 @@ export interface User {
   status: "active" | "inactive";
   avatar?: string;
   createdAt: string;
+  effectivePermissions?: string[];
 }
 
 export type StaffCategory =

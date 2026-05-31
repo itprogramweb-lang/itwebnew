@@ -70,7 +70,7 @@ export const DEFAULT_BRANDING: BrandingData = {
   logoNavbarOverflow: "visible",
 
   showLogo: true,
-  showBrandName: true,
+  showBrandName: false,
 
   loanExternalUrl: "https://sd.rmutt.ac.th/?page_id=2274",
   welfareExternalUrl: "https://sd.rmutt.ac.th/",

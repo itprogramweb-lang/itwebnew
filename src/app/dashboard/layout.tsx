@@ -4,7 +4,11 @@ import { useRouter, usePathname } from "next/navigation";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { getCurrentUser } from "@/lib/auth";
-import { can, canAccessDashboardRoute } from "@/lib/permissions";
+import {
+  canAccessDashboardRouteWithPermissions,
+  isPermission,
+  type Permission,
+} from "@/lib/permissions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@/types";
 import { ShieldAlert } from "lucide-react";
@@ -34,6 +38,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
+  const [effectivePermissions, setEffectivePermissions] = useState<Permission[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [complaintAccess, setComplaintAccess] = useState<ComplaintAccessState>(defaultComplaintAccess);
   const [complaintAccessLoading, setComplaintAccessLoading] = useState(true);
@@ -41,15 +46,45 @@ export default function DashboardLayout({
 
   useEffect(() => {
     let mounted = true;
-    getCurrentUser().then((u) => {
+    async function loadUser() {
+      const u = await getCurrentUser();
       if (!mounted) return;
       if (!u) {
         router.replace("/login");
         return;
       }
-      setUser(u);
+
+      let permissions: Permission[] | null = null;
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token) {
+          const res = await fetch("/api/admin/dashboard?access=1", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const json = (await res.json()) as { effectivePermissions?: unknown };
+            if (Array.isArray(json.effectivePermissions)) {
+              permissions = json.effectivePermissions.filter(isPermission);
+            }
+          } else if (res.status === 403) {
+            permissions = [];
+          }
+        }
+      } catch {
+        permissions = null;
+      }
+
+      if (!mounted) return;
+      setEffectivePermissions(permissions);
+      setUser({ ...u, effectivePermissions: permissions ?? undefined });
       setLoading(false);
-    });
+    }
+
+    loadUser();
     return () => {
       mounted = false;
     };
@@ -59,16 +94,25 @@ export default function DashboardLayout({
     let mounted = true;
 
     async function loadComplaintAccess() {
-      if (!user || !can(user.role, "view_dashboard")) {
+      if (
+        !user ||
+        !canAccessDashboardRouteWithPermissions(user.role, "/dashboard", effectivePermissions)
+      ) {
         setComplaintAccess(defaultComplaintAccess);
         setComplaintAccessLoading(false);
         return;
       }
 
-      if (canAccessDashboardRoute(user.role, "/dashboard/complaints")) {
+      if (
+        canAccessDashboardRouteWithPermissions(
+          user.role,
+          "/dashboard/complaints",
+          effectivePermissions
+        )
+      ) {
         setComplaintAccess({
           canViewComplaints: true,
-          canManageComplaints: true,
+          canManageComplaints: false,
           isDepartmentHead: false,
         });
         setComplaintAccessLoading(false);
@@ -98,10 +142,11 @@ export default function DashboardLayout({
         };
 
         if (!mounted) return;
+        const isDepartmentHead = dataJson.permissions?.isDepartmentHead === true;
         setComplaintAccess({
-          canViewComplaints: dataJson.permissions?.canView === true,
-          canManageComplaints: dataJson.permissions?.canUpdate === true,
-          isDepartmentHead: dataJson.permissions?.isDepartmentHead === true,
+          canViewComplaints: isDepartmentHead,
+          canManageComplaints: isDepartmentHead && dataJson.permissions?.canUpdate === true,
+          isDepartmentHead,
         });
       } catch {
         if (!mounted) return;
@@ -116,7 +161,7 @@ export default function DashboardLayout({
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, effectivePermissions]);
 
   if (loading) {
     return (
@@ -130,11 +175,19 @@ export default function DashboardLayout({
 
   const normalizedPathname = normalizeDashboardPath(pathname);
   const isComplaintsRoute = normalizedPathname === "/dashboard/complaints";
-  const staticHasAccess = canAccessDashboardRoute(user.role, pathname);
+  const staticHasAccess = canAccessDashboardRouteWithPermissions(
+    user.role,
+    pathname,
+    effectivePermissions
+  );
   const hasAccess = isComplaintsRoute
     ? staticHasAccess || complaintAccess.canViewComplaints
     : staticHasAccess;
-  const canViewDashboard = can(user.role, "view_dashboard");
+  const canViewDashboard = canAccessDashboardRouteWithPermissions(
+    user.role,
+    "/dashboard",
+    effectivePermissions
+  );
 
   if (!canViewDashboard) {
     return (
@@ -173,6 +226,7 @@ export default function DashboardLayout({
       <DashboardSidebar
         user={user}
         canViewComplaints={complaintAccess.canViewComplaints}
+        effectivePermissions={effectivePermissions}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

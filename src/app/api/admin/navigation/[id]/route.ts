@@ -3,8 +3,7 @@ import {
   navigationItemHasChildren,
   parseNavigationPayload,
 } from "@/backend/services/navigation";
-import { hasPermission } from "@/lib/permissions";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { requireEffectivePermission } from "@/lib/serverAuth";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type { NavigationItem } from "@/types";
 
@@ -12,12 +11,7 @@ const NAVIGATION_SELECT =
   "id,label,href,type,parent_id,sort_order,is_active,is_external,is_core,location,target,description,created_at,updated_at";
 
 async function requireNavigationManager(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!hasPermission(profile.role, "manage_pages")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_pages");
 }
 
 async function getNavigationItem(id: string) {

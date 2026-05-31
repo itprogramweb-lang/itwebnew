@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@/types";
 import {
   ALLOWED_ROLES,
@@ -7,10 +7,24 @@ import {
   normalizeRole,
   type ProfileRow,
 } from "@/lib/roles";
+import {
+  getEffectivePermissionsForProfile,
+  hasAnyEffectivePermission,
+  hasEffectivePermission,
+  type Permission,
+  type UserPermissionOverride,
+} from "@/lib/permissions";
+import { loadUserPermissionOverridesResult } from "@/lib/permissionOverrides";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export type AdminProfile = ProfileRow & {
   role: UserRole;
+};
+
+export type AdminProfileWithPermissions = AdminProfile & {
+  effectivePermissions: Permission[];
+  permissionOverrides: UserPermissionOverride[];
+  permissionsUnavailable: boolean;
 };
 
 function getBearerToken(request: NextRequest): string | null {
@@ -62,6 +76,64 @@ export async function getAuthenticatedProfile(request: NextRequest): Promise<Adm
     email: profile.email ?? userData.user.email ?? "",
     role: normalizeRole(profile.role),
   };
+}
+
+export async function getAuthenticatedProfileWithPermissions(
+  request: NextRequest
+): Promise<AdminProfileWithPermissions | null> {
+  const profile = await getAuthenticatedProfile(request);
+  if (!profile) return null;
+
+  const overrideResult = await loadUserPermissionOverridesResult(profile.id);
+  return {
+    ...profile,
+    permissionOverrides: overrideResult.overrides,
+    permissionsUnavailable: overrideResult.unavailable,
+    effectivePermissions: getEffectivePermissionsForProfile(
+      profile,
+      overrideResult.overrides
+    ),
+  };
+}
+
+export async function requireEffectivePermission(
+  request: NextRequest,
+  permission: Permission
+) {
+  const profile = await getAuthenticatedProfileWithPermissions(request);
+  if (!profile) {
+    return {
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      profile: undefined,
+    };
+  }
+  if (!hasEffectivePermission(profile, permission, profile.permissionOverrides)) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      profile: undefined,
+    };
+  }
+  return { profile, error: undefined };
+}
+
+export async function requireAnyEffectivePermission(
+  request: NextRequest,
+  permissions: readonly Permission[]
+) {
+  const profile = await getAuthenticatedProfileWithPermissions(request);
+  if (!profile) {
+    return {
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      profile: undefined,
+    };
+  }
+  if (!hasAnyEffectivePermission(profile, permissions, profile.permissionOverrides)) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      profile: undefined,
+    };
+  }
+  return { profile, error: undefined };
 }
 
 export function isSuperAdmin(profile: AdminProfile | null): profile is AdminProfile {

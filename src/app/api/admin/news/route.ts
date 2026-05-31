@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { requireEffectivePermission } from "@/lib/serverAuth";
 
 const NEWS_COLUMNS =
   "id,title,excerpt,content,content_html,slug,category,image_url,image_alt," +
@@ -46,12 +45,7 @@ type AdminNewsRow = {
 };
 
 async function requireNewsManager(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_news")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_news");
 }
 
 function cleanText(value: unknown) {

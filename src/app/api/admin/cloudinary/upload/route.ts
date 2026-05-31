@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
-import { can } from "@/lib/permissions";
+import { hasPermissionFromList, type Permission } from "@/lib/permissions";
+import { getAuthenticatedProfileWithPermissions } from "@/lib/serverAuth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -23,20 +23,50 @@ const ALLOWED_FOLDERS = new Set([
   "facilities/gallery",
 ]);
 
+const GENERIC_UPLOAD_PERMISSIONS: readonly Permission[] = [
+  "manage_settings",
+  "manage_pages",
+  "manage_news",
+  "manage_hero_slides",
+  "manage_staff",
+  "manage_student_works",
+  "manage_teacher_works",
+  "edit_advised_student_works",
+  "edit_own_teacher_works",
+];
+
+function folderPermissions(folder: string): readonly Permission[] {
+  if (folder === "logos") return ["manage_settings"];
+  if (folder === "news" || folder === "news/content") return ["manage_news"];
+  if (folder === "hero-slides") return ["manage_hero_slides"];
+  if (folder === "programs") return ["manage_programs"];
+  if (folder === "staff") return ["manage_staff"];
+  if (folder === "student-works") {
+    return ["manage_student_works", "edit_advised_student_works"];
+  }
+  if (folder === "teacher-works") {
+    return ["manage_teacher_works", "edit_own_teacher_works"];
+  }
+  if (folder === "page-heroes" || folder === "apply") return ["manage_pages"];
+  if (folder === "facilities" || folder === "facilities/gallery") {
+    return ["manage_staff"];
+  }
+  return GENERIC_UPLOAD_PERMISSIONS;
+}
+
+function hasAnyUploadPermission(
+  effectivePermissions: readonly Permission[],
+  permissions: readonly Permission[]
+) {
+  return permissions.some((permission) =>
+    hasPermissionFromList(effectivePermissions, permission)
+  );
+}
+
 export async function POST(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
+  const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const canUpload = [
-    "super_admin",
-    "website_admin",
-    "staff",
-    "teacher",
-  ].includes(profile.role);
-  if (!canUpload) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   let formData: FormData;
@@ -55,6 +85,14 @@ export async function POST(request: NextRequest) {
     request.nextUrl.searchParams.get("folder") ||
     "uploads";
   const folder = ALLOWED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
+
+  const canUpload = hasAnyUploadPermission(
+    profile.effectivePermissions,
+    folderPermissions(folder)
+  );
+  if (!canUpload) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (!file) {
     return NextResponse.json({ error: "ไม่พบไฟล์" }, { status: 400 });

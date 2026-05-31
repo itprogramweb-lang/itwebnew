@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { UserRole } from "@/types";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { hasPermission } from "@/lib/permissions";
-import { getAuthenticatedProfile, isAllowedUserRole } from "@/lib/serverAuth";
+import { isAllowedUserRole, requireEffectivePermission } from "@/lib/serverAuth";
 import { normalizeRole } from "@/lib/roles";
 
 type UserPayload = {
@@ -42,14 +41,9 @@ function isAdminClientConfigError(error: unknown) {
 
 async function requireUserManager(request: NextRequest) {
   try {
-    const requester = await getAuthenticatedProfile(request);
-    if (!requester) {
-      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-    }
-    if (!hasPermission(requester.role, "manage_users")) {
-      return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-    }
-    return { requester };
+    const auth = await requireEffectivePermission(request, "manage_users");
+    if (auth.error) return { error: auth.error, requester: undefined };
+    return { requester: auth.profile, error: undefined };
   } catch (error) {
     if (isAdminClientConfigError(error)) {
       return {

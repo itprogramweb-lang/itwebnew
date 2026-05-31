@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { requireEffectivePermission } from "@/lib/serverAuth";
 
 type SiteSettingsPayload = {
   site_name?: string;
@@ -47,6 +46,7 @@ type SiteSettingsPayload = {
   logo_navbar_offset_y?: number | string | null;
   logo_navbar_overflow?: string | null;
   logo_navbar_z_index?: number | string | null;
+  clear_logo?: boolean;
 };
 
 type SiteSettingsRow = Record<string, unknown> & { id?: string };
@@ -64,7 +64,7 @@ const DEFAULT_SETTING_VALUES: Record<string, unknown> = {
   logo_pos_y: 50,
   logo_zoom: 1,
   show_logo: true,
-  show_brand_name: true,
+  show_brand_name: false,
   loan_external_url: "https://sd.rmutt.ac.th/?page_id=2274",
   welfare_external_url: "https://sd.rmutt.ac.th/",
   apply_hero_template: "no-image-clean",
@@ -101,16 +101,12 @@ function normalizeSettings(row: SiteSettingsRow | null) {
     theme: cleanJson(row.theme),
     design_tokens: cleanJson(row.design_tokens),
     apply_image_crop_settings: cleanJson(row.apply_image_crop_settings),
+    show_brand_name: row.show_brand_name ?? DEFAULT_SETTING_VALUES.show_brand_name,
   };
 }
 
 async function requireSettingsManager(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_settings")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_settings");
 }
 
 export async function GET(request: NextRequest) {
@@ -187,11 +183,14 @@ export async function PATCH(request: NextRequest) {
   }
   const textField = (key: keyof SiteSettingsPayload) =>
     hasOwn(body, key) ? cleanText(body[key]) : current[key as string] ?? null;
+  const logoUrl = hasOwn(body, "logo_url")
+    ? cleanText(body.logo_url) ?? (body.clear_logo ? null : current.logo_url ?? null)
+    : current.logo_url ?? null;
   const payload: Record<string, unknown> = {
     site_name: textField("site_name"),
     faculty_name: textField("faculty_name"),
     university_name: textField("university_name"),
-    logo_url: textField("logo_url"),
+    logo_url: logoUrl,
     logo_alt: textField("logo_alt"),
     logo_desktop_size: hasOwn(body, "logo_desktop_size")
       ? cleanRange(body.logo_desktop_size, 96, 24, 800)

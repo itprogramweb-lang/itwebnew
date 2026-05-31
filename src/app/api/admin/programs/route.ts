@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { requireEffectivePermission } from "@/lib/serverAuth";
 
 const PROGRAM_COLUMNS =
   "id,level,title,degree_name,duration,credits,description,image_url,image_alt,image_crop_settings,curriculum_url,details,is_active,created_at,updated_at";
@@ -23,12 +22,7 @@ type ProgramPayload = {
 };
 
 async function requireProgramManager(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_programs")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_programs");
 }
 
 function cleanText(value: unknown) {

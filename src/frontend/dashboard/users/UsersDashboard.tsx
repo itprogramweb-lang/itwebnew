@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, PowerOff, RotateCcw, Trash2 } from "lucide-react";
+import { Edit3, KeyRound, PowerOff, RotateCcw, Trash2, X } from "lucide-react";
 import type { UserRole } from "@/types";
 import {
   DashboardPageHeader,
@@ -19,6 +19,13 @@ import { roleOptions } from "@/data/users";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import Button from "@/components/ui/Button";
 import { FormInput, FormSelect, FormCheckbox } from "@/components/ui/Form";
+import {
+  getUserPermissions,
+  updateUserPermissions,
+  UsersApiError,
+  type UserPermissionOverride,
+  type UserPermissionsResponse,
+} from "@/frontend/api/users";
 
 type AdminUser = {
   id: string;
@@ -43,6 +50,105 @@ type ConfirmAction =
   | { type: "reactivate"; user: AdminUser }
   | { type: "delete"; user: AdminUser };
 
+type PermissionSelection = "role" | "allow" | "deny";
+
+type PermissionGroup = {
+  title: string;
+  permissions: string[];
+};
+
+const permissionGroups: PermissionGroup[] = [
+  {
+    title: "ภาพรวมแดชบอร์ด",
+    permissions: ["view_dashboard", "view_own_profile"],
+  },
+  {
+    title: "ผู้ใช้งาน / สิทธิ์",
+    permissions: ["manage_users", "manage_permissions"],
+  },
+  {
+    title: "หน้าเว็บ / เมนู / ตั้งค่า",
+    permissions: ["manage_pages", "manage_settings"],
+  },
+  {
+    title: "ข่าว / Hero",
+    permissions: ["manage_news", "manage_hero_slides"],
+  },
+  {
+    title: "บุคลากร / หลักสูตร / รายวิชา",
+    permissions: [
+      "manage_staff",
+      "manage_programs",
+      "manage_registration",
+      "manage_loan",
+      "manage_welfare",
+    ],
+  },
+  {
+    title: "ผลงาน",
+    permissions: [
+      "manage_works",
+      "manage_student_works",
+      "manage_teacher_works",
+      "edit_own_teacher_works",
+      "edit_advised_student_works",
+    ],
+  },
+  {
+    title: "ข้อร้องเรียน",
+    permissions: [
+      "manage_complaints",
+      "view_complaints",
+      "view_all_complaints",
+      "view_own_complaints",
+      "change_complaint_status_all",
+      "change_complaint_status_partial",
+    ],
+  },
+];
+
+const dangerousPermissions = new Set([
+  "manage_users",
+  "manage_permissions",
+  "manage_settings",
+  "manage_pages",
+]);
+
+function buildPermissionGroups(allPermissions: string[]) {
+  const known = new Set(permissionGroups.flatMap((group) => group.permissions));
+  const groups = permissionGroups
+    .map((group) => ({
+      ...group,
+      permissions: group.permissions.filter((permission) =>
+        allPermissions.includes(permission)
+      ),
+    }))
+    .filter((group) => group.permissions.length > 0);
+  const otherPermissions = allPermissions.filter((permission) => !known.has(permission));
+
+  if (otherPermissions.length > 0) {
+    groups.push({ title: "อื่น ๆ", permissions: otherPermissions });
+  }
+
+  return groups;
+}
+
+function selectionsFromOverrides(overrides: UserPermissionOverride[]) {
+  return overrides.reduce<Record<string, PermissionSelection>>((acc, override) => {
+    acc[override.permission] = override.effect;
+    return acc;
+  }, {});
+}
+
+function overridesFromSelections(selections: Record<string, PermissionSelection>) {
+  return Object.entries(selections)
+    .filter(([, effect]) => effect === "allow" || effect === "deny")
+    .map(([permission, effect]) => ({
+      permission,
+      effect: effect as "allow" | "deny",
+    }));
+}
+
 const initialForm: UserForm = {
   email: "",
   temporaryPassword: "",
@@ -60,6 +166,208 @@ async function getAuthHeaders() {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
+}
+
+function PermissionBadge({
+  children,
+  variant,
+}: {
+  children: React.ReactNode;
+  variant: "role" | "allow" | "deny" | "effective" | "muted";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        variant === "role" && "border-sky-200 bg-sky-50 text-sky-700",
+        variant === "allow" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+        variant === "deny" && "border-rose-200 bg-rose-50 text-rose-700",
+        variant === "effective" && "border-brand-200 bg-brand-50 text-brand-700",
+        variant === "muted" && "border-slate-200 bg-slate-50 text-slate-500"
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function PermissionModal({
+  target,
+  data,
+  selections,
+  loading,
+  saving,
+  error,
+  notice,
+  onClose,
+  onChange,
+  onSave,
+}: {
+  target: AdminUser | null;
+  data: UserPermissionsResponse | null;
+  selections: Record<string, PermissionSelection>;
+  loading: boolean;
+  saving: boolean;
+  error: string | null;
+  notice: string | null;
+  onClose: () => void;
+  onChange: (permission: string, selection: PermissionSelection) => void;
+  onSave: () => void;
+}) {
+  if (!target) return null;
+
+  const allPermissions = data?.all_permissions ?? [];
+  const basePermissions = new Set(data?.base_permissions ?? []);
+  const effectivePermissions = new Set(data?.effective_permissions ?? []);
+  const groupedPermissions = buildPermissionGroups(allPermissions);
+  const hasDangerousAllow = Object.entries(selections).some(
+    ([permission, selection]) =>
+      selection === "allow" && dangerousPermissions.has(permission)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-3xl bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">จัดการสิทธิ์</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <span className="font-medium text-slate-900">
+                {target.full_name || target.email}
+              </span>
+              <span>{target.email}</span>
+              <RoleBadge role={target.role} />
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+                  target.is_active
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-slate-100 text-slate-500"
+                )}
+              >
+                {target.is_active ? "ใช้งาน" : "ปิดใช้งาน"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
+            aria-label="ปิด"
+            title="ปิด"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-6">
+          {loading ? (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-sm text-slate-500">
+              กำลังโหลดสิทธิ์...
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+                หมายเหตุ: การตั้งค่านี้จะมีผลเต็มรูปแบบหลังจากเชื่อมระบบตรวจสิทธิ์ในรอบถัดไป
+              </div>
+
+              {data?.warning && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  ยังไม่ได้ติดตั้งตาราง custom permissions ระบบจะแสดงสิทธิ์ตาม role เดิม
+                </div>
+              )}
+
+              {hasDangerousAllow && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  กำลังให้สิทธิ์ระดับสูง โปรดตรวจสอบก่อนบันทึก
+                </div>
+              )}
+
+              {notice && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  {notice}
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                  {error}
+                </div>
+              )}
+
+              {groupedPermissions.map((group) => (
+                <section key={group.title} className="rounded-2xl border border-slate-100">
+                  <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                    <h3 className="text-sm font-semibold text-slate-900">{group.title}</h3>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {group.permissions.map((permission) => {
+                      const selection = selections[permission] ?? "role";
+                      const fromRole = basePermissions.has(permission);
+                      const finalAllowed = effectivePermissions.has(permission);
+
+                      return (
+                        <div
+                          key={permission}
+                          className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto]"
+                        >
+                          <div className="min-w-0">
+                            <div className="break-words font-mono text-sm text-slate-900">
+                              {permission}
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {fromRole ? (
+                                <PermissionBadge variant="role">มาจาก role</PermissionBadge>
+                              ) : (
+                                <PermissionBadge variant="muted">ไม่ได้มาจาก role</PermissionBadge>
+                              )}
+                              {selection === "allow" && (
+                                <PermissionBadge variant="allow">เพิ่มสิทธิ์</PermissionBadge>
+                              )}
+                              {selection === "deny" && (
+                                <PermissionBadge variant="deny">ปิดสิทธิ์</PermissionBadge>
+                              )}
+                              {finalAllowed ? (
+                                <PermissionBadge variant="effective">มีผลใช้งาน</PermissionBadge>
+                              ) : (
+                                <PermissionBadge variant="muted">ไม่มีผลใช้งาน</PermissionBadge>
+                              )}
+                            </div>
+                          </div>
+                          <select
+                            value={selection}
+                            onChange={(event) =>
+                              onChange(permission, event.target.value as PermissionSelection)
+                            }
+                            disabled={saving}
+                            className="h-10 min-w-40 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-400"
+                          >
+                            <option value="role">ตาม role</option>
+                            <option value="allow">อนุญาตเพิ่ม</option>
+                            <option value="deny">ปิดสิทธิ์</option>
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-slate-100 p-4">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            ปิด
+          </Button>
+          <Button onClick={onSave} disabled={saving || loading || !data}>
+            {saving ? "กำลังบันทึก..." : "บันทึกสิทธิ์"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function UserModal({
@@ -168,6 +476,16 @@ export default function UsersDashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [form, setForm] = useState<UserForm>(initialForm);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [permissionTarget, setPermissionTarget] = useState<AdminUser | null>(null);
+  const [permissionData, setPermissionData] = useState<UserPermissionsResponse | null>(null);
+  const [permissionSelections, setPermissionSelections] = useState<
+    Record<string, PermissionSelection>
+  >({});
+  const [permissionLoading, setPermissionLoading] = useState(false);
+  const [permissionSaving, setPermissionSaving] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [permissionNotice, setPermissionNotice] = useState<string | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -189,6 +507,21 @@ export default function UsersDashboard() {
     loadUsers();
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCurrentUserId() {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      if (mounted) setCurrentUserId(data.session?.user.id ?? null);
+    }
+
+    loadCurrentUserId();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const filtered = useMemo(
     () =>
       items.filter((u) => {
@@ -206,6 +539,12 @@ export default function UsersDashboard() {
       }),
     [items, q, role, status]
   );
+
+  const currentUser = useMemo(
+    () => items.find((item) => item.id === currentUserId) ?? null,
+    [items, currentUserId]
+  );
+  const canManageCustomPermissions = currentUser?.role === "super_admin";
 
   const openCreate = () => {
     setForm(initialForm);
@@ -232,6 +571,73 @@ export default function UsersDashboard() {
     setModalMode(null);
     setEditingId(null);
     setForm(initialForm);
+  };
+
+  const loadPermissionData = async (user: AdminUser) => {
+    setPermissionLoading(true);
+    setPermissionError(null);
+    setPermissionNotice(null);
+    try {
+      const data = await getUserPermissions(user.id);
+      setPermissionData(data);
+      setPermissionSelections(selectionsFromOverrides(data.overrides ?? []));
+    } catch (err) {
+      if (err instanceof UsersApiError && err.status === 403) {
+        setPermissionError("ไม่มีสิทธิ์จัดการ custom permissions");
+      } else {
+        setPermissionError(
+          err instanceof Error ? err.message : "ไม่สามารถโหลด custom permissions ได้"
+        );
+      }
+      setPermissionData(null);
+      setPermissionSelections({});
+    } finally {
+      setPermissionLoading(false);
+    }
+  };
+
+  const openPermissionModal = async (user: AdminUser) => {
+    setPermissionTarget(user);
+    setPermissionData(null);
+    setPermissionSelections({});
+    await loadPermissionData(user);
+  };
+
+  const closePermissionModal = () => {
+    if (permissionSaving) return;
+    setPermissionTarget(null);
+    setPermissionData(null);
+    setPermissionSelections({});
+    setPermissionError(null);
+    setPermissionNotice(null);
+  };
+
+  const savePermissions = async () => {
+    if (!permissionTarget) return;
+    setPermissionSaving(true);
+    setPermissionError(null);
+    setPermissionNotice(null);
+    try {
+      const overrides = overridesFromSelections(permissionSelections);
+      const data = await updateUserPermissions(permissionTarget.id, overrides);
+      setPermissionData(data);
+      setPermissionSelections(selectionsFromOverrides(data.overrides ?? []));
+      setPermissionNotice(data.audit_warning || "บันทึกสิทธิ์เรียบร้อยแล้ว");
+    } catch (err) {
+      if (err instanceof UsersApiError && err.status === 409) {
+        setPermissionError(
+          "ยังไม่ได้ติดตั้งตาราง custom permissions กรุณารัน migration ก่อนใช้งานการบันทึกสิทธิ์"
+        );
+      } else if (err instanceof UsersApiError && err.status === 403) {
+        setPermissionError("ไม่มีสิทธิ์จัดการ custom permissions");
+      } else {
+        setPermissionError(
+          err instanceof Error ? err.message : "ไม่สามารถบันทึก custom permissions ได้"
+        );
+      }
+    } finally {
+      setPermissionSaving(false);
+    }
   };
 
   const saveUser = async () => {
@@ -448,6 +854,27 @@ export default function UsersDashboard() {
                       <Edit3 className="h-4 w-4" />
                       แก้ไข
                     </button>
+                    {canManageCustomPermissions && (
+                      <button
+                        onClick={() => openPermissionModal(u)}
+                        disabled={u.role === "super_admin"}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs",
+                          u.role === "super_admin"
+                            ? "cursor-not-allowed text-slate-300"
+                            : "text-slate-500 hover:bg-sky-50 hover:text-sky-700"
+                        )}
+                        title={
+                          u.role === "super_admin"
+                            ? "ไม่สามารถปรับสิทธิ์ custom ของ Super Admin ได้"
+                            : "สิทธิ์"
+                        }
+                        aria-label="สิทธิ์"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        สิทธิ์
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         setConfirmAction({
@@ -497,6 +924,24 @@ export default function UsersDashboard() {
         onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
         onClose={closeModal}
         onSubmit={saveUser}
+      />
+
+      <PermissionModal
+        target={permissionTarget}
+        data={permissionData}
+        selections={permissionSelections}
+        loading={permissionLoading}
+        saving={permissionSaving}
+        error={permissionError}
+        notice={permissionNotice}
+        onClose={closePermissionModal}
+        onChange={(permission, selection) =>
+          setPermissionSelections((prev) => ({
+            ...prev,
+            [permission]: selection,
+          }))
+        }
+        onSave={savePermissions}
       />
 
       <ConfirmModal

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
+import { hasPermissionFromList } from "@/lib/permissions";
 import { getComplaintAccessForProfile } from "@/lib/complaintAccess";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { getAuthenticatedProfileWithPermissions } from "@/lib/serverAuth";
 
 type CountKey =
   | "heroSlides"
@@ -29,27 +29,43 @@ async function getCount(
 }
 
 export async function GET(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
+  const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!can(profile.role, "view_dashboard")) {
+  if (!hasPermissionFromList(profile.effectivePermissions, "view_dashboard")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get("access") === "1") {
+    return NextResponse.json({
+      effectivePermissions: profile.effectivePermissions,
+      permissionsUnavailable: profile.permissionsUnavailable,
+    });
   }
 
   const admin = createSupabaseAdminClient();
   try {
-    const complaintAccess = await getComplaintAccessForProfile(profile);
+    const legacyComplaintAccess = await getComplaintAccessForProfile(profile);
+    const canManageComplaints = hasPermissionFromList(
+      profile.effectivePermissions,
+      "manage_complaints"
+    );
+    const canViewComplaints =
+      canManageComplaints ||
+      hasPermissionFromList(profile.effectivePermissions, "view_complaints") ||
+      legacyComplaintAccess.isDepartmentHead;
     const countEntries = await Promise.all([
       getCount(admin, "hero_slides", { is_active: true }).then((value) => ["heroSlides", value] as const),
       getCount(admin, "staff_members", { is_active: true }).then((value) => ["staff", value] as const),
       getCount(admin, "programs", { is_active: true }).then((value) => ["programs", value] as const),
       getCount(admin, "student_works", { is_active: true }).then((value) => ["studentWorks", value] as const),
       getCount(admin, "teacher_works", { is_active: true }).then((value) => ["teacherWorks", value] as const),
-      complaintAccess.canViewComplaints
+      canViewComplaints
         ? getCount(admin, "complaints").then((value) => ["complaints", value] as const)
         : Promise.resolve(["complaints", 0] as const),
-      complaintAccess.canViewComplaints
+      canViewComplaints
         ? getCount(admin, "complaints", { status: "new" }).then((value) => ["newComplaints", value] as const)
         : Promise.resolve(["newComplaints", 0] as const),
       getCount(admin, "news", { status: "published" }).then((value) => ["news", value] as const),
@@ -59,7 +75,7 @@ export async function GET(request: NextRequest) {
       countEntries.map(([key, value]) => [key, value])
     ) as Record<CountKey, number>;
 
-    const recentComplaints = complaintAccess.canViewComplaints
+    const recentComplaints = canViewComplaints
       ? (
           await admin
             .from("complaints")
@@ -77,6 +93,8 @@ export async function GET(request: NextRequest) {
       .limit(3);
 
     return NextResponse.json({
+      effectivePermissions: profile.effectivePermissions,
+      permissionsUnavailable: profile.permissionsUnavailable,
       counts,
       recent: {
         complaints: recentComplaints ?? [],

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermissionFromList } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile, type AdminProfile } from "@/lib/serverAuth";
+import {
+  getAuthenticatedProfileWithPermissions,
+  type AdminProfileWithPermissions,
+} from "@/lib/serverAuth";
 
 type StudentWorkAccessRow = {
   id: string;
@@ -20,11 +23,11 @@ type SanitizedStudentWorkPayload =
   | { error?: never; payload: Record<string, unknown> };
 
 async function requireAuth(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
+  const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   if (
-    !hasPermission(profile.role, "manage_student_works") &&
-    !hasPermission(profile.role, "edit_advised_student_works")
+    !hasPermissionFromList(profile.effectivePermissions, "manage_student_works") &&
+    !hasPermissionFromList(profile.effectivePermissions, "edit_advised_student_works")
   ) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
@@ -64,17 +67,17 @@ function normalizedName(value: string | null | undefined) {
   return value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("th") ?? "";
 }
 
-function teacherProfileName(profile: AdminProfile) {
+function teacherProfileName(profile: AdminProfileWithPermissions) {
   return normalizedName(profile.full_name);
 }
 
-function isAdvisedStudentWork(profile: AdminProfile, work: StudentWorkAccessRow) {
+function isAdvisedStudentWork(profile: AdminProfileWithPermissions, work: StudentWorkAccessRow) {
   const profileName = teacherProfileName(profile);
   return !!profileName && normalizedName(work.advisor_name) === profileName;
 }
 
-function canManageAllStudentWorks(profile: AdminProfile) {
-  return hasPermission(profile.role, "manage_student_works");
+function canManageAllStudentWorks(profile: AdminProfileWithPermissions) {
+  return hasPermissionFromList(profile.effectivePermissions, "manage_student_works");
 }
 
 async function fetchStudentWorkForAccess(
@@ -91,7 +94,7 @@ async function fetchStudentWorkForAccess(
 }
 
 async function requireStudentWorkMutationAccess(
-  profile: AdminProfile,
+  profile: AdminProfileWithPermissions,
   admin: ReturnType<typeof createSupabaseAdminClient>,
   id: string
 ) {
@@ -100,7 +103,10 @@ async function requireStudentWorkMutationAccess(
   if (!work) return { error: NextResponse.json({ error: "ไม่พบผลงาน" }, { status: 404 }) };
 
   if (canManageAllStudentWorks(profile)) return { work };
-  if (hasPermission(profile.role, "edit_advised_student_works") && isAdvisedStudentWork(profile, work)) {
+  if (
+    hasPermissionFromList(profile.effectivePermissions, "edit_advised_student_works") &&
+    isAdvisedStudentWork(profile, work)
+  ) {
     return { work };
   }
 

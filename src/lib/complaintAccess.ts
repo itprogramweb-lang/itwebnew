@@ -1,4 +1,8 @@
-import { hasPermission } from "@/lib/permissions";
+import {
+  hasPermission,
+  hasPermissionFromList,
+  type Permission,
+} from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type { AdminProfile } from "@/lib/serverAuth";
 
@@ -10,6 +14,10 @@ export type ComplaintAccess = {
 
 const departmentHeadRoleTypes = ["executive", "หัวหน้าสาขา", "หัวหน้าสาขาวิชา"];
 const departmentHeadEligibleRoles = ["teacher", "website_admin"];
+
+type ComplaintAccessProfile = AdminProfile & {
+  effectivePermissions?: Permission[];
+};
 
 function normalizeEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() || "";
@@ -43,10 +51,22 @@ export async function isCurrentDepartmentHead(profile: AdminProfile): Promise<bo
   });
 }
 
-export async function getComplaintAccessForProfile(profile: AdminProfile): Promise<ComplaintAccess> {
-  const canManageByPermission = hasPermission(profile.role, "manage_complaints");
+function hasComplaintPermission(
+  profile: ComplaintAccessProfile,
+  permission: Permission
+) {
+  if (profile.effectivePermissions) {
+    return hasPermissionFromList(profile.effectivePermissions, permission);
+  }
+  return hasPermission(profile.role, permission);
+}
+
+export async function getComplaintAccessForProfile(
+  profile: ComplaintAccessProfile
+): Promise<ComplaintAccess> {
+  const canManageByPermission = hasComplaintPermission(profile, "manage_complaints");
   const canViewByPermission =
-    canManageByPermission || hasPermission(profile.role, "view_complaints");
+    canManageByPermission || hasComplaintPermission(profile, "view_complaints");
 
   if (canManageByPermission) {
     return {

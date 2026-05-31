@@ -6,6 +6,40 @@ export type UsersApiResponse = {
   error?: string;
 };
 
+export type PermissionOverrideEffect = "allow" | "deny";
+
+export type UserPermissionOverride = {
+  permission: string;
+  effect: PermissionOverrideEffect;
+};
+
+export type UserPermissionsResponse = {
+  user: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    role: string;
+    is_active: boolean;
+  };
+  base_permissions: string[];
+  overrides: UserPermissionOverride[];
+  effective_permissions: string[];
+  all_permissions: string[];
+  warning?: string;
+  audit_warning?: string;
+  error?: string;
+};
+
+export class UsersApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "UsersApiError";
+    this.status = status;
+  }
+}
+
 export async function loadUsers(): Promise<UsersApiResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch("/api/admin/users", { headers });
@@ -58,5 +92,32 @@ export async function deleteUserPermanently(id: string): Promise<UsersApiRespons
   });
   const data = await res.json() as UsersApiResponse;
   if (!res.ok) throw new Error((data.error as string) || "ไม่สามารถลบผู้ใช้ถาวรได้");
+  return data;
+}
+
+export async function getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/api/admin/users/${userId}/permissions`, { headers });
+  const data = (await res.json()) as UserPermissionsResponse;
+  if (!res.ok) {
+    throw new UsersApiError(data.error || "ไม่สามารถโหลด custom permissions ได้", res.status);
+  }
+  return data;
+}
+
+export async function updateUserPermissions(
+  userId: string,
+  overrides: UserPermissionOverride[]
+): Promise<UserPermissionsResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/api/admin/users/${userId}/permissions`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ overrides }),
+  });
+  const data = (await res.json()) as UserPermissionsResponse;
+  if (!res.ok) {
+    throw new UsersApiError(data.error || "ไม่สามารถบันทึก custom permissions ได้", res.status);
+  }
   return data;
 }

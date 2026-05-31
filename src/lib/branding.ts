@@ -156,7 +156,7 @@ export async function getBranding(): Promise<BrandingData> {
         s.show_logo !== false,
 
       showBrandName:
-        s.show_brand_name !== false,
+        s.show_brand_name ?? DEFAULT_BRANDING.showBrandName,
 
       loanExternalUrl:
         s.loan_external_url || DEFAULT_BRANDING.loanExternalUrl,

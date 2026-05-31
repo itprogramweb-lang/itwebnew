@@ -95,7 +95,7 @@ const DEFAULT_SETTINGS: SettingsForm = {
   logo_pos_y: 50,
   logo_zoom: 1,
   show_logo: true,
-  show_brand_name: true,
+  show_brand_name: false,
   logo_navbar_display_mode: "free",
   logo_navbar_visual_size_desktop: 200,
   logo_navbar_visual_size_mobile: 200,
@@ -184,7 +184,7 @@ function normalizeSettings(s: SiteSettingsResponse["settings"]): SettingsForm {
     logo_pos_y: s.logo_pos_y ?? DEFAULT_SETTINGS.logo_pos_y,
     logo_zoom: s.logo_zoom ?? DEFAULT_SETTINGS.logo_zoom,
     show_logo: s.show_logo ?? true,
-    show_brand_name: s.show_brand_name ?? true,
+    show_brand_name: s.show_brand_name ?? DEFAULT_SETTINGS.show_brand_name,
     logo_navbar_display_mode: displayMode === "free" ? "free" : "contained",
     logo_navbar_visual_size_desktop: tokenNumber(
       tokens,
@@ -261,6 +261,7 @@ async function getAuthHeaders() {
 export default function SettingsDashboard() {
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS);
   const [original, setOriginal] = useState<SettingsForm>(DEFAULT_SETTINGS);
+  const [logoCleared, setLogoCleared] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -290,6 +291,7 @@ export default function SettingsDashboard() {
       const normalized = normalizeSettings(data.settings);
       setForm(normalized);
       setOriginal(normalized);
+      setLogoCleared(false);
     } catch (err) {
       setError(
         err instanceof Error
@@ -298,6 +300,7 @@ export default function SettingsDashboard() {
       );
       setForm(DEFAULT_SETTINGS);
       setOriginal(DEFAULT_SETTINGS);
+      setLogoCleared(false);
     } finally {
       setLoading(false);
     }
@@ -348,10 +351,21 @@ export default function SettingsDashboard() {
     try {
       const headers = await getAuthHeaders();
 
+      const payload: Partial<SettingsForm> & { clear_logo?: boolean } = {
+        ...form,
+      };
+
+      if (!form.logo_url && !logoCleared) {
+        delete payload.logo_url;
+      }
+      if (logoCleared) {
+        payload.clear_logo = true;
+      }
+
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers,
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = (await res.json()) as SiteSettingsResponse;
@@ -363,6 +377,7 @@ export default function SettingsDashboard() {
       const normalized = normalizeSettings(data.settings);
       setForm(normalized);
       setOriginal(normalized);
+      setLogoCleared(false);
       setSuccess("บันทึกข้อมูลเว็บไซต์เรียบร้อยแล้ว");
     } catch (err) {
       setError(
@@ -376,7 +391,11 @@ export default function SettingsDashboard() {
   };
 
   const handleResetToBaseline = () => {
-    setForm(DEFAULT_SETTINGS);
+    setForm((prev) => ({
+      ...DEFAULT_SETTINGS,
+      logo_url: prev.logo_url || original.logo_url,
+    }));
+    setLogoCleared(false);
     setSuccess("รีเซ็ตค่าในฟอร์มเป็นค่าพื้นฐานแล้ว กดบันทึกเพื่อใช้งานจริง");
     setError(null);
   };
@@ -560,7 +579,10 @@ export default function SettingsDashboard() {
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                 <CloudinaryImageUploader
                   value={form.logo_url}
-                  onChange={(url) => setField("logo_url")(url)}
+                  onChange={(url) => {
+                    setField("logo_url")(url);
+                    setLogoCleared(false);
+                  }}
                   folder="logos"
                   label="อัปโหลดโลโก้สาขา"
                 />
@@ -587,7 +609,10 @@ export default function SettingsDashboard() {
                   {form.logo_url && (
                     <button
                       type="button"
-                      onClick={() => setField("logo_url")("")}
+                      onClick={() => {
+                        setField("logo_url")("");
+                        setLogoCleared(true);
+                      }}
                       className="mt-3 text-xs font-medium text-rose-600 hover:text-rose-700"
                     >
                       ล้างรูปโลโก้

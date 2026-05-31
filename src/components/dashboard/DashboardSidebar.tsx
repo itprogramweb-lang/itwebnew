@@ -21,7 +21,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { canAccessDashboardRoute } from "@/lib/permissions";
+import {
+  canAccessDashboardRouteWithPermissions,
+  type Permission,
+} from "@/lib/permissions";
 import type { User } from "@/types";
 import { siteData } from "@/data/site";
 import { RoleBadge } from "@/components/ui/badges";
@@ -59,11 +62,13 @@ const navItems: NavItem[] = [
 export default function DashboardSidebar({
   user,
   canViewComplaints = false,
+  effectivePermissions = null,
   open,
   onClose,
 }: {
   user: User;
   canViewComplaints?: boolean;
+  effectivePermissions?: readonly Permission[] | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -78,9 +83,16 @@ export default function DashboardSidebar({
 
   const allowedItems = navItems.filter((n) => {
     if (n.href === "/dashboard/complaints") {
-      return canAccessDashboardRoute(user.role, n.href) || canViewComplaints;
+      return (
+        canAccessDashboardRouteWithPermissions(user.role, n.href, effectivePermissions) ||
+        canViewComplaints
+      );
     }
-    return canAccessDashboardRoute(user.role, n.href);
+    return canAccessDashboardRouteWithPermissions(
+      user.role,
+      n.href,
+      effectivePermissions
+    );
   });
 
   return (

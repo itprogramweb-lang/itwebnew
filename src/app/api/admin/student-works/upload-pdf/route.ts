@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasPermission } from "@/lib/permissions";
-import { getAuthenticatedProfile, type AdminProfile } from "@/lib/serverAuth";
+import { hasPermissionFromList } from "@/lib/permissions";
+import {
+  getAuthenticatedProfileWithPermissions,
+  type AdminProfileWithPermissions,
+} from "@/lib/serverAuth";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { R2ConfigError, R2UploadError, uploadStudentWorkPdf } from "@/lib/r2";
 
@@ -14,11 +17,11 @@ type StudentWorkAccessRow = {
 };
 
 async function requireAuth(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
+  const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) return { error: NextResponse.json({ error: "กรุณาเข้าสู่ระบบใหม่" }, { status: 401 }) };
   if (
-    !hasPermission(profile.role, "manage_student_works") &&
-    !hasPermission(profile.role, "edit_advised_student_works")
+    !hasPermissionFromList(profile.effectivePermissions, "manage_student_works") &&
+    !hasPermissionFromList(profile.effectivePermissions, "edit_advised_student_works")
   ) {
     return { error: NextResponse.json({ error: "ไม่มีสิทธิ์จัดการผลงานนักศึกษา" }, { status: 403 }) };
   }
@@ -33,16 +36,16 @@ function normalizedName(value: string | null | undefined) {
   return value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("th") ?? "";
 }
 
-function isAdvisedStudentWork(profile: AdminProfile, work: StudentWorkAccessRow) {
+function isAdvisedStudentWork(profile: AdminProfileWithPermissions, work: StudentWorkAccessRow) {
   const profileName = normalizedName(profile.full_name);
   return !!profileName && normalizedName(work.advisor_name) === profileName;
 }
 
-function canManageAllStudentWorks(profile: AdminProfile) {
-  return hasPermission(profile.role, "manage_student_works");
+function canManageAllStudentWorks(profile: AdminProfileWithPermissions) {
+  return hasPermissionFromList(profile.effectivePermissions, "manage_student_works");
 }
 
-async function requireStudentWorkUploadAccess(profile: AdminProfile, workId: string) {
+async function requireStudentWorkUploadAccess(profile: AdminProfileWithPermissions, workId: string) {
   const admin = createSupabaseAdminClient();
   const { data: work, error } = await admin
     .from("student_works")
@@ -54,7 +57,10 @@ async function requireStudentWorkUploadAccess(profile: AdminProfile, workId: str
   if (!work) return { error: NextResponse.json({ error: "ไม่พบผลงาน" }, { status: 404 }) };
 
   if (canManageAllStudentWorks(profile)) return { admin, work };
-  if (hasPermission(profile.role, "edit_advised_student_works") && isAdvisedStudentWork(profile, work)) {
+  if (
+    hasPermissionFromList(profile.effectivePermissions, "edit_advised_student_works") &&
+    isAdvisedStudentWork(profile, work)
+  ) {
     return { admin, work };
   }
 

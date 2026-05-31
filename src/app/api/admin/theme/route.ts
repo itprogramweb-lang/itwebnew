@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { can } from "@/lib/permissions";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { getAuthenticatedProfile } from "@/lib/serverAuth";
+import { requireEffectivePermission } from "@/lib/serverAuth";
 
 async function requireAuth(request: NextRequest) {
-  const profile = await getAuthenticatedProfile(request);
-  if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!can(profile.role, "manage_settings")) {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { profile };
+  return requireEffectivePermission(request, "manage_settings");
 }
 
 export async function GET(request: NextRequest) {
