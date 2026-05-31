@@ -48,7 +48,7 @@ type FormData = {
   is_active: boolean;
 };
 
-type WorkTypeTab = "all" | "course" | "final_project";
+type WorkTypeTab = "course" | "final_project";
 
 const EMPTY_FORM: FormData = {
   title: "",
@@ -188,8 +188,8 @@ export default function StudentWorksDashboard() {
   const [items, setItems] = useState<StudentWorkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [catFilter, setCatFilter] = useState("all");
-  const [workTypeTab, setWorkTypeTab] = useState<WorkTypeTab>("all");
+  const [workTypeTab, setWorkTypeTab] = useState<WorkTypeTab>("final_project");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -227,25 +227,29 @@ export default function StudentWorksDashboard() {
         acc[type] += 1;
         return acc;
       },
-      { all: items.length, course: 0, final_project: 0 }
+      { course: 0, final_project: 0 }
     );
   }, [items]);
 
   const dataCategoryOptions = useMemo(() => {
     const seen = new Set<string>();
     for (const item of items) {
+      const type = item.work_type === "course" ? "course" : "final_project";
+      if (type !== workTypeTab) continue;
       const value = item.category?.trim();
       if (value) seen.add(value);
     }
     return [...seen]
       .sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b), "th"))
       .map((value) => ({ value, label: categoryLabel(value) }));
-  }, [items]);
+  }, [items, workTypeTab]);
 
-  const categoryFilterOptions = useMemo(
-    () => [{ value: "all", label: "ทุกหมวด" }, ...dataCategoryOptions],
-    [dataCategoryOptions]
-  );
+  useEffect(() => {
+    if (categoryFilter === "all") return;
+    if (!dataCategoryOptions.some((option) => option.value === categoryFilter)) {
+      setCategoryFilter("all");
+    }
+  }, [categoryFilter, dataCategoryOptions]);
 
   const formCategoryOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -254,18 +258,10 @@ export default function StudentWorksDashboard() {
     return [...options].map(([value, label]) => ({ value, label }));
   }, [dataCategoryOptions]);
 
-  useEffect(() => {
-    if (catFilter === "all") return;
-    if (!dataCategoryOptions.some((option) => option.value === catFilter)) {
-      setCatFilter("all");
-    }
-  }, [catFilter, dataCategoryOptions]);
-
   const filtered = useMemo(() => {
     return items.filter((w) => {
       const needle = q.trim().toLowerCase();
       const workType = w.work_type === "course" ? "course" : "final_project";
-      const category = w.category?.trim() ?? "";
       const haystack = [
         w.title,
         w.slug,
@@ -290,14 +286,15 @@ export default function StudentWorksDashboard() {
         .toLowerCase();
       const matchQ =
         !needle || haystack.includes(needle);
-      const matchCat = catFilter === "all" || category === catFilter;
-      const matchWorkType = workTypeTab === "all" || workType === workTypeTab;
+      const category = w.category?.trim() ?? "";
+      const matchWorkType = workType === workTypeTab;
+      const matchCategory = categoryFilter === "all" || category === categoryFilter;
       const matchStatus =
         statusFilter === "all" ||
         (statusFilter === "active" ? w.is_active !== false : w.is_active === false);
-      return matchQ && matchCat && matchWorkType && matchStatus;
+      return matchQ && matchWorkType && matchCategory && matchStatus;
     });
-  }, [items, q, catFilter, workTypeTab, statusFilter]);
+  }, [items, q, workTypeTab, categoryFilter, statusFilter]);
 
   // ── form helpers ──────────────────────────────────────────────────────────
   const FI = (k: keyof FormData) => ({
@@ -321,7 +318,6 @@ export default function StudentWorksDashboard() {
   };
 
   const isCourseTab = workTypeTab === "course";
-  const isAllTab = workTypeTab === "all";
   const tableColSpan = isCourseTab ? 8 : 9;
 
   const openEdit = (w: StudentWorkRow) => {
@@ -422,14 +418,14 @@ export default function StudentWorksDashboard() {
     }
   };
 
-  const handleSoftDelete = async () => {
+  const handleDelete = async () => {
     if (!confirmId) return;
     try {
       await studentWorksApi.remove(confirmId);
-      setItems((prev) => prev.map((x) => (x.id === confirmId ? { ...x, is_active: false } : x)));
-      showToast("ซ่อนผลงานเรียบร้อยแล้ว");
+      setItems((prev) => prev.filter((x) => x.id !== confirmId));
+      showToast("ลบผลงานเรียบร้อยแล้ว");
     } catch {
-      showToast("ซ่อนผลงานไม่สำเร็จ", false);
+      showToast("ลบผลงานไม่สำเร็จ", false);
     }
     setConfirmId(null);
   };
@@ -445,7 +441,6 @@ export default function StudentWorksDashboard() {
       <div className="mb-4 max-w-full overflow-x-auto">
         <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
           {[
-            { value: "all" as const, label: "ทั้งหมด", count: typeCounts.all },
             { value: "final_project" as const, label: "ปริญญานิพนธ์ (Thesis)", count: typeCounts.final_project },
             { value: "course" as const, label: "ผลงานรายวิชา", count: typeCounts.course },
           ].map((tab) => (
@@ -470,16 +465,19 @@ export default function StudentWorksDashboard() {
 
       <SearchFilter value={q} onChange={setQ} placeholder="ค้นหาชื่อผลงาน รายวิชา นักศึกษา อาจารย์ PDF...">
         <FilterSelect
-          value={catFilter}
-          onChange={setCatFilter}
-          options={categoryFilterOptions}
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          options={[
+            { value: "all", label: "ทุกหมวด" },
+            ...dataCategoryOptions,
+          ]}
         />
         <FilterSelect
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
             { value: "active", label: "แสดงอยู่" },
-            { value: "all", label: "ทั้งหมด" },
+            { value: "all", label: "ทุกสถานะ" },
             { value: "inactive", label: "ซ่อนอยู่" },
           ]}
         />
@@ -489,7 +487,7 @@ export default function StudentWorksDashboard() {
         <thead className="bg-slate-50/60">
           <tr>
             <Th>ชื่อผลงาน</Th>
-            {isCourseTab ? <Th>รายวิชา</Th> : <Th>{isAllTab ? "ประเภท/รายวิชา" : "ประเภท"}</Th>}
+            {isCourseTab ? <Th>รายวิชา</Th> : <Th>ประเภท</Th>}
             <Th>นักศึกษา</Th>
             <Th>ที่ปรึกษา</Th>
             <Th>หมวด</Th>
@@ -591,13 +589,8 @@ export default function StudentWorksDashboard() {
                     </button>
                     <button
                       onClick={() => setConfirmId(w.id)}
-                      disabled={w.is_active === false}
-                      title={w.is_active === false ? "ซ่อนอยู่แล้ว" : "ซ่อน"}
-                      className={`p-2 rounded-lg ${
-                        w.is_active === false
-                          ? "text-slate-200 cursor-not-allowed"
-                          : "text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                      }`}
+                      title="ลบถาวร"
+                      className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -831,12 +824,12 @@ export default function StudentWorksDashboard() {
 
       <ConfirmModal
         open={!!confirmId}
-        title="ซ่อนผลงานนี้?"
-        description="ผลงานจะไม่แสดงบนเว็บไซต์ สามารถเปิดใหม่ได้ในภายหลัง"
-        variant="warning"
-        confirmLabel="ซ่อน"
+        title="ต้องการลบผลงานนี้ถาวรหรือไม่?"
+        description="การลบนี้จะลบรายการออกจากฐานข้อมูลจริง ไม่ใช่แค่ซ่อนจากเว็บไซต์"
+        variant="danger"
+        confirmLabel="ลบถาวร"
         onClose={() => setConfirmId(null)}
-        onConfirm={handleSoftDelete}
+        onConfirm={handleDelete}
       />
 
       {toast && (

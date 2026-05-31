@@ -81,13 +81,13 @@ type SiteSettingsResponse = {
 };
 
 const DEFAULT_SETTINGS: SettingsForm = {
-  site_name: "สาขาวิชาเทคโนโลยีคอมพิวเตอร์",
+  site_name: "สาขาวิชาเทคโนโลยีสารสนเทศ",
   faculty_name: "คณะวิทยาศาสตร์และเทคโนโลยี",
   university_name: "มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี",
   logo_url: "",
   logo_alt: "โลโก้สาขา",
-  logo_desktop_size: 44,
-  logo_mobile_size: 40,
+  logo_desktop_size: 518,
+  logo_mobile_size: 390,
   logo_crop_preset: "square-contain",
   logo_object_position: "center",
   logo_fit_mode: "contain",
@@ -96,13 +96,13 @@ const DEFAULT_SETTINGS: SettingsForm = {
   logo_zoom: 1,
   show_logo: true,
   show_brand_name: true,
-  logo_navbar_display_mode: "contained",
-  logo_navbar_visual_size_desktop: 96,
-  logo_navbar_visual_size_mobile: 72,
+  logo_navbar_display_mode: "free",
+  logo_navbar_visual_size_desktop: 200,
+  logo_navbar_visual_size_mobile: 200,
   logo_navbar_offset_x: 0,
   logo_navbar_offset_y: 0,
   logo_navbar_overflow: "visible",
-  brand_name: "Computer Technology",
+  brand_name: "สาขาวิชาเทคโนโลยีสารสนเทศ",
   brand_short_name: "CT",
   department_name_th: "สาขาวิชาเทคโนโลยีคอมพิวเตอร์",
   department_name_en: "Computer Technology",
@@ -375,6 +375,19 @@ export default function SettingsDashboard() {
     }
   };
 
+  const handleResetToBaseline = () => {
+    setForm(DEFAULT_SETTINGS);
+    setSuccess("รีเซ็ตค่าในฟอร์มเป็นค่าพื้นฐานแล้ว กดบันทึกเพื่อใช้งานจริง");
+    setError(null);
+  };
+
+  const resetButton = (
+    <Button onClick={handleResetToBaseline} variant="outline">
+      <RotateCcw className="w-4 h-4" />
+      รีเซ็ตค่าพื้นฐาน
+    </Button>
+  );
+
   const saveButton = (
     <Button
       onClick={handleSave}
@@ -429,7 +442,12 @@ export default function SettingsDashboard() {
       <DashboardPageHeader
         title="ตั้งค่าเว็บไซต์"
         description="ข้อมูลพื้นฐาน, Branding, โลโก้ และช่องทางติดต่อ"
-        action={saveButton}
+        action={
+          <div className="flex flex-wrap gap-2">
+            {resetButton}
+            {saveButton}
+          </div>
+        }
       />
 
       {success && <StatusBox type="success" message={success} />}
@@ -783,12 +801,12 @@ export default function SettingsDashboard() {
                     onClick={() => {
                       setForm((prev) => ({
                         ...prev,
-                        logo_navbar_display_mode: "contained",
-                        logo_navbar_visual_size_desktop: 96,
-                        logo_navbar_visual_size_mobile: 72,
-                        logo_navbar_offset_x: 0,
-                        logo_navbar_offset_y: 0,
-                        logo_navbar_overflow: "visible",
+                        logo_navbar_display_mode: DEFAULT_SETTINGS.logo_navbar_display_mode,
+                        logo_navbar_visual_size_desktop: DEFAULT_SETTINGS.logo_navbar_visual_size_desktop,
+                        logo_navbar_visual_size_mobile: DEFAULT_SETTINGS.logo_navbar_visual_size_mobile,
+                        logo_navbar_offset_x: DEFAULT_SETTINGS.logo_navbar_offset_x,
+                        logo_navbar_offset_y: DEFAULT_SETTINGS.logo_navbar_offset_y,
+                        logo_navbar_overflow: DEFAULT_SETTINGS.logo_navbar_overflow,
                       }));
                       setSuccess(null);
                       setError(null);
@@ -865,7 +883,11 @@ export default function SettingsDashboard() {
         </Link>
       </Section>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex flex-wrap justify-end gap-2 pt-2">
+        <Button onClick={handleResetToBaseline} variant="outline" size="lg">
+          <RotateCcw className="w-4 h-4" />
+          รีเซ็ตค่าพื้นฐาน
+        </Button>
         <Button
           onClick={handleSave}
           disabled={!canSave}

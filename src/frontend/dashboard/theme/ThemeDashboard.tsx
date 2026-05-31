@@ -31,6 +31,52 @@ import {
 } from "@/lib/designTokens";
 import { DashboardPageHeader } from "@/components/ui/DataTable";
 
+const RESET_THEME_BASELINE: SiteTheme = {
+  primaryColor: "#f97316",
+  secondaryColor: "#111827",
+  accentColor: "#f59e0b",
+  backgroundColor: "#ffffff",
+  textColor: "#111827",
+  navbarColor: "#020617",
+  footerColor: "#0f172a",
+  buttonColor: "#f97316",
+  heroOverlayColor: "#000000",
+};
+
+const RESET_DESIGN_TOKEN_BASELINE: DesignTokens = {
+  ...DEFAULT_DESIGN_TOKENS,
+  fontFamily: "IBM Plex Sans Thai",
+  headingFontFamily: "same",
+  baseFontSize: "16px",
+  headingWeight: "700",
+  bodyWeight: "400",
+  navFontSize: "14px",
+  navFontWeight: "500",
+  sectionHeadingAlign: "center",
+  sectionSpacing: "normal",
+  cardRadius: "xlarge",
+  cardShadow: "soft",
+  buttonRadius: "large",
+  contentWidth: "normal",
+  heroTextAlign: "center",
+  heroContentPosition: "center",
+  navbarHeightMode: "custom",
+  navbarDesktopHeight: "70",
+  navbarMobileHeight: "72",
+  navbarDesktopPaddingY: "16",
+  navbarMobilePaddingY: "10",
+  navbarMaxLogoHeight: "72",
+  navbarContentWidth: "normal",
+  navbarVerticalAlign: "center",
+  logoNavbarDisplayMode: "free",
+  logoNavbarVisualSizeDesktop: "200",
+  logoNavbarVisualSizeMobile: "200",
+  logoNavbarOffsetX: "0",
+  logoNavbarOffsetY: "0",
+  logoNavbarZIndex: "45",
+  logoNavbarOverflow: "visible",
+};
+
 // ─── ColorField ───────────────────────────────────────────────────────────────
 
 function ColorField({
@@ -704,8 +750,8 @@ export default function ThemeDashboard() {
   };
 
   const handleReset = () => {
-    setTheme(DEFAULT_THEME);
-    setTokens(DEFAULT_DESIGN_TOKENS);
+    setTheme(RESET_THEME_BASELINE);
+    setTokens(RESET_DESIGN_TOKEN_BASELINE);
   };
 
   const setColor = (k: keyof SiteTheme) => (v: string) =>
@@ -736,21 +782,21 @@ export default function ThemeDashboard() {
   const resetNavbarTokens = () => {
     setTokens((p) => ({
       ...p,
-      navbarHeightMode: DEFAULT_DESIGN_TOKENS.navbarHeightMode,
-      navbarDesktopHeight: DEFAULT_DESIGN_TOKENS.navbarDesktopHeight,
-      navbarMobileHeight: DEFAULT_DESIGN_TOKENS.navbarMobileHeight,
-      navbarDesktopPaddingY: DEFAULT_DESIGN_TOKENS.navbarDesktopPaddingY,
-      navbarMobilePaddingY: DEFAULT_DESIGN_TOKENS.navbarMobilePaddingY,
-      navbarMaxLogoHeight: DEFAULT_DESIGN_TOKENS.navbarMaxLogoHeight,
-      navbarContentWidth: DEFAULT_DESIGN_TOKENS.navbarContentWidth,
-      navbarVerticalAlign: DEFAULT_DESIGN_TOKENS.navbarVerticalAlign,
-      logoNavbarDisplayMode: DEFAULT_DESIGN_TOKENS.logoNavbarDisplayMode,
-      logoNavbarVisualSizeDesktop: DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeDesktop,
-      logoNavbarVisualSizeMobile: DEFAULT_DESIGN_TOKENS.logoNavbarVisualSizeMobile,
-      logoNavbarOffsetX: DEFAULT_DESIGN_TOKENS.logoNavbarOffsetX,
-      logoNavbarOffsetY: DEFAULT_DESIGN_TOKENS.logoNavbarOffsetY,
-      logoNavbarZIndex: DEFAULT_DESIGN_TOKENS.logoNavbarZIndex,
-      logoNavbarOverflow: DEFAULT_DESIGN_TOKENS.logoNavbarOverflow,
+      navbarHeightMode: RESET_DESIGN_TOKEN_BASELINE.navbarHeightMode,
+      navbarDesktopHeight: RESET_DESIGN_TOKEN_BASELINE.navbarDesktopHeight,
+      navbarMobileHeight: RESET_DESIGN_TOKEN_BASELINE.navbarMobileHeight,
+      navbarDesktopPaddingY: RESET_DESIGN_TOKEN_BASELINE.navbarDesktopPaddingY,
+      navbarMobilePaddingY: RESET_DESIGN_TOKEN_BASELINE.navbarMobilePaddingY,
+      navbarMaxLogoHeight: RESET_DESIGN_TOKEN_BASELINE.navbarMaxLogoHeight,
+      navbarContentWidth: RESET_DESIGN_TOKEN_BASELINE.navbarContentWidth,
+      navbarVerticalAlign: RESET_DESIGN_TOKEN_BASELINE.navbarVerticalAlign,
+      logoNavbarDisplayMode: RESET_DESIGN_TOKEN_BASELINE.logoNavbarDisplayMode,
+      logoNavbarVisualSizeDesktop: RESET_DESIGN_TOKEN_BASELINE.logoNavbarVisualSizeDesktop,
+      logoNavbarVisualSizeMobile: RESET_DESIGN_TOKEN_BASELINE.logoNavbarVisualSizeMobile,
+      logoNavbarOffsetX: RESET_DESIGN_TOKEN_BASELINE.logoNavbarOffsetX,
+      logoNavbarOffsetY: RESET_DESIGN_TOKEN_BASELINE.logoNavbarOffsetY,
+      logoNavbarZIndex: RESET_DESIGN_TOKEN_BASELINE.logoNavbarZIndex,
+      logoNavbarOverflow: RESET_DESIGN_TOKEN_BASELINE.logoNavbarOverflow,
     }));
   };
 

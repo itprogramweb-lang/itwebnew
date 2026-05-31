@@ -336,14 +336,14 @@ export default function TeacherWorksDashboard() {
     }
   };
 
-  const handleSoftDelete = async () => {
+  const handleDelete = async () => {
     if (!confirmId) return;
     try {
       await teacherWorksApi.remove(confirmId);
-      setItems((prev) => prev.map((x) => (x.id === confirmId ? { ...x, is_active: false } : x)));
-      showToast("ซ่อนผลงานเรียบร้อยแล้ว");
+      setItems((prev) => prev.filter((x) => x.id !== confirmId));
+      showToast("ลบผลงานเรียบร้อยแล้ว");
     } catch {
-      showToast("ซ่อนผลงานไม่สำเร็จ", false);
+      showToast("ลบผลงานไม่สำเร็จ", false);
     }
     setConfirmId(null);
   };
@@ -459,13 +459,8 @@ export default function TeacherWorksDashboard() {
                     </button>
                     <button
                       onClick={() => setConfirmId(w.id)}
-                      disabled={w.is_active === false}
-                      title={w.is_active === false ? "ซ่อนอยู่แล้ว" : "ซ่อน"}
-                      className={`p-2 rounded-lg ${
-                        w.is_active === false
-                          ? "text-slate-200 cursor-not-allowed"
-                          : "text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                      }`}
+                      title="ลบถาวร"
+                      className="p-2 rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -664,12 +659,12 @@ export default function TeacherWorksDashboard() {
 
       <ConfirmModal
         open={!!confirmId}
-        title="ซ่อนผลงานนี้?"
-        description="ผลงานจะไม่แสดงบนเว็บไซต์ สามารถเปิดใหม่ได้ในภายหลัง"
-        variant="warning"
-        confirmLabel="ซ่อน"
+        title="ต้องการลบผลงานนี้ถาวรหรือไม่?"
+        description="การลบนี้จะลบรายการออกจากฐานข้อมูลจริง ไม่ใช่แค่ซ่อนจากเว็บไซต์"
+        variant="danger"
+        confirmLabel="ลบถาวร"
         onClose={() => setConfirmId(null)}
-        onConfirm={handleSoftDelete}
+        onConfirm={handleDelete}
       />
 
       {toast && (

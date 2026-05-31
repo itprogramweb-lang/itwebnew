@@ -319,9 +319,9 @@ export async function DELETE(request: NextRequest) {
 
   const { error } = await admin
     .from("student_works")
-    .update({ is_active: false })
+    .delete()
     .eq("id", id);
 
-  if (error) return NextResponse.json({ error: "ซ่อนผลงานไม่สำเร็จ" }, { status: 500 });
+  if (error) return NextResponse.json({ error: "ลบผลงานไม่สำเร็จ" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
