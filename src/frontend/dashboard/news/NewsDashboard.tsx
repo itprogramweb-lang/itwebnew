@@ -14,7 +14,6 @@ import {
   Trash2,
   X,
   Eye,
-  RotateCcw,
   EyeOff,
 } from "lucide-react";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
@@ -212,6 +211,17 @@ function toPayload(form: NewsForm) {
   };
 }
 
+function getNewsTimestamp(item: NewsRow): number {
+  const source = item.created_at || item.published_at || item.updated_at || "";
+  const time = new Date(source).getTime();
+
+  return Number.isFinite(time) ? time : 0;
+}
+
+function sortNewsNewestFirst(news: NewsRow[]): NewsRow[] {
+  return [...news].sort((a, b) => getNewsTimestamp(b) - getNewsTimestamp(a));
+}
+
 function nextStatusLabel(status: string) {
   if (status === "published") return "เผยแพร่ข่าวเรียบร้อยแล้ว";
   if (status === "archived") return "ซ่อนข่าวเรียบร้อยแล้ว";
@@ -259,7 +269,7 @@ export default function NewsDashboard() {
 
       if (!res.ok) throw new Error(data.error || "ไม่สามารถโหลดข่าวได้");
 
-      setItems(data.news ?? []);
+      setItems(sortNewsNewestFirst(data.news ?? []));
     } catch (err) {
       setError(err instanceof Error ? err.message : "ไม่สามารถโหลดข่าวได้");
     } finally {
@@ -274,16 +284,18 @@ export default function NewsDashboard() {
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
 
-    return items.filter((item) => {
-      const text = [item.title, item.excerpt, item.category, item.slug]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const matchQ = !query || text.includes(query);
-      const matchS = status === "all" || (item.status || "draft") === status;
+    return sortNewsNewestFirst(
+      items.filter((item) => {
+        const text = [item.title, item.excerpt, item.category, item.slug]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        const matchQ = !query || text.includes(query);
+        const matchS = status === "all" || (item.status || "draft") === status;
 
-      return matchQ && matchS;
-    });
+        return matchQ && matchS;
+      }),
+    );
   }, [items, q, status]);
 
   const openAdd = () => {
@@ -337,15 +349,19 @@ export default function NewsDashboard() {
       }
 
       setItems((prev) =>
-        isEdit
-          ? prev.map((item) =>
-              item.id === data.newsItem.id ? data.newsItem : item,
-            )
-          : [data.newsItem, ...prev],
+        sortNewsNewestFirst(
+          isEdit
+            ? prev.map((item) =>
+                item.id === data.newsItem.id ? data.newsItem : item,
+              )
+            : [data.newsItem, ...prev],
+        ),
       );
       setEditingId(data.newsItem.id);
       setSelectedSnapshot(data.newsItem);
       setForm(toForm(data.newsItem));
+      setPreviewOpen(false);
+      setModalOpen(false);
       setNotice(isEdit ? "บันทึกข่าวเรียบร้อยแล้ว" : "เพิ่มข่าวเรียบร้อยแล้ว");
     } catch (err) {
       setError(err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
@@ -389,15 +405,19 @@ export default function NewsDashboard() {
       }
 
       setItems((prev) =>
-        isEdit
-          ? prev.map((item) =>
-              item.id === data.newsItem.id ? data.newsItem : item,
-            )
-          : [data.newsItem, ...prev],
+        sortNewsNewestFirst(
+          isEdit
+            ? prev.map((item) =>
+                item.id === data.newsItem.id ? data.newsItem : item,
+              )
+            : [data.newsItem, ...prev],
+        ),
       );
       setEditingId(data.newsItem.id);
       setSelectedSnapshot(data.newsItem);
       setForm(toForm(data.newsItem));
+      setPreviewOpen(false);
+      setModalOpen(false);
       setNotice(nextStatusLabel(data.newsItem.status));
     } catch (err) {
       setError(err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
@@ -442,8 +462,10 @@ export default function NewsDashboard() {
       }
 
       setItems((prev) =>
-        prev.map((news) =>
-          news.id === data.newsItem.id ? data.newsItem : news,
+        sortNewsNewestFirst(
+          prev.map((news) =>
+            news.id === data.newsItem.id ? data.newsItem : news,
+          ),
         ),
       );
       setNotice(
@@ -490,13 +512,6 @@ export default function NewsDashboard() {
       setSaving(false);
       setDeleteId(null);
     }
-  };
-
-  const clearForm = () => {
-    setEditingId(null);
-    setSelectedSnapshot(null);
-    setPreviewOpen(false);
-    setForm(createEmptyForm());
   };
 
   return (
@@ -780,14 +795,6 @@ export default function NewsDashboard() {
                       value={form.published_at}
                       onChange={(e) => set("published_at", e.target.value)}
                     />
-                    <FormInput
-                      label="ลำดับ (sort_order)"
-                      type="number"
-                      value={String(form.sort_order)}
-                      onChange={(e) =>
-                        set("sort_order", Number(e.target.value) || 0)
-                      }
-                    />
                   </div>
                 </div>
               </section>
@@ -863,30 +870,8 @@ export default function NewsDashboard() {
               </section>
             </div>
 
-            <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
-              <button
-                type="button"
-                onClick={() => setPreviewOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
-              >
-                <Eye className="h-4 w-4" />
-                ดูหน้าตา Preview
-              </button>
-
+            <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
               <div className="flex flex-wrap justify-end gap-2">
-                {selectedSnapshot && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setForm(toForm(selectedSnapshot))}
-                    disabled={saving}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Reset
-                  </Button>
-                )}
-                <Button variant="outline" onClick={clearForm} disabled={saving}>
-                  Clear form
-                </Button>
                 <Button
                   variant="secondary"
                   onClick={() => saveWithStatus("draft")}

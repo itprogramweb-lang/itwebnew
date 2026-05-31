@@ -115,7 +115,7 @@ export default async function StaffPage() {
                           </h3>
 
                           <div className="flex flex-wrap gap-2">
-                            {(person.expertise ?? []).slice(0, 6).map((item) => (
+                           {(person.expertise ?? []).map((item) => (
                               <span
                                 key={item}
                                 className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700"

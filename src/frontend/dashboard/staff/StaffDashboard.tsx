@@ -25,17 +25,17 @@ import { sortStaffMembersWithDepartmentHeadFirst } from "@/lib/staffOrdering";
 const FALLBACK = "/placeholders/staff-placeholder.svg";
 
 const ROLE_OPTIONS = [
-  { value: "executive", label: "หัวหน้าสาขา" },
-  { value: "teacher", label: "อาจารย์ประจำ" },
-  { value: "officer", label: "เจ้าหน้าที่ธุรการประจำสาขาวิชา" },
-  { value: "lab_officer", label: "เจ้าหน้าที่ประจำห้องปฏิบัติการ" },
+  { value: "หัวหน้าสาขา", label: "หัวหน้าสาขา" },
+  { value: "อาจารย์ประจำ", label: "อาจารย์ประจำ" },
+  { value: "เจ้าหน้าที่ธุรการประจำสาขาวิชา", label: "เจ้าหน้าที่ธุรการประจำสาขาวิชา" },
+  { value: "เจ้าหน้าที่ประจำห้องปฏิบัติการ", label: "เจ้าหน้าที่ประจำห้องปฏิบัติการ" },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
-  executive: "หัวหน้าสาขา",
-  teacher: "อาจารย์ประจำ",
-  officer: "เจ้าหน้าที่ธุรการฯ",
-  lab_officer: "เจ้าหน้าที่ห้องแล็บ",
+  "หัวหน้าสาขา": "หัวหน้าสาขา",
+  "อาจารย์ประจำ": "อาจารย์ประจำ",
+  "เจ้าหน้าที่ธุรการประจำสาขาวิชา": "เจ้าหน้าที่ธุรการฯ",
+  "เจ้าหน้าที่ประจำห้องปฏิบัติการ": "เจ้าหน้าที่ห้องแล็บ",
 };
 
 // ─── Form type ────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ type FormData = {
 const DEFAULT: FormData = {
   full_name: "",
   position: "",
-  role_type: "teacher",
+ role_type: "อาจารย์ประจำ",
   education: "",
   expertise_raw: "",
   email: "",
@@ -76,7 +76,7 @@ const DEFAULT: FormData = {
 const toForm = (s: StaffMemberRow): FormData => ({
   full_name: s.full_name,
   position: s.position ?? "",
-  role_type: s.role_type ?? "teacher",
+ role_type: s.role_type ?? "อาจารย์ประจำ",
   education: s.education ?? "",
   expertise_raw: (s.expertise ?? []).join(", "),
   email: s.email ?? "",
@@ -168,28 +168,38 @@ export default function StaffDashboard() {
   };
 
   useEffect(() => { loadStaff(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const filtered = useMemo(
-    () =>
-      sortStaffMembersWithDepartmentHeadFirst(
-        items.filter((s) => {
-          const matchQ =
-            !q ||
-            s.full_name.toLowerCase().includes(q.toLowerCase()) ||
-            (s.email ?? "").toLowerCase().includes(q.toLowerCase()) ||
-            (s.position ?? "").toLowerCase().includes(q.toLowerCase());
+// ─── แก้ไขตำแหน่ง filtered ให้กรองได้ทุกปุ่มอย่างถูกต้อง ───────────────────
+const filtered = useMemo(() => {
+  // 1. กรองข้อมูลตามเงื่อนไขทั้งหมดก่อน
+  const filteredResult = items.filter((s) => {
+    // กรองด้วยคีย์เวิร์ด (ชื่อ, อีเมล, ตำแหน่งเสริม)
+    const matchQ =
+      !q ||
+      s.full_name.toLowerCase().includes(q.toLowerCase()) ||
+      (s.email ?? "").toLowerCase().includes(q.toLowerCase()) ||
+      (s.position ?? "").toLowerCase().includes(q.toLowerCase());
 
-          const matchR = roleFilter === "all" || s.role_type === roleFilter;
+    // กรองด้วยประเภท (ตำแหน่งหลัก) - ป้องกันค่า null/undefined ด้วย ?? ""
+    const currentRole = s.role_type ?? "";
+    const matchR = roleFilter === "all" || currentRole === roleFilter;
 
-          const matchS =
-            statusFilter === "all" ||
-            (statusFilter === "active" && s.is_active !== false) ||
-            (statusFilter === "inactive" && s.is_active === false);
+    // กรองด้วยสถานะการแสดงผล
+    const matchS =
+      statusFilter === "all" ||
+      (statusFilter === "active" && s.is_active !== false) ||
+      (statusFilter === "inactive" && s.is_active === false);
 
-          return matchQ && matchR && matchS;
-        })
-      ),
-    [items, q, roleFilter, statusFilter]
-  );
+    return matchQ && matchR && matchS;
+  });
+
+  // 2. ส่งผลลัพธ์ที่กรองแล้วไปเรียงลำดับ (ตรวจสอบว่าฟังก์ชันรองรับ array ว่าง)
+  try {
+    return sortStaffMembersWithDepartmentHeadFirst(filteredResult);
+  } catch (error) {
+    console.error("Sorting error:", error);
+    return filteredResult; // fallback ส่งแบบไม่เรียงลำดับถ้าฟังก์ชันจัดเรียงพัง
+  }
+}, [items, q, roleFilter, statusFilter]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -360,11 +370,11 @@ const sortOrderOptions = [
   value={roleFilter}
   onChange={setRoleFilter}
   options={[
-    { value: "all", label: "ทุกประเภท" },
-    { value: "executive", label: "หัวหน้าสาขา" },
-    { value: "teacher", label: "อาจารย์ประจำ" },
-    { value: "officer", label: "เจ้าหน้าที่ธุรการประจำสาขาวิชา" },
-    { value: "lab_officer", label: "เจ้าหน้าที่ประจำห้องปฏิบัติการ" },
+    { value: "all",                           label: "ทุกประเภท" },
+    { value: "หัวหน้าสาขา",                   label: "หัวหน้าสาขา" },
+    { value: "อาจารย์ประจำ",                  label: "อาจารย์ประจำ" },
+    { value: "เจ้าหน้าที่ธุรการประจำสาขาวิชา", label: "เจ้าหน้าที่ธุรการฯ" },
+    { value: "เจ้าหน้าที่ประจำห้องปฏิบัติการ", label: "เจ้าหน้าที่ห้องปฏิบัติการ" },
   ]}
 />
         <FilterSelect

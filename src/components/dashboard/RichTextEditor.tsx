@@ -6,8 +6,6 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
-  Eye,
-  EyeOff,
   Heading1,
   Heading2,
   Heading3,
@@ -23,7 +21,6 @@ import {
   Upload,
   Underline as UnderlineIcon,
 } from "lucide-react";
-import NewsContentRenderer from "@/components/news/NewsContentRenderer";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -117,7 +114,6 @@ export default function RichTextEditor({
   const lastHtml = useRef("");
   const savedRangeRef = useRef<Range | null>(null);
 
-  const [preview, setPreview] = useState(false);
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>(DEFAULT_ACTIVE_FORMATS);
 
   const [link, setLink] = useState<LinkState>({
@@ -131,14 +127,14 @@ export default function RichTextEditor({
   useEffect(() => {
     const next = value ?? "";
 
-    if (!preview && editorRef.current) {
+    if (editorRef.current) {
       if (editorRef.current.innerHTML !== next) {
         editorRef.current.innerHTML = next;
       }
 
       lastHtml.current = next;
     }
-  }, [value, preview]);
+  }, [value]);
 
   const focusEditor = () => {
     editorRef.current?.focus();
@@ -760,24 +756,6 @@ export default function RichTextEditor({
             e.currentTarget.value = "";
           }}
         />
-
-        <div className="ml-auto">
-          <button
-            type="button"
-            onClick={() => {
-              sync();
-              setPreview((p) => !p);
-            }}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-brand-600"
-          >
-            {preview ? (
-              <EyeOff className="h-3.5 w-3.5" />
-            ) : (
-              <Eye className="h-3.5 w-3.5" />
-            )}
-            {preview ? "แก้ไข" : "Preview"}
-          </button>
-        </div>
       </div>
 
       {/* Table input bar */}
@@ -1045,7 +1023,7 @@ export default function RichTextEditor({
         </div>
       )}
 
-      {/* Editor / Preview */}
+      {/* Editor */}
       <div
         className="overflow-y-auto"
         style={{
@@ -1053,40 +1031,34 @@ export default function RichTextEditor({
           maxHeight: editorMaxHeight,
         }}
       >
-        {preview ? (
-          <div className="px-5 py-4" style={{ minHeight }}>
-            <NewsContentRenderer html={lastHtml.current} emptyText={placeholder} />
-          </div>
-        ) : (
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={() => {
-              sync();
-              saveSelection();
-            }}
-            onBlur={() => {
-              sync();
-              saveSelection();
-            }}
-            onKeyUp={() => {
-              updateActiveFormats();
-              saveSelection();
-            }}
-            onMouseUp={() => {
-              updateActiveFormats();
-              saveSelection();
-            }}
-            onFocus={() => {
-              updateActiveFormats();
-              saveSelection();
-            }}
-            data-placeholder={placeholder}
-            className="rich-editor-body news-body px-5 py-4"
-            style={{ minHeight }}
-          />
-        )}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={() => {
+            sync();
+            saveSelection();
+          }}
+          onBlur={() => {
+            sync();
+            saveSelection();
+          }}
+          onKeyUp={() => {
+            updateActiveFormats();
+            saveSelection();
+          }}
+          onMouseUp={() => {
+            updateActiveFormats();
+            saveSelection();
+          }}
+          onFocus={() => {
+            updateActiveFormats();
+            saveSelection();
+          }}
+          data-placeholder={placeholder}
+          className="rich-editor-body news-body px-5 py-4"
+          style={{ minHeight }}
+        />
       </div>
     </div>
   );

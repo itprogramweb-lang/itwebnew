@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { heroSlidesApi } from "@/frontend/api/heroSlides";
 import {
-  Plus, Pencil, EyeOff, ToggleLeft, ToggleRight, Copy,
+  Plus, Pencil, EyeOff, Copy,
   Loader2, AlertCircle, CheckCircle2, X, ImageOff,
   Trash2,
   Eye,
@@ -48,7 +48,7 @@ type FormData = {
   primary_button_url: string;
   secondary_button_text: string;
   secondary_button_url: string;
-  right_items_json: string;
+  right_items: string[];
   sort_order: number;
   is_active: boolean;
   showTitle: boolean;
@@ -80,7 +80,7 @@ const DEFAULT_FORM: FormData = {
   primary_button_url: "",
   secondary_button_text: "",
   secondary_button_url: "",
-  right_items_json: "[]",
+  right_items: [""],
   sort_order: 0,
   is_active: true,
   showTitle: true,
@@ -103,6 +103,12 @@ const DEFAULT_FORM: FormData = {
 
 function slideToForm(slide: Slide): FormData {
   const s = slide.settings ?? {};
+  const rightItems = Array.isArray(slide.right_items)
+    ? slide.right_items
+        .map((item) => (typeof item === "string" ? item : String(item ?? "")))
+        .filter((item) => item.trim().length > 0)
+    : [];
+
   return {
     title: slide.title,
     subtitle: slide.subtitle ?? "",
@@ -114,11 +120,7 @@ function slideToForm(slide: Slide): FormData {
     primary_button_url: slide.primary_button_url ?? "",
     secondary_button_text: slide.secondary_button_text ?? "",
     secondary_button_url: slide.secondary_button_url ?? "",
-    right_items_json: JSON.stringify(
-      Array.isArray(slide.right_items) ? slide.right_items : [],
-      null,
-      2
-    ),
+    right_items: rightItems.length > 0 ? rightItems : [""],
     sort_order: slide.sort_order ?? 0,
     is_active: slide.is_active ?? true,
     showTitle: typeof s.showTitle === "boolean" ? s.showTitle : true,
@@ -141,13 +143,10 @@ function slideToForm(slide: Slide): FormData {
 }
 
 function formToPayload(f: FormData) {
-  let right_items: unknown[] = [];
-  try {
-    const p = JSON.parse(f.right_items_json);
-    if (Array.isArray(p)) right_items = p;
-  } catch {
-    // keep empty
-  }
+  const right_items = f.right_items
+    .map((item) => item.trim())
+    .filter(Boolean);
+
   return {
     title: f.title.trim() || "สไลด์ไม่มีชื่อ",
     subtitle: f.subtitle.trim() || null,
@@ -181,6 +180,45 @@ function formToPayload(f: FormData) {
       contentMaxWidth: f.contentMaxWidth,
     },
   };
+}
+
+
+function getOrderOptions(slides: Slide[], currentSlideId?: string) {
+  const usedOrders = new Set(
+    slides
+      .filter((s) => s.id !== currentSlideId)
+      .map((s) => Number(s.sort_order))
+      .filter((n) => Number.isFinite(n) && n > 0)
+  );
+
+  const currentOrder = slides.find((s) => s.id === currentSlideId)?.sort_order;
+  const max = Math.max(slides.length + (currentSlideId ? 0 : 1), Number(currentOrder ?? 0), 1);
+
+  const options: { value: number; label: string; disabled: boolean }[] = [];
+  for (let order = 1; order <= max; order += 1) {
+    const locked = usedOrders.has(order);
+    options.push({
+      value: order,
+      label: locked ? `ลำดับ ${order} — ถูกใช้แล้ว` : `ลำดับ ${order}`,
+      disabled: locked,
+    });
+  }
+
+  return options;
+}
+
+function getFirstAvailableOrder(slides: Slide[]) {
+  const usedOrders = new Set(
+    slides
+      .map((s) => Number(s.sort_order))
+      .filter((n) => Number.isFinite(n) && n > 0)
+  );
+
+  for (let order = 1; order <= slides.length + 1; order += 1) {
+    if (!usedOrders.has(order)) return order;
+  }
+
+  return slides.length + 1;
 }
 
 // ─── Small UI helpers ─────────────────────────────────────────────────────────
@@ -273,41 +311,39 @@ function Toast({ toast, onClose }: { toast: { type: "success" | "error"; message
 // ─── Slide Modal ──────────────────────────────────────────────────────────────
 
 function SlideModal({
-  open, slide, maxOrder, onClose, onSave,
+  open, slide, slides, onClose, onSave,
 }: {
   open: boolean;
   slide: Slide | null;
-  maxOrder: number;
+  slides: Slide[];
   onClose: () => void;
   onSave: (payload: ReturnType<typeof formToPayload>, id?: string) => Promise<void>;
 }) {
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [tab, setTab] = useState<"main" | "settings">("main");
   const [saving, setSaving] = useState(false);
-  const [jsonError, setJsonError] = useState("");
+  const orderOptions = getOrderOptions(slides, slide?.id);
 
   useEffect(() => {
     if (open) {
-      setForm(slide ? slideToForm(slide) : { ...DEFAULT_FORM, sort_order: maxOrder + 1 });
+      setForm(slide ? slideToForm(slide) : { ...DEFAULT_FORM, sort_order: getFirstAvailableOrder(slides) });
       setTab("main");
-      setJsonError("");
     }
-  }, [open, slide, maxOrder]);
+  }, [open, slide, slides]);
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleSave = async () => {
-    try {
-      const parsed = JSON.parse(form.right_items_json);
-      if (!Array.isArray(parsed)) throw new Error("ต้องเป็น array");
-      setJsonError("");
-    } catch {
-      setJsonError("JSON ไม่ถูกต้อง — ต้องเป็น array เช่น [] หรือ [\"ข้อความ\"]");
+    const selectedOrder = Number(form.sort_order);
+    const selectedOption = orderOptions.find((option) => option.value === selectedOrder);
+
+    if (!selectedOption || selectedOption.disabled) {
       setTab("main");
       return;
     }
+
     setSaving(true);
     try {
       await onSave(formToPayload(form), slide?.id);
@@ -447,29 +483,61 @@ function SlideModal({
               </div>
 
               <div>
-                <FL>right_items (JSON array)</FL>
-                <textarea
-                  value={form.right_items_json}
-                  onChange={(e) => { set("right_items_json", e.target.value); setJsonError(""); }}
-                  rows={4}
-                  className={cn(
-                    "w-full border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none transition bg-white resize-none",
-                    jsonError ? "border-rose-400 focus:border-rose-400" : "border-slate-200 focus:border-brand-400"
-                  )}
-                  placeholder={'["Web Developer", "Software Engineer"]'}
-                />
-                {jsonError && <p className="text-xs text-rose-500 mt-1">{jsonError}</p>}
-                <p className="text-[11px] text-slate-400 mt-1">ใส่ข้อความเป็น array เช่น {"[\"ข้อความ1\", \"ข้อความ2\"]"}</p>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <FL>รายการด้านขวา (right_items)</FL>
+                  <button
+                    type="button"
+                    onClick={() => set("right_items", [...form.right_items, ""])}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> เพิ่มรายการ
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {form.right_items.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <FInput
+                        value={item}
+                        onChange={(v) => {
+                          const nextItems = [...form.right_items];
+                          nextItems[index] = v;
+                          set("right_items", nextItems);
+                        }}
+                        placeholder={`ข้อความรายการที่ ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextItems = form.right_items.filter((_, i) => i !== index);
+                          set("right_items", nextItems.length > 0 ? nextItems : [""]);
+                        }}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 transition"
+                        title="ลบรายการนี้"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">กรอกเป็นข้อความทีละช่อง ระบบจะบันทึกเป็นรายการให้อัตโนมัติ</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <FL>ลำดับ (sort_order)</FL>
-                  <FInput
-                    type="number"
+                  <FL>ลำดับ (ล็อกไม่ให้ชนกัน)</FL>
+                  <select
                     value={form.sort_order}
-                    onChange={(v) => set("sort_order", parseInt(v) || 0)}
-                  />
+                    onChange={(e) => set("sort_order", Number(e.target.value))}
+                    className="w-full border border-slate-200 rounded-lg px-3 h-9 text-sm focus:outline-none focus:border-brand-400 bg-white"
+                  >
+                    {orderOptions.map((option) => (
+                      <option key={option.value} value={option.value} disabled={option.disabled}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-slate-400">ลำดับที่ถูกใช้แล้วจะเลือกไม่ได้ เพื่อกันสไลด์ชนลำดับกัน</p>
                 </div>
                 <div className="flex items-end pb-1">
                   <FToggle checked={form.is_active} onChange={(v) => set("is_active", v)} label="เปิดใช้งาน" />
@@ -726,15 +794,18 @@ export default function HeroSlidesDashboard() {
   const handleDuplicate = async (slide: Slide) => {
     const { id: _id, ...rest } = slide;
     try {
-      await heroSlidesApi.create({ ...rest, title: slide.title + " (สำเนา)", sort_order: slide.sort_order + 1, is_active: false });
+      await heroSlidesApi.create({
+        ...rest,
+        title: slide.title + " (สำเนา)",
+        sort_order: getFirstAvailableOrder(slides),
+        is_active: false,
+      });
       showToast("success", "ทำสำเนาเรียบร้อย");
       await loadSlides();
     } catch {
       showToast("error", "ทำสำเนาไม่สำเร็จ");
     }
   };
-
-  const maxOrder = slides.length > 0 ? Math.max(...slides.map((s) => s.sort_order ?? 0)) : 0;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -769,7 +840,7 @@ export default function HeroSlidesDashboard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {slides.map((slide) => (
+          {[...slides].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((slide) => (
             <div
               key={slide.id}
               className={cn(
@@ -884,7 +955,7 @@ export default function HeroSlidesDashboard() {
       <SlideModal
         open={modalTarget !== null}
         slide={modalTarget === "new" ? null : modalTarget}
-        maxOrder={maxOrder}
+        slides={slides}
         onClose={() => setModalTarget(null)}
         onSave={handleSave}
       />

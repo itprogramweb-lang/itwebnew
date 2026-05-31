@@ -229,12 +229,6 @@ export default function ComplaintsDashboard() {
         ))}
       </div>
 
-      <div className="flex items-start gap-2 bg-brand-50/50 border border-brand-100 rounded-2xl px-4 py-3 mb-4">
-        <Lock className="w-4 h-4 text-brand-600 mt-0.5 shrink-0" />
-        <p className="text-xs text-brand-900 leading-relaxed">
-          ข้อมูลมาจากตาราง Supabase `complaints` และเข้าถึงได้เฉพาะผู้ใช้ที่มีสิทธิ์
-        </p>
-      </div>
 
       <SearchFilter value={q} onChange={setQ} placeholder="ค้นหาจากเลขที่/หัวข้อ/รายละเอียด/อีเมล...">
         <FilterSelect
@@ -259,6 +253,7 @@ export default function ComplaintsDashboard() {
             <Th>วันที่</Th>
             <Th>สถานะ</Th>
             <Th>ผู้รับผิดชอบ</Th>
+            <Th className="text-right">จัดการ</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -270,34 +265,38 @@ export default function ComplaintsDashboard() {
             filtered.map((item) => {
               const itemType = normalizeType(item.complaint_type);
               return (
-                <tr
-                  key={item.id}
-                  onClick={() => openDetail(item)}
-                  className="hover:bg-brand-50/30 cursor-pointer"
-                >
-                  <Td className="font-mono text-xs text-brand-600 whitespace-nowrap">
-                    {item.tracking_code || item.id.slice(0, 8)}
-                  </Td>
-                  <Td className="whitespace-nowrap text-xs text-slate-600">
-                    {complaintTypeLabels[itemType]}
-                  </Td>
-                  <Td>
-                    <div className="font-medium text-slate-900 line-clamp-1 max-w-xs">{item.title}</div>
-                    <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">{item.detail}</div>
-                  </Td>
-                  <Td className="text-xs text-slate-600">
-                    {item.sender_name || item.email || <span className="text-slate-400 italic">ไม่ระบุ</span>}
-                  </Td>
-                  <Td className="text-xs text-slate-500 whitespace-nowrap">
-                    {item.created_at ? formatDate(item.created_at) : "-"}
-                  </Td>
-                  <Td>
-                    <StatusBadge status={normalizeStatus(item.status)} />
-                  </Td>
-                  <Td className="text-xs text-slate-600">
-                    {item.assigned_to || <span className="text-slate-400">-</span>}
-                  </Td>
-                </tr>
+<tr key={item.id} className="hover:bg-slate-50/50">
+  <Td className="font-mono text-xs text-brand-600 whitespace-nowrap">
+    {item.tracking_code || item.id.slice(0, 8)}
+  </Td>
+  <Td className="whitespace-nowrap text-xs text-slate-600">
+    {complaintTypeLabels[itemType]}
+  </Td>
+  <Td>
+    <div className="font-medium text-slate-900 line-clamp-1 max-w-xs">{item.title}</div>
+    <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">{item.detail}</div>
+  </Td>
+  <Td className="text-xs text-slate-600">
+    {item.sender_name || item.email || <span className="text-slate-400 italic">ไม่ระบุ</span>}
+  </Td>
+  <Td className="text-xs text-slate-500 whitespace-nowrap">
+    {item.created_at ? formatDate(item.created_at) : "-"}
+  </Td>
+  <Td>
+    <StatusBadge status={normalizeStatus(item.status)} />
+  </Td>
+  <Td className="text-xs text-slate-600">
+    {item.assigned_to || <span className="text-slate-400">-</span>}
+  </Td>
+  <Td className="text-right">
+    <button
+      onClick={() => openDetail(item)}
+      className="px-3 py-1.5 rounded-lg text-xs font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 transition"
+    >
+      ดูรายละเอียด
+    </button>
+  </Td>
+</tr>
               );
             })
           )}
