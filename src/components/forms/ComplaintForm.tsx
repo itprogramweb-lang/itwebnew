@@ -198,7 +198,7 @@ export default function ComplaintForm() {
         <div className="text-sm font-medium text-slate-700 mb-3">
           ข้อมูลผู้ส่ง <span className="text-slate-400 font-normal">(ไม่บังคับ)</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="notranslate grid grid-cols-1 sm:grid-cols-2 gap-4" translate="no">
           <FormInput
             label="ชื่อ-นามสกุล"
             placeholder="ระบุได้หากต้องการให้ติดต่อกลับ"
@@ -228,7 +228,7 @@ export default function ComplaintForm() {
       </div>
 
       {/* File upload for attachment */}
-      <div className="space-y-2">
+      <div className="notranslate space-y-2" translate="no">
         <label className="block text-sm font-medium text-slate-700">
           ไฟล์แนบ <span className="text-slate-400 font-normal">(ไม่บังคับ)</span>
         </label>

@@ -15,6 +15,7 @@ import {
   type MenuItem,
 } from "@/lib/navigationMenu";
 import MobileMenu from "./MobileMenu";
+import PublicLanguageToggle, { getPublicNavLabel, usePublicLanguage } from "./PublicLanguageToggle";
 
 export type { MenuItem };
 
@@ -37,6 +38,7 @@ export default function Navbar({
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const language = usePublicLanguage();
 
 const items = dynamicMenuItems && dynamicMenuItems.length > 0
   ? dynamicMenuItems
@@ -107,8 +109,9 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
     <>
       <header
         style={{ backgroundColor: "var(--color-navbar, #020617)" }}
+        translate="no"
         className={cn(
-          "site-navbar-shell sticky top-0 z-[80] overflow-visible transition-all duration-300",
+          "notranslate site-navbar-shell sticky top-0 z-[80] overflow-visible transition-all duration-300",
           scrolled
             ? "border-b border-white/10 shadow-sm shadow-slate-950/30 backdrop-blur-md"
             : "border-b border-white/5 backdrop-blur-sm"
@@ -118,7 +121,8 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
           {/* Logo */}
           <Link
             href="/"
-            className="site-navbar-logo-link group relative z-[55] flex min-w-0 max-w-[72vw] shrink items-center gap-2.5"
+            translate="no"
+            className="notranslate site-navbar-logo-link group relative z-[55] flex min-w-0 max-w-[72vw] shrink items-center gap-2.5"
           >
             <div
               className="site-navbar-logo-slot shrink-0"
@@ -169,8 +173,20 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
           </Link>
 
           {/* Desktop menu */}
-          <nav className="relative z-[70] hidden items-center gap-1 lg:flex">
+          <nav
+            className={cn(
+              "notranslate relative z-[70] hidden min-w-0 flex-1 items-center justify-end gap-1 lg:flex",
+              isFreeLogo && "lg:ml-24 xl:ml-28"
+            )}
+            translate="no"
+          >
             {items.map((item) => {
+              const label = getPublicNavLabel({
+                href: item.type === "link" ? item.href : null,
+                label: item.label,
+                language,
+              });
+
               if (item.type === "link") {
                 if (item.external) {
                   return (
@@ -179,9 +195,10 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                       href={item.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="nav-underline flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] text-slate-200 transition-colors hover:bg-white/5 hover:text-brand-200"
+                      translate="no"
+                      className="nav-underline notranslate flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] text-slate-200 transition-colors hover:bg-white/5 hover:text-brand-200"
                     >
-                      {item.label}
+                      {label}
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   );
@@ -191,14 +208,15 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                   <Link
                     key={item.label}
                     href={item.href}
+                    translate="no"
                     className={cn(
-                      "nav-underline rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
+                      "nav-underline notranslate rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
                       isActive(item.href)
                         ? "active bg-white/[0.08] text-brand-200"
                         : "text-slate-200 hover:bg-white/5 hover:text-brand-200"
                     )}
                   >
-                    {item.label}
+                    {label}
                   </Link>
                 );
               }
@@ -218,14 +236,15 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                 >
                   <button
                     type="button"
+                    translate="no"
                     className={cn(
-                      "nav-underline flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
+                      "nav-underline notranslate flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
                       isDropdownActive || isOpen
                         ? "active bg-white/[0.08] text-brand-200"
                         : "text-slate-200 hover:bg-white/5 hover:text-brand-200"
                     )}
                   >
-                    {item.label}
+                    {label}
                     <ChevronDown
                       className={cn(
                         "h-4 w-4 transition-transform",
@@ -242,8 +261,13 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                         : "invisible -translate-y-1 opacity-0"
                     )}
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-950/10">
+                    <div className="notranslate rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-950/10" translate="no">
                       {item.items.map((sub) => {
+                        const subLabel = getPublicNavLabel({
+                          href: sub.href,
+                          label: sub.label,
+                          language,
+                        });
                         if (sub.external) {
                           return (
                             <a
@@ -251,11 +275,12 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                               href={sub.href}
                               target="_blank"
                               rel="noopener noreferrer"
+                              translate="no"
                               className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-brand-600"
                             >
                               <div>
-                                <div className="font-medium">{sub.label}</div>
-                                {sub.description && (
+                                <div className="font-medium">{subLabel}</div>
+                                {language === "th" && sub.description && (
                                   <div className="mt-0.5 text-xs text-slate-500">
                                     {sub.description}
                                   </div>
@@ -271,15 +296,16 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                           <Link
                             key={sub.href}
                             href={sub.href}
+                            translate="no"
                             className={cn(
                               "block rounded-xl px-3 py-2.5 text-sm transition-colors",
                               isActive(sub.href)
                                 ? "bg-brand-50 text-brand-600"
                                 : "text-slate-700 hover:bg-slate-50 hover:text-brand-600"
-                            )}
+                              )}
                           >
-                            <div className="font-medium">{sub.label}</div>
-                            {sub.description && (
+                            <div className="font-medium">{subLabel}</div>
+                            {language === "th" && sub.description && (
                               <div className="mt-0.5 text-xs text-slate-500">
                                 {sub.description}
                               </div>
@@ -296,6 +322,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
 
           {/* Mobile menu trigger */}
           <div className="flex items-center gap-2">
+            <PublicLanguageToggle className="hidden lg:inline-flex" />
             <button
               type="button"
               className="rounded-xl p-2 text-slate-100 hover:bg-white/10 lg:hidden"
@@ -313,6 +340,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
         onClose={() => setMobileOpen(false)}
         items={items}
         activePath={pathname}
+        language={language}
       />
     </>
   );

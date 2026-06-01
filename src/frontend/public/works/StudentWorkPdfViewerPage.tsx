@@ -203,11 +203,12 @@ export default function StudentWorkPdfViewerPage({ searchParams }: Props) {
             </Link>
 
             {hasFile && isValid && resolvedFile && (
-              <div className="flex flex-wrap gap-2">
+              <div className="notranslate flex flex-wrap gap-2" translate="no">
                 <a
                   href={resolvedFile}
                   target="_blank"
                   rel="noopener noreferrer"
+                  translate="no"
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   เปิดในแท็บใหม่
@@ -216,6 +217,7 @@ export default function StudentWorkPdfViewerPage({ searchParams }: Props) {
                 <a
                   href={resolvedFile}
                   download={filename}
+                  translate="no"
                   className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   ดาวน์โหลด PDF
@@ -240,7 +242,7 @@ export default function StudentWorkPdfViewerPage({ searchParams }: Props) {
               </p>
             </div>
           ) : resolvedFile ? (
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+            <div className="notranslate overflow-hidden rounded-3xl border border-slate-200 bg-slate-100" translate="no">
               <object data={resolvedFile} type="application/pdf" className="h-[72vh] min-h-[420px] w-full sm:min-h-[520px]">
                 <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
                   <FileWarning className="mb-4 h-10 w-10 text-slate-300" />
