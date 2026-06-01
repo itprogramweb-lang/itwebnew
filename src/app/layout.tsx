@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ThemeLoader from "@/components/ThemeLoader";
+import PublicAutoTranslateProvider from "@/components/PublicAutoTranslateProvider";
 import { getPublicNavigationItems } from "@/backend/services/navigation";
 import { getBranding } from "@/lib/branding";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
@@ -66,6 +67,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
         <ThemeLoader />
+        <PublicAutoTranslateProvider />
         <Navbar branding={branding} menuItems={navbarMenuItems} />
         <main className="flex-1">{children}</main>
         <Footer branding={branding} />

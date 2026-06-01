@@ -37,7 +37,7 @@ const facebookUrl = siteData.facebook;
         <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
+            <div className="notranslate flex items-center gap-2.5 mb-4" translate="no">
               {b.showLogo && b.logoUrl ? (
                 <div style={logoWrapper}>
                   <img src={b.logoUrl} alt={b.logoAlt} style={logoImgStyle} />
@@ -56,7 +56,7 @@ const facebookUrl = siteData.facebook;
                 </div>
               )}
             </div>
-            <p className="text-sm leading-relaxed text-slate-300">
+            <p className="notranslate text-sm leading-relaxed text-slate-300" translate="no">
               {b.departmentNameTh}
             </p>
             {facebookUrl && (
@@ -65,6 +65,7 @@ const facebookUrl = siteData.facebook;
                   href={facebookUrl}
                   target="_blank"
                   rel="noreferrer noopener"
+                  translate="no"
                   className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-slate-200 transition-colors hover:bg-brand-500/20 hover:text-brand-200"
                   aria-label="Facebook"
                 >
@@ -114,13 +115,13 @@ const facebookUrl = siteData.facebook;
             <h4 className="text-white font-semibold mb-4">ติดต่อสาขา</h4>
             <ul className="space-y-3 text-sm">
               {address && (
-                <li className="flex gap-2.5">
+                <li className="notranslate flex gap-2.5" translate="no">
                   <MapPin className="w-4 h-4 mt-0.5 text-brand-400 shrink-0" />
                   <span className="leading-relaxed">{address}</span>
                 </li>
               )}
               {phone && (
-                <li className="flex items-center gap-2.5">
+                <li className="notranslate flex items-center gap-2.5" translate="no">
                   <Phone className="w-4 h-4 text-brand-400 shrink-0" />
                   <span>{phone}</span>
                 </li>
@@ -134,7 +135,7 @@ const facebookUrl = siteData.facebook;
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-center text-xs text-slate-400 sm:flex-row sm:text-left">
-          <p className="leading-relaxed">
+          <p className="notranslate leading-relaxed" translate="no">
             © {new Date().getFullYear()} {b.departmentNameTh} •{" "}
             {b.universityNameTh}
           </p>

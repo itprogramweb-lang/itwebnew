@@ -165,7 +165,7 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-slate-50">
+      <div className="notranslate min-h-screen grid place-items-center bg-slate-50" translate="no">
         <div className="text-sm text-slate-500">กำลังโหลด...</div>
       </div>
     );
@@ -191,7 +191,7 @@ export default function DashboardLayout({
 
   if (!canViewDashboard) {
     return (
-      <div className="min-h-screen bg-slate-50 p-4">
+      <div className="notranslate min-h-screen bg-slate-50 p-4" translate="no">
         <div className="max-w-md mx-auto mt-10 bg-white border border-slate-100 rounded-3xl p-8 text-center">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-50 grid place-items-center text-slate-500 mb-4">
             <ShieldAlert className="w-7 h-7" />
@@ -215,14 +215,14 @@ export default function DashboardLayout({
 
   if (isComplaintsRoute && !staticHasAccess && complaintAccessLoading) {
     return (
-      <div className="min-h-screen grid place-items-center bg-slate-50">
+      <div className="notranslate min-h-screen grid place-items-center bg-slate-50" translate="no">
         <div className="text-sm text-slate-500">กำลังตรวจสอบสิทธิ์...</div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden">
+    <div className="notranslate h-screen bg-slate-50 flex overflow-hidden" translate="no">
       <DashboardSidebar
         user={user}
         canViewComplaints={complaintAccess.canViewComplaints}

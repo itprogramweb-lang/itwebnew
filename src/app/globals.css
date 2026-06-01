@@ -383,3 +383,15 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 640px;
   margin: 0;
 }
+
+/* Hide the default Google Translate UI; the public site uses its own TH/EN toggle. */
+.public-google-translate-element,
+.goog-te-banner-frame,
+.goog-te-gadget,
+body > .skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
