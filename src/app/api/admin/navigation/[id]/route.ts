@@ -73,17 +73,41 @@ export async function DELETE(
   const auth = await requireNavigationManager(request);
   if (auth.error) return auth.error;
 
+  const mode = request.nextUrl.searchParams.get("mode");
+  const hardDelete = mode === "hard";
+
   const { admin, data: current, error: currentError } = await getNavigationItem(params.id);
   if (currentError) return NextResponse.json({ error: "โหลดเมนูไม่สำเร็จ" }, { status: 500 });
   if (!current) return NextResponse.json({ error: "ไม่พบเมนู" }, { status: 404 });
 
   if (current.is_core) {
-    return NextResponse.json({ error: "ไม่สามารถลบเมนูหลักของระบบได้" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error: hardDelete
+          ? "เมนูหลักของระบบไม่สามารถลบถาวรได้"
+          : "เมนูหลักของระบบไม่สามารถซ่อนด้วยปุ่มนี้ได้",
+      },
+      { status: 403 }
+    );
   }
 
   const hasChildren = await navigationItemHasChildren(params.id);
   if (hasChildren) {
-    return NextResponse.json({ error: "ไม่สามารถลบเมนูที่มีเมนูย่อยได้" }, { status: 400 });
+    return NextResponse.json({ error: "รายการนี้มีเมนูย่อย ต้องจัดการเมนูย่อยก่อน" }, { status: 400 });
+  }
+
+  if (hardDelete) {
+    const { error } = await admin
+      .from("navigation_items")
+      .delete()
+      .eq("id", params.id);
+
+    if (error) {
+      console.error("Admin navigation hard DELETE failed:", error.message);
+      return NextResponse.json({ error: "ลบเมนูถาวรไม่สำเร็จ" }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, deleted: true });
   }
 
   const { error } = await admin
@@ -93,7 +117,7 @@ export async function DELETE(
 
   if (error) {
     console.error("Admin navigation DELETE failed:", error.message);
-    return NextResponse.json({ error: "ปิดใช้งานเมนูไม่สำเร็จ" }, { status: 500 });
+    return NextResponse.json({ error: "ซ่อนเมนูไม่สำเร็จ" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, disabled: true });

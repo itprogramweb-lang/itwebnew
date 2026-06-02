@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CheckCircle2, Loader2, AlertCircle, LayoutTemplate, Save } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, LayoutTemplate, Save, Trash2 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import ImageCropControls from "@/components/dashboard/ImageCropControls";
@@ -250,6 +250,9 @@ const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm shadow-slate-950/[0.03]">
             <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
               <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">หน้าเว็บ</p>
+              <p className="mt-1 text-xs text-slate-500">
+                ส่วนนี้เป็นการตั้งค่าและซ่อน/เปิดแสดงหน้าหลักของระบบ ไม่ใช่การลบถาวร
+              </p>
             </div>
             {loadingList ? (
               <div className="p-6 flex justify-center">
@@ -302,19 +305,30 @@ const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
                   </p>
                   <code className="text-[11px] text-slate-400">{selectedKey}</code>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  บันทึก
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled
+                    title="หน้าหลักของระบบไม่สามารถลบถาวรได้"
+                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    ลบถาวร
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    บันทึก
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 space-y-6">
@@ -469,7 +483,7 @@ const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
                 </section>
 
                 <section>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">การแสดงผลในเมนู</h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-3">การแสดงผลหน้าเว็บ</h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
@@ -478,8 +492,11 @@ const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
                         onChange={(e) => setField("is_active", e.target.checked)}
                         className="h-4 w-4 rounded border-slate-300 accent-brand-500"
                       />
-                      <span className="text-sm text-slate-700">เปิดใช้งานหน้า / page settings</span>
+                      <span className="text-sm text-slate-700">เปิดแสดงหน้าเว็บไซต์</span>
                     </label>
+                    <p className="text-xs text-slate-500 sm:col-span-2">
+                      หากปิดไว้ ระบบจะซ่อนการตั้งค่าหน้านี้จากส่วน public ที่อ้าง page_settings แต่จะไม่ลบข้อมูลหน้าออกจากฐานข้อมูล
+                    </p>
 
                     <div>
                       <label className="block text-xs font-medium text-slate-600 mb-1.5">

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
-  Eye,
   EyeOff,
   Pencil,
   RotateCcw,
@@ -15,6 +14,7 @@ import {
   createNavigationItem,
   deleteNavigationItem,
   fetchNavigationItems,
+  hideNavigationItem,
   resetNavigationItems,
   updateNavigationItem,
   type NavigationItemPayload,
@@ -111,7 +111,8 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
   const [form, setForm] = useState<NavigationForm>(emptyNavigationForm());
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [hideId, setHideId] = useState<string | null>(null);
+  const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -241,27 +242,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
     }
   }
 
-  async function handleToggleActive(item: NavigationItem) {
-    try {
-      const updated = await updateNavigationItem(item.id, {
-        label: item.label,
-        href: item.href,
-        type: item.type,
-        parent_id: item.parent_id,
-        sort_order: item.sort_order,
-        is_active: item.is_active === false,
-        is_external: item.is_external,
-        location: item.location,
-        target: item.target,
-        description: item.description,
-      });
-      setItems((prev) => prev.map((current) => (current.id === item.id ? updated : current)));
-      showToast(updated.is_active ? "เปิดใช้งานเมนูแล้ว" : "ปิดใช้งานเมนูแล้ว");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "เปลี่ยนสถานะไม่สำเร็จ", false);
-    }
-  }
-
   async function handleSortOrderChange(item: NavigationItem, value: string) {
     const sortOrder = Number(value);
     if (!Number.isFinite(sortOrder) || sortOrder < 0) {
@@ -317,18 +297,31 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
     }
   }
 
-  async function handleDelete() {
-    if (!deleteId) return;
+  async function handleHide() {
+    if (!hideId) return;
     try {
-      await deleteNavigationItem(deleteId);
+      await hideNavigationItem(hideId);
       setItems((prev) =>
-        prev.map((item) => (item.id === deleteId ? { ...item, is_active: false } : item))
+        prev.map((item) => (item.id === hideId ? { ...item, is_active: false } : item))
       );
-      showToast("ปิดใช้งานเมนูแล้ว");
+      showToast("ซ่อนเมนูจากหน้าเว็บไซต์แล้ว");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "ลบเมนูไม่สำเร็จ", false);
+      showToast(error instanceof Error ? error.message : "ซ่อนเมนูไม่สำเร็จ", false);
     } finally {
-      setDeleteId(null);
+      setHideId(null);
+    }
+  }
+
+  async function handleHardDelete() {
+    if (!hardDeleteId) return;
+    try {
+      await deleteNavigationItem(hardDeleteId);
+      setItems((prev) => prev.filter((item) => item.id !== hardDeleteId));
+      showToast("ลบเมนูถาวรแล้ว");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "ลบเมนูถาวรไม่สำเร็จ", false);
+    } finally {
+      setHardDeleteId(null);
     }
   }
 
@@ -374,7 +367,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
             เมนู Navbar และ MobileMenu ใช้ข้อมูลจากหน้านี้แล้ว ส่วน Footer ยังใช้โครงสร้างเดิมอยู่
           </p>
           <p>
-            ถ้าข้อมูลเมนูโหลดไม่ได้ หน้าเว็บจะใช้เมนูสำรองเดิมอัตโนมัติ เมนูหลัก (Core Item) ไม่สามารถลบได้ แต่ยังสามารถปรับลำดับหรือปิดการใช้งานได้ตามปกติ และสามารถรีเซตเป็นค่าเริ่มต้นได้เสมอ
+            ถ้าข้อมูลเมนูโหลดไม่ได้ หน้าเว็บจะใช้เมนูสำรองเดิมอัตโนมัติ เมนูหลัก (Core Item) ไม่สามารถลบถาวรได้ แต่ยังสามารถปรับลำดับหรือซ่อนจากหน้าเว็บไซต์ได้ตามปกติ และสามารถรีเซตเป็นค่าเริ่มต้นได้เสมอ
           </p>
         </div>
       </div>
@@ -449,7 +442,8 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
             ) : (
               filtered.map((item) => {
                 const childCount = childCounts.get(item.id) ?? 0;
-                const deleteDisabled = item.is_core || childCount > 0;
+                const hideDisabled = item.is_core || childCount > 0;
+                const hardDeleteDisabled = item.is_core || childCount > 0;
                 const group = sortNavigationGroup(
                   items.filter((current) => getNavigationGroupKey(current) === getNavigationGroupKey(item))
                 );
@@ -510,14 +504,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                       <div className="inline-flex gap-1">
                         <button
                           type="button"
-                          onClick={() => handleToggleActive(item)}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-600"
-                          title={item.is_active !== false ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                        >
-                          {item.is_active !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => openEdit(item)}
                           className="rounded-lg p-2 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600"
                           title="แก้ไข"
@@ -526,15 +512,30 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                         </button>
                         <button
                           type="button"
-                          onClick={() => !deleteDisabled && setDeleteId(item.id)}
-                          disabled={deleteDisabled}
+                          onClick={() => !hideDisabled && setHideId(item.id)}
+                          disabled={hideDisabled}
                           className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
                           title={
                             item.is_core
-                              ? "เมนูหลักไม่สามารถลบได้"
+                              ? "เมนูหลักของระบบไม่สามารถซ่อนด้วยปุ่มนี้ได้"
                               : childCount > 0
-                                ? "เมนูที่มีเมนูย่อยยังลบไม่ได้"
-                                : "ปิดใช้งานเมนู"
+                                ? "รายการนี้มีเมนูย่อย ต้องจัดการเมนูย่อยก่อน"
+                                : "ซ่อนเมนู"
+                          }
+                        >
+                          <EyeOff className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => !hardDeleteDisabled && setHardDeleteId(item.id)}
+                          disabled={hardDeleteDisabled}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                          title={
+                            item.is_core
+                              ? "เมนูหลักของระบบไม่สามารถลบถาวรได้"
+                              : childCount > 0
+                                ? "ต้องจัดการเมนูย่อยก่อน"
+                                : "ลบถาวร"
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -703,13 +704,23 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
       )}
 
       <ConfirmModal
-        open={!!deleteId}
-        title="ปิดใช้งานเมนูนี้?"
-        description="ระบบจะ soft delete โดยตั้งค่า is_active = false ข้อมูลยังอยู่ในระบบ"
+        open={!!hideId}
+        title="ซ่อนเมนูนี้?"
+        description="การซ่อนจะไม่ลบข้อมูลถาวร เมนูนี้จะถูกซ่อนจากหน้าเว็บไซต์และสามารถเปิดกลับมาได้จากรายการซ่อนอยู่"
         variant="warning"
-        confirmLabel="ปิดใช้งาน"
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
+        confirmLabel="ซ่อนเมนู"
+        onClose={() => setHideId(null)}
+        onConfirm={handleHide}
+      />
+
+      <ConfirmModal
+        open={!!hardDeleteId}
+        title="ลบเมนูถาวร?"
+        description="ลบถาวรจากระบบ ไม่สามารถกู้คืนได้"
+        variant="danger"
+        confirmLabel="ลบถาวร"
+        onClose={() => setHardDeleteId(null)}
+        onConfirm={handleHardDelete}
       />
 
       <ConfirmModal

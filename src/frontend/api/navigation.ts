@@ -62,8 +62,14 @@ export async function updateNavigationItem(
   return data.navigation_item;
 }
 
-export async function deleteNavigationItem(id: string): Promise<void> {
+export async function hideNavigationItem(id: string): Promise<void> {
   await request<{ ok: boolean }>(`/api/admin/navigation/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteNavigationItem(id: string): Promise<void> {
+  await request<{ ok: boolean }>(`/api/admin/navigation/${encodeURIComponent(id)}?mode=hard`, {
     method: "DELETE",
   });
 }

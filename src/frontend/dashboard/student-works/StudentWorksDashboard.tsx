@@ -151,13 +151,13 @@ const toPayload = (f: FormData) => {
     advisor_name: f.advisor_name.trim() || null,
     technologies: splitArr(f.technologies_raw),
     image_url: f.image_url.trim() || null,
-    image_alt: f.image_alt.trim() || null,
+    image_alt: f.image_alt.trim() || f.title.trim() || null,
     pdf_url: f.pdf_url.trim() || null,
     pdf_filename: f.pdf_filename.trim() || null,
     image_crop_settings: cropToJson(f.image_crop_settings),
     project_url: f.project_url.trim() || null,
     external_url: f.external_url.trim() || null,
-    source_type: f.source_type || null,
+    source_type: f.source_type || "internal",
     source_system: f.source_system.trim() || null,
     sort_order: f.sort_order !== "" ? Number(f.sort_order) : null,
     is_featured: f.is_featured,
@@ -652,8 +652,6 @@ export default function StudentWorksDashboard() {
                 <div className="sm:col-span-2">
                   <FormInput label="ชื่อผลงาน *" {...FI("title")} />
                 </div>
-                <FormInput label="URL รูปภาพ" {...FI("image_url")} />
-                <FormInput label="Alt รูปภาพ" {...FI("image_alt")} />
               </div>
 
               <FormTextarea label="รายละเอียด" rows={3} {...FT("description")} />
@@ -711,47 +709,6 @@ export default function StudentWorksDashboard() {
                 {...FT("technologies_raw")}
               />
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>แหล่งที่มา</Label>
-                  <FormSelect
-                    label=""
-                    value={form.source_type}
-                    onChange={(e) => setForm((p) => ({ ...p, source_type: e.target.value }))}
-                    options={[
-                      { value: "internal", label: "ภายใน (อัปโหลดเอง)" },
-                      { value: "external", label: "ภายนอก (ลิงก์)" },
-                    ]}
-                  />
-                </div>
-                <FormInput label="ระบบที่มา (เช่น GitHub, Figma)" {...FI("source_system")} />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <FormInput label="URL โปรเจกต์" {...FI("project_url")} />
-                <div>
-                  <FormInput label="URL ภายนอก" {...FI("external_url")} />
-                  {form.source_type === "external" && !form.external_url && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      แนะนำ: กรอก URL ภายนอกสำหรับผลงานที่มาจากลิงก์
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="URL / Path ไฟล์ PDF"
-                  placeholder="final-projects/2567/student-work.pdf"
-                  {...FI("pdf_url")}
-                />
-                <FormInput
-                  label="ชื่อไฟล์ PDF ตอนดาวน์โหลด"
-                  placeholder="student-work.pdf"
-                  {...FI("pdf_filename")}
-                />
-              </div>
-
               <div className="rounded-2xl border border-slate-200 p-4">
                 <Label>อัปโหลด PDF ไปยัง Cloudflare R2</Label>
                 <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -774,12 +731,66 @@ export default function StudentWorksDashboard() {
                     {pdfUploading ? "กำลังอัปโหลด..." : "อัปโหลด PDF"}
                   </button>
                 </div>
+                {form.pdf_filename && (
+                  <p className="mt-2 text-xs text-slate-500">ไฟล์ PDF ปัจจุบัน: {form.pdf_filename}</p>
+                )}
                 {pdfUploadMessage && (
                   <p className={`mt-2 text-xs ${pdfUploadMessage.ok ? "text-emerald-600" : "text-rose-600"}`}>
                     {pdfUploadMessage.msg}
                   </p>
                 )}
               </div>
+
+              <details className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+                  ตัวเลือกขั้นสูง
+                </summary>
+                <p className="mt-2 text-xs text-slate-500">
+                  ปกติไม่ต้องกรอก ส่วนนี้ใช้เฉพาะกรณีมีลิงก์ภายนอกหรือข้อมูลจากระบบอื่น
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label>แหล่งที่มา</Label>
+                    <FormSelect
+                      label=""
+                      value={form.source_type}
+                      onChange={(e) => setForm((p) => ({ ...p, source_type: e.target.value }))}
+                      options={[
+                        { value: "internal", label: "ภายใน (อัปโหลดเอง)" },
+                        { value: "external", label: "ภายนอก (ลิงก์)" },
+                      ]}
+                    />
+                  </div>
+                  <FormInput label="ระบบที่มา (เช่น GitHub, Figma)" {...FI("source_system")} />
+                  <FormInput label="URL โปรเจกต์" {...FI("project_url")} />
+                  <div>
+                    <FormInput label="URL ภายนอก" {...FI("external_url")} />
+                    {form.source_type === "external" && !form.external_url && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        แนะนำ: กรอก URL ภายนอกสำหรับผลงานที่มาจากลิงก์
+                      </p>
+                    )}
+                  </div>
+                  <FormInput label="URL รูปภาพ" {...FI("image_url")} />
+                  <FormInput label="Alt รูปภาพ" {...FI("image_alt")} />
+                  <div>
+                    <Label>URL / Path ไฟล์ PDF</Label>
+                    <input
+                      value={form.pdf_url}
+                      readOnly
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <Label>ชื่อไฟล์ PDF ตอนดาวน์โหลด</Label>
+                    <input
+                      value={form.pdf_filename}
+                      readOnly
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm text-slate-600"
+                    />
+                  </div>
+                </div>
+              </details>
 
               <div className="flex items-center gap-6 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
