@@ -118,7 +118,7 @@ export default async function NewsListPage() {
                   >
                     <article className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.04] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-slate-950/[0.08]">
                       <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
-                        <div className="relative aspect-[16/9] overflow-hidden bg-slate-50 lg:h-full lg:min-h-[360px]">
+                       <div className="relative aspect-[16/9] max-h-[320px] overflow-hidden bg-slate-50 lg:h-[320px]">
                           {featured.image_url ? (
                             <CroppedImage
                               src={featured.image_url}
@@ -137,7 +137,7 @@ export default async function NewsListPage() {
                           </div>
                         </div>
 
-                        <div className="flex min-h-[360px] flex-col p-6 sm:p-8 lg:p-9">
+                       <div className="flex flex-col p-6 sm:p-8 lg:p-9">
                           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                             {featured.category && (
                               <span
