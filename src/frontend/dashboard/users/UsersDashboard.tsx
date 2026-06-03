@@ -26,6 +26,10 @@ import {
   type UserPermissionOverride,
   type UserPermissionsResponse,
 } from "@/frontend/api/users";
+import {
+  getPermissionLabelMeta,
+  groupPermissionsForDisplay,
+} from "./permissionLabels";
 
 type AdminUser = {
   id: string;
@@ -52,86 +56,12 @@ type ConfirmAction =
 
 type PermissionSelection = "role" | "allow" | "deny";
 
-type PermissionGroup = {
-  title: string;
-  permissions: string[];
-};
-
-const permissionGroups: PermissionGroup[] = [
-  {
-    title: "ภาพรวมแดชบอร์ด",
-    permissions: ["view_dashboard", "view_own_profile"],
-  },
-  {
-    title: "ผู้ใช้งาน / สิทธิ์",
-    permissions: ["manage_users", "manage_permissions"],
-  },
-  {
-    title: "หน้าเว็บ / เมนู / ตั้งค่า",
-    permissions: ["manage_pages", "manage_settings"],
-  },
-  {
-    title: "ข่าว / Hero",
-    permissions: ["manage_news", "manage_hero_slides"],
-  },
-  {
-    title: "บุคลากร / หลักสูตร / รายวิชา",
-    permissions: [
-      "manage_staff",
-      "manage_programs",
-      "manage_registration",
-      "manage_loan",
-      "manage_welfare",
-    ],
-  },
-  {
-    title: "ผลงาน",
-    permissions: [
-      "manage_works",
-      "manage_student_works",
-      "manage_teacher_works",
-      "edit_own_teacher_works",
-      "edit_advised_student_works",
-    ],
-  },
-  {
-    title: "ข้อร้องเรียน",
-    permissions: [
-      "manage_complaints",
-      "view_complaints",
-      "view_all_complaints",
-      "view_own_complaints",
-      "change_complaint_status_all",
-      "change_complaint_status_partial",
-    ],
-  },
-];
-
 const dangerousPermissions = new Set([
   "manage_users",
   "manage_permissions",
   "manage_settings",
   "manage_pages",
 ]);
-
-function buildPermissionGroups(allPermissions: string[]) {
-  const known = new Set(permissionGroups.flatMap((group) => group.permissions));
-  const groups = permissionGroups
-    .map((group) => ({
-      ...group,
-      permissions: group.permissions.filter((permission) =>
-        allPermissions.includes(permission)
-      ),
-    }))
-    .filter((group) => group.permissions.length > 0);
-  const otherPermissions = allPermissions.filter((permission) => !known.has(permission));
-
-  if (otherPermissions.length > 0) {
-    groups.push({ title: "อื่น ๆ", permissions: otherPermissions });
-  }
-
-  return groups;
-}
 
 function selectionsFromOverrides(overrides: UserPermissionOverride[]) {
   return overrides.reduce<Record<string, PermissionSelection>>((acc, override) => {
@@ -219,7 +149,7 @@ function PermissionModal({
   const allPermissions = data?.all_permissions ?? [];
   const basePermissions = new Set(data?.base_permissions ?? []);
   const effectivePermissions = new Set(data?.effective_permissions ?? []);
-  const groupedPermissions = buildPermissionGroups(allPermissions);
+  const groupedPermissions = groupPermissionsForDisplay(allPermissions);
   const hasDangerousAllow = Object.entries(selections).some(
     ([permission, selection]) =>
       selection === "allow" && dangerousPermissions.has(permission)
@@ -269,7 +199,7 @@ function PermissionModal({
           ) : (
             <div className="space-y-4">
               <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
-                หมายเหตุ: การตั้งค่านี้จะมีผลเต็มรูปแบบหลังจากเชื่อมระบบตรวจสิทธิ์ในรอบถัดไป
+                สิทธิ์จะแสดงเป็นชื่อเมนู/งานเพื่อให้ง่ายต่อการจัดการ โดยระบบยังใช้รหัสสิทธิ์เดิมภายใน
               </div>
 
               {data?.warning && (
@@ -306,15 +236,20 @@ function PermissionModal({
                       const selection = selections[permission] ?? "role";
                       const fromRole = basePermissions.has(permission);
                       const finalAllowed = effectivePermissions.has(permission);
+                      const meta = getPermissionLabelMeta(permission);
 
                       return (
                         <div
                           key={permission}
+                          title={permission}
                           className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto]"
                         >
                           <div className="min-w-0">
-                            <div className="break-words font-mono text-sm text-slate-900">
-                              {permission}
+                            <div className="break-words text-sm font-semibold text-slate-900">
+                              {meta.labelTh}
+                            </div>
+                            <div className="mt-1 text-xs leading-5 text-slate-500">
+                              {meta.descriptionTh}
                             </div>
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {fromRole ? (
