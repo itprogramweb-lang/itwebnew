@@ -66,6 +66,7 @@ type LocationFilter = (typeof locationTabs)[number]["value"];
 function toPayload(form: NavigationForm): NavigationItemPayload {
   return {
     label: form.label.trim(),
+    label_en: form.label_en.trim() || null,
     href: form.href.trim() || null,
     type: form.type,
     parent_id: form.parent_id || null,
@@ -75,6 +76,7 @@ function toPayload(form: NavigationForm): NavigationItemPayload {
     location: form.location,
     target: form.target || null,
     description: form.description.trim() || null,
+    description_en: form.description_en.trim() || null,
   };
 }
 
@@ -127,6 +129,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
       const matchesQ =
         !query ||
         item.label.toLowerCase().includes(query) ||
+        (item.label_en ?? "").toLowerCase().includes(query) ||
         (item.href ?? "").toLowerCase().includes(query) ||
         item.location.toLowerCase().includes(query);
       const matchesLocation = locationFilter === "all" || item.location === locationFilter;
@@ -260,6 +263,8 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
         location: item.location,
         target: item.target,
         description: item.description,
+        label_en: item.label_en,
+        description_en: item.description_en,
       });
       setItems((prev) => prev.map((current) => (current.id === item.id ? updated : current)));
       showToast("อัปเดตลำดับเรียบร้อยแล้ว");
@@ -464,6 +469,9 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                           {isChild ? "↳ " : ""}
                           {item.label}
                         </div>
+                        {item.label_en && (
+                          <div className="text-xs text-slate-500">{item.label_en}</div>
+                        )}
                         <div className="flex flex-wrap gap-1">
                           {item.is_core && <Badge tone="brand">เมนูหลัก</Badge>}
                           {item.is_external && <Badge tone="amber">external</Badge>}
@@ -586,12 +594,21 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormInput
-                    label="ชื่อเมนู"
+                    label="ชื่อเมนูภาษาไทย"
                     required
                     value={form.label}
                     onChange={(event) => setField("label", event.target.value)}
                     placeholder="เช่น สมัครเรียน"
                   />
+                  <FormInput
+                    label="ชื่อเมนูภาษาอังกฤษ"
+                    value={form.label_en}
+                    onChange={(event) => setField("label_en", event.target.value)}
+                    placeholder="เช่น Admissions"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
                   <FormSelect
                     label="ชนิดเมนู"
                     value={form.type}
@@ -682,11 +699,19 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                 </div>
 
                 <FormTextarea
-                  label="คำอธิบาย"
+                  label="คำอธิบายภาษาไทย"
                   value={form.description}
                   onChange={(event) => setField("description", event.target.value)}
                   rows={3}
                   placeholder="ใช้แสดงรายละเอียดของ dropdown หรือบันทึกช่วยจำ"
+                />
+
+                <FormTextarea
+                  label="คำอธิบายภาษาอังกฤษ"
+                  value={form.description_en}
+                  onChange={(event) => setField("description_en", event.target.value)}
+                  rows={3}
+                  placeholder="ใช้แสดงรายละเอียดภาษาอังกฤษของ dropdown"
                 />
               </div>
 

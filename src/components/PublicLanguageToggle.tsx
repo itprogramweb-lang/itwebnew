@@ -38,33 +38,36 @@ export function usePublicLanguage() {
 export function getPublicNavLabel({
   href,
   label,
+  labelEn,
   language,
 }: {
   href?: string | null;
   label: string;
+  labelEn?: string | null;
   language: PublicLanguage;
 }) {
   if (language !== "en") return label;
+  if (labelEn?.trim()) return labelEn.trim();
 
   const byHref: Record<string, string> = {
     "/": "Home",
     "/apply": "Admissions",
     "/news": "News",
-    "/about": "About",
-    "/about/staff": "Staff",
-    "/about/facilities": "Facilities",
+    "/about": "About the Department",
+    "/about/staff": "Faculty and Staff",
+    "/about/facilities": "Facilities and Laboratories",
     "/about/contact": "Contact",
-    "/programs/bachelor": "Bachelor",
-    "/programs/master": "Master",
+    "/programs/bachelor": "Undergraduate Program",
+    "/programs/master": "Graduate Program",
     "/works/students": "Student Works",
     "/works/students/final-projects": "Thesis",
     "/works/students/course": "Course Works",
-    "/works/teachers": "Teacher Works",
+    "/works/teachers": "Faculty Works",
     "/students/registration": "Registration",
     "/students/registrar": "Registrar",
-    "/students/loan": "Student Loan",
-    "/students/welfare": "Student Services",
-    "/students/complaint": "Complaint",
+    "/students/loan": "Student Loan Fund",
+    "/students/welfare": "Student Welfare",
+    "/students/complaint": "Complaints and Feedback",
   };
 
   const byLabel: Record<string, string> = {
@@ -74,24 +77,24 @@ export function getPublicNavLabel({
     "เกี่ยวกับสาขา": "About",
     "หลักสูตร": "Programs",
     "ผลงาน": "Works",
-    "นักศึกษาปัจจุบัน": "Students",
-    "บุคลากร": "Staff",
-    "อุปกรณ์การเรียนและห้องปฏิบัติการ": "Facilities",
-    "อุปกรณ์และห้องปฏิบัติการ": "Facilities",
+    "นักศึกษาปัจจุบัน": "Current Students",
+    "บุคลากร": "Faculty and Staff",
+    "อุปกรณ์การเรียนและห้องปฏิบัติการ": "Facilities and Laboratories",
+    "อุปกรณ์และห้องปฏิบัติการ": "Facilities and Laboratories",
     "ติดต่อ": "Contact",
-    "ปริญญาตรี": "Bachelor",
-    "ปริญญาโท": "Master",
+    "ปริญญาตรี": "Undergraduate Program",
+    "ปริญญาโท": "Graduate Program",
     "ผลงานนักศึกษา": "Student Works",
     "ปริญญานิพนธ์": "Thesis",
     "ผลงานรายวิชา": "Course Works",
-    "ผลงานอาจารย์": "Teacher Works",
+    "ผลงานอาจารย์": "Faculty Works",
     "ทะเบียน": "Registration",
     "ลงทะเบียนเรียน": "Registration",
-    "กยศ.": "Student Loan",
-    "สวัสดิการ": "Student Services",
-    "สวัสดิการนักศึกษา": "Student Services",
-    "ร้องเรียน/ความคิดเห็น": "Complaint",
-    "ข้อร้องเรียน": "Complaint",
+    "กยศ.": "Student Loan Fund",
+    "สวัสดิการ": "Student Welfare",
+    "สวัสดิการนักศึกษา": "Student Welfare",
+    "ร้องเรียน/ความคิดเห็น": "Complaints and Feedback",
+    "ข้อร้องเรียน": "Complaints and Feedback",
   };
 
   if (href && byHref[href]) return byHref[href];

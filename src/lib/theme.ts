@@ -40,8 +40,11 @@ export function getContrastText(hex: string): string {
 }
 
 export function themeToCSS(t: SiteTheme): string {
+  const buttonText = getContrastText(t.buttonColor);
+  const primaryText = getContrastText(t.primaryColor);
   return [
     `--color-primary:${t.primaryColor}`,
+    `--color-primary-text:${primaryText}`,
     `--color-secondary:${t.secondaryColor}`,
     `--color-accent:${t.accentColor}`,
     `--color-background:${t.backgroundColor}`,
@@ -49,6 +52,7 @@ export function themeToCSS(t: SiteTheme): string {
     `--color-navbar:${t.navbarColor}`,
     `--color-footer:${t.footerColor}`,
     `--color-button:${t.buttonColor}`,
+    `--color-button-text:${buttonText}`,
     `--color-hero-overlay:${t.heroOverlayColor}`,
   ].join(";");
 }

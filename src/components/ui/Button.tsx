@@ -21,11 +21,11 @@ interface Props {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-brand-gradient text-white shadow-sm shadow-orange-900/20 hover:brightness-105 active:scale-[0.98]",
+    "bg-site-button shadow-sm shadow-site-primary hover:brightness-105 active:scale-[0.98]",
   secondary:
     "bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:scale-[0.98]",
   outline:
-    "border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 active:scale-[0.98]",
+    "border border-slate-200 bg-white text-slate-800 shadow-sm hover-site-primary-soft active:scale-[0.98]",
   ghost: "text-slate-700 hover:bg-slate-100 active:scale-[0.98]",
 };
 
@@ -48,7 +48,7 @@ export default function Button({
   title,
 }: Props) {
   const cls = cn(
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:cursor-not-allowed",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus:outline-none focus:ring-4 ring-site-primary disabled:cursor-not-allowed",
     variantClasses[variant],
     sizeClasses[size],
     fullWidth && "w-full",

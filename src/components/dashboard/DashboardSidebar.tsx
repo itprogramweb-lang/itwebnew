@@ -115,7 +115,7 @@ export default function DashboardSidebar({
         {/* Brand */}
         <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand-gradient grid place-items-center text-white shadow-brand">
+            <div className="w-9 h-9 rounded-xl bg-site-gradient grid place-items-center text-white shadow-site-primary">
               <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
             </div>
             <div>
@@ -149,7 +149,7 @@ export default function DashboardSidebar({
                     className={cn(
                       "flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition",
                       active
-                        ? "bg-brand-gradient text-white font-medium shadow-brand"
+                        ? "bg-site-gradient text-white font-medium shadow-site-primary"
                         : "text-slate-700 hover:bg-slate-100"
                     )}
                   >

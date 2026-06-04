@@ -5,6 +5,7 @@
 create table if not exists navigation_items (
   id uuid primary key default gen_random_uuid(),
   label text not null,
+  label_en text,
   href text,
   type text not null default 'link',
   parent_id uuid references navigation_items(id) on delete restrict,
@@ -15,6 +16,7 @@ create table if not exists navigation_items (
   location text not null default 'navbar',
   target text,
   description text,
+  description_en text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint navigation_items_type_check check (type in ('link', 'dropdown', 'heading')),

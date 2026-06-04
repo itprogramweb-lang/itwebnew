@@ -7,6 +7,7 @@ import type {
 
 export type NavigationForm = {
   label: string;
+  label_en: string;
   href: string;
   type: NavigationItemType;
   parent_id: string;
@@ -16,6 +17,7 @@ export type NavigationForm = {
   location: NavigationLocation;
   target: "" | NavigationTarget;
   description: string;
+  description_en: string;
 };
 
 export const typeOptions: { value: NavigationItemType; label: string }[] = [
@@ -47,6 +49,7 @@ export const targetOptions: { value: "" | NavigationTarget; label: string }[] = 
 export function emptyNavigationForm(): NavigationForm {
   return {
     label: "",
+    label_en: "",
     href: "",
     type: "link",
     parent_id: "",
@@ -56,12 +59,14 @@ export function emptyNavigationForm(): NavigationForm {
     location: "navbar",
     target: "",
     description: "",
+    description_en: "",
   };
 }
 
 export function toNavigationForm(item: NavigationItem): NavigationForm {
   return {
     label: item.label,
+    label_en: item.label_en ?? "",
     href: item.href ?? "",
     type: item.type,
     parent_id: item.parent_id ?? "",
@@ -71,6 +76,7 @@ export function toNavigationForm(item: NavigationItem): NavigationForm {
     location: item.location,
     target: item.target ?? "",
     description: item.description ?? "",
+    description_en: item.description_en ?? "",
   };
 }
 

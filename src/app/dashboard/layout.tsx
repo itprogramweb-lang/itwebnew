@@ -232,7 +232,11 @@ export default function DashboardLayout({
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <DashboardHeader user={user} onMenuClick={() => setSidebarOpen(true)} />
+        <DashboardHeader
+          user={user}
+          isDepartmentHead={complaintAccess.isDepartmentHead}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto overflow-x-hidden">
           {hasAccess ? (

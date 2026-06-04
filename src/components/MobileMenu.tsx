@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils";
 import PublicLanguageToggle, { getPublicNavLabel, type PublicLanguage } from "./PublicLanguageToggle";
 
 type MenuItem =
-  | { type: "link"; label: string; href: string; external?: boolean }
+  | { type: "link"; label: string; labelEn?: string; href: string; external?: boolean }
   | {
       type: "dropdown";
       label: string;
-      items: { label: string; href: string; description?: string; external?: boolean }[];
+      labelEn?: string;
+      items: { label: string; labelEn?: string; href: string; description?: string; descriptionEn?: string; external?: boolean }[];
     };
 
 export default function MobileMenu({
@@ -67,6 +68,7 @@ export default function MobileMenu({
             const label = getPublicNavLabel({
               href: item.type === "link" ? item.href : null,
               label: item.label,
+              labelEn: item.labelEn,
               language,
             });
 
@@ -94,7 +96,7 @@ export default function MobileMenu({
                   className={cn(
                     "block rounded-2xl px-4 py-3 font-medium",
                     activePath === item.href
-                      ? "bg-brand-50 text-brand-700"
+                      ? "bg-site-primary-soft"
                       : "text-slate-800 hover:bg-slate-50"
                   )}
                 >
@@ -122,6 +124,7 @@ export default function MobileMenu({
                         const subLabel = getPublicNavLabel({
                           href: sub.href,
                           label: sub.label,
+                          labelEn: sub.labelEn,
                           language,
                         });
 
@@ -145,7 +148,7 @@ export default function MobileMenu({
                             className={cn(
                               "block rounded-xl px-3 py-2 text-sm",
                               activePath === sub.href
-                                ? "bg-brand-50 text-brand-700"
+                                ? "bg-site-primary-soft"
                                 : "text-slate-600 hover:bg-slate-50"
                             )}
                           >

@@ -1,4 +1,5 @@
 import type { Program } from "@/types";
+import { PROGRAM_DEGREE_NAMES } from "@/lib/programDegreeNames";
 
 // =============================================================
 // ข้อมูลหลักสูตร (ข้อมูลจำลอง)
@@ -9,8 +10,9 @@ export const programsData: Program[] = [
     id: "p-bachelor",
     level: "bachelor",
     name: "วิทยาศาสตรบัณฑิต สาขาวิชาเทคโนโลยีสารสนเทศ",
-    nameEn: "Bachelor of Science in Information Technology",
+    nameEn: PROGRAM_DEGREE_NAMES.bachelor.nameEn,
     degree: "วท.บ. (เทคโนโลยีสารสนเทศ)",
+    degreeEn: PROGRAM_DEGREE_NAMES.bachelor.degreeEn,
     duration: "4 ปี",
     credits: 133,
     overview:
@@ -172,8 +174,9 @@ export const programsData: Program[] = [
     id: "p-master",
     level: "master",
     name: "วิทยาศาสตรมหาบัณฑิต สาขาวิชาเทคโนโลยีสารสนเทศ",
-    nameEn: "Master of Science in Information Technology",
+    nameEn: PROGRAM_DEGREE_NAMES.master.nameEn,
     degree: "วท.ม. (เทคโนโลยีสารสนเทศ)",
+    degreeEn: PROGRAM_DEGREE_NAMES.master.degreeEn,
     duration: "2 ปี",
     credits: 39,
     overview:

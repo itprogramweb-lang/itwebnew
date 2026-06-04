@@ -46,6 +46,7 @@ export interface Program {
   name: string;
   nameEn?: string;
   degree: string;
+  degreeEn?: string;
   duration: string;
   credits: number;
   overview: string;
@@ -179,6 +180,7 @@ export type NavigationTarget = "_self" | "_blank";
 export interface NavigationItem {
   id: string;
   label: string;
+  label_en: string | null;
   href: string | null;
   type: NavigationItemType;
   parent_id: string | null;
@@ -189,6 +191,7 @@ export interface NavigationItem {
   location: NavigationLocation;
   target: NavigationTarget | null;
   description: string | null;
+  description_en: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

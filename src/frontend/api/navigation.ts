@@ -5,6 +5,7 @@ export type NavigationItemPayload = Partial<
   Pick<
     NavigationItem,
     | "label"
+    | "label_en"
     | "href"
     | "type"
     | "parent_id"
@@ -14,6 +15,7 @@ export type NavigationItemPayload = Partial<
     | "location"
     | "target"
     | "description"
+    | "description_en"
   >
 >;
 

@@ -5,6 +5,17 @@
 :root {
   --bg: #f8fafc;
   --foreground: #0f172a;
+  --color-primary: #f97316;
+  --color-primary-text: #ffffff;
+  --color-secondary: #111827;
+  --color-accent: #f59e0b;
+  --color-background: #ffffff;
+  --color-text: #111827;
+  --color-navbar: #020617;
+  --color-footer: #0f172a;
+  --color-button: #f97316;
+  --color-button-text: #ffffff;
+  --color-hero-overlay: #000000;
   --site-font-family: "IBM Plex Sans Thai", "Noto Sans Thai", system-ui, sans-serif;
   --site-heading-font-family: var(--site-font-family);
   --site-base-font-size: 16px;
@@ -179,11 +190,81 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  background: linear-gradient(135deg, var(--color-primary, #f97316) 0%, var(--color-accent, #f59e0b) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+.bg-site-primary {
+  background-color: var(--color-primary, #f97316);
+}
+
+.text-site-primary {
+  color: var(--color-primary, #f97316);
+}
+
+.border-site-primary {
+  border-color: var(--color-primary, #f97316);
+}
+
+.ring-site-primary {
+  --tw-ring-color: color-mix(in srgb, var(--color-primary, #f97316) 24%, transparent);
+}
+
+.bg-site-button {
+  background-color: var(--color-button, #f97316);
+  color: var(--color-button-text, #ffffff);
+}
+
+.bg-site-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-primary, #f97316) 0%,
+    var(--color-button, #f97316) 48%,
+    var(--color-accent, #f59e0b) 100%
+  );
+}
+
+.shadow-site-primary {
+  box-shadow: 0 20px 40px -20px color-mix(in srgb, var(--color-primary, #f97316) 46%, transparent);
+}
+
+.text-site-accent {
+  color: var(--color-accent, #f59e0b);
+}
+
+.text-site-footer-accent {
+  color: var(--color-accent, #f59e0b);
+}
+
+.border-site-gradient-line {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-primary, #f97316) 55%, transparent),
+    transparent
+  );
+}
+
+.hover-site-primary:hover {
+  color: var(--color-primary, #f97316);
+}
+
+.hover-site-accent:hover {
+  color: var(--color-accent, #f59e0b);
+}
+
+.hover-site-primary-soft:hover {
+  background-color: color-mix(in srgb, var(--color-primary, #f97316) 10%, #ffffff);
+  border-color: color-mix(in srgb, var(--color-primary, #f97316) 24%, #ffffff);
+  color: var(--color-primary, #f97316);
+}
+
+.bg-site-primary-soft {
+  background-color: color-mix(in srgb, var(--color-primary, #f97316) 10%, #ffffff);
+  color: var(--color-primary, #f97316);
 }
 
 .text-shadow-soft {
@@ -210,7 +291,7 @@ h1, h2, h3, h4, h5, h6 {
   right: 12px;
   bottom: 4px;
   height: 2px;
-  background: linear-gradient(90deg, #fb923c, #ea580c);
+  background: linear-gradient(90deg, var(--color-primary, #f97316), var(--color-accent, #f59e0b));
   border-radius: 9999px;
   transform: scaleX(0);
   transform-origin: left;

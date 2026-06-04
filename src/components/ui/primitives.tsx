@@ -30,8 +30,8 @@ export function SectionTitle({
           className={cn(
             "inline-flex items-center rounded-full border px-3 py-1 mb-4 text-xs font-medium",
             dark
-              ? "border-white/10 bg-white/10 text-brand-200"
-              : "border-brand-100 bg-brand-50 text-brand-700",
+              ? "border-white/10 bg-white/10 text-site-accent"
+              : "border-site-primary bg-site-primary-soft",
             align === "center" && "mx-auto"
           )}
         >
@@ -99,12 +99,12 @@ export function PageHeader({
         {dark ? (
           <>
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(249,115,22,0.16),transparent_38%),linear-gradient(180deg,#020617_0%,#0f172a_100%)]" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-400/35 to-transparent" />
+            <div className="border-site-gradient-line absolute inset-x-0 bottom-0 h-px" />
           </>
         ) : (
           <>
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,237,213,0.78),rgba(248,250,252,0.92)_42%,#fff_100%)]" />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-200 to-transparent" />
+            <div className="border-site-gradient-line absolute inset-x-0 bottom-0 h-px" />
           </>
         )}
 
@@ -114,8 +114,8 @@ export function PageHeader({
               className={cn(
                 "inline-flex items-center rounded-full border px-3 py-1 mb-4 text-xs font-medium",
                 dark
-                  ? "border-white/10 bg-white/10 text-brand-200 backdrop-blur"
-                  : "border-brand-100 bg-white/80 text-brand-700 backdrop-blur"
+                  ? "border-white/10 bg-white/10 text-site-accent backdrop-blur"
+                  : "border-site-primary bg-white/80 text-site-primary backdrop-blur"
               )}
             >
               {eyebrow}
@@ -184,7 +184,7 @@ export function StatCard({
           {trend && <div className="text-xs text-emerald-400 mt-1">{trend}</div>}
         </div>
         {icon && (
-          <div className="w-10 h-10 rounded-xl bg-brand-gradient grid place-items-center text-white shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-site-gradient grid place-items-center text-white shadow-sm">
             {icon}
           </div>
         )}
@@ -214,7 +214,7 @@ export function FeatureCard({
         className
       )}
     >
-      <div className="w-12 h-12 rounded-2xl bg-brand-gradient grid place-items-center text-white shadow-sm mb-4 group-hover:scale-105 transition-transform">
+      <div className="w-12 h-12 rounded-2xl bg-site-gradient grid place-items-center text-white shadow-sm mb-4 group-hover:scale-105 transition-transform">
         {icon}
       </div>
       <h3

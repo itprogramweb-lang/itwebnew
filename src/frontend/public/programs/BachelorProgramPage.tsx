@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/primitives";
 import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { getPrograms, getPageSetting } from "@/lib/supabase/queries";
+import { normalizeProgramEnglishNames } from "@/lib/programDegreeNames";
 
 const programFallback = "/placeholders/program-placeholder.svg";
 
@@ -164,9 +165,13 @@ export default async function BachelorProgramPage() {
     );
   }
 
-  const rawDetailsHtml = getProgramDetailsHtml(program.details ?? {});
-  const pageTitle = ps?.title ?? program.title;
-  const pageDescription = ps?.description ?? program.description ?? undefined;
+  const rawDetailsHtml = normalizeProgramEnglishNames(
+    getProgramDetailsHtml(program.details ?? {})
+  );
+  const pageTitle = normalizeProgramEnglishNames(ps?.title ?? program.title);
+  const pageDescription =
+    normalizeProgramEnglishNames(ps?.description ?? program.description) ??
+    undefined;
 
   return (
     <>

@@ -20,6 +20,7 @@ export const navigationTargets: readonly NavigationTarget[] = ["_self", "_blank"
 
 export type NavigationPayload = {
   label: string;
+  label_en: string | null;
   href: string | null;
   type: NavigationItemType;
   parent_id: string | null;
@@ -29,6 +30,7 @@ export type NavigationPayload = {
   location: NavigationLocation;
   target: NavigationTarget | null;
   description: string | null;
+  description_en: string | null;
 };
 
 type ValidationResult = { ok: true; href: string | null } | { ok: false; error: string };
@@ -166,7 +168,7 @@ export async function resetCoreNavigationItems(location?: NavigationLocation) {
 
 export function parseNavigationPayload(
   body: Record<string, unknown>,
-  current?: Pick<NavigationItem, "type" | "href" | "is_external" | "label">
+  current?: Pick<NavigationItem, "type" | "href" | "is_external" | "label" | "label_en">
 ): { payload: Partial<NavigationPayload> } | { error: string } {
   const payload: Partial<NavigationPayload> = {};
 
@@ -176,6 +178,13 @@ export function parseNavigationPayload(
     payload.label = label;
   } else if (!current) {
     return { error: "กรุณาระบุชื่อเมนู" };
+  }
+
+  if ("label_en" in body || !current) {
+    payload.label_en =
+      typeof body.label_en === "string" && body.label_en.trim()
+        ? body.label_en.trim()
+        : null;
   }
 
   const type = "type" in body ? body.type : current?.type ?? "link";
@@ -226,6 +235,13 @@ export function parseNavigationPayload(
     payload.description =
       typeof body.description === "string" && body.description.trim()
         ? body.description.trim()
+        : null;
+  }
+
+  if ("description_en" in body || !current) {
+    payload.description_en =
+      typeof body.description_en === "string" && body.description_en.trim()
+        ? body.description_en.trim()
         : null;
   }
 

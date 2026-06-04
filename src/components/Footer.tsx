@@ -31,7 +31,7 @@ const facebookUrl = siteData.facebook;
       style={{ backgroundColor: "var(--color-footer, #0f172a)" }}
       className="relative mt-16 overflow-hidden text-slate-300"
     >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-400/40 to-transparent" />
+      <div className="border-site-gradient-line absolute inset-x-0 top-0 h-px" />
 
       <div className="container-wide relative py-12 lg:py-16">
         <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-4">
@@ -43,7 +43,7 @@ const facebookUrl = siteData.facebook;
                   <img src={b.logoUrl} alt={b.logoAlt} style={logoImgStyle} />
                 </div>
               ) : b.showLogo ? (
-                <div className="w-11 h-11 rounded-2xl bg-brand-gradient grid place-items-center shadow-brand">
+                <div className="w-11 h-11 rounded-2xl bg-site-gradient grid place-items-center shadow-site-primary">
                   <span className="text-white font-bold text-sm select-none">
                     {b.brandShortName.slice(0, 2)}
                   </span>
@@ -66,7 +66,7 @@ const facebookUrl = siteData.facebook;
                   target="_blank"
                   rel="noreferrer noopener"
                   translate="no"
-                  className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-slate-200 transition-colors hover:bg-brand-500/20 hover:text-brand-200"
+                  className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-slate-200 transition-colors hover:bg-white/15 hover-site-accent"
                   aria-label="Facebook"
                 >
                   <Facebook className="w-4 h-4" />
@@ -79,13 +79,13 @@ const facebookUrl = siteData.facebook;
           <div>
             <h4 className="text-white font-semibold mb-4">เมนูหลัก</h4>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/" className="hover:text-brand-300 transition-colors">หน้าแรก</Link></li>
-              <li><Link href="/apply" className="hover:text-brand-300 transition-colors">สมัครเรียน</Link></li>
-              <li><Link href="/news" className="hover:text-brand-300 transition-colors">ข่าวสาร</Link></li>
-              <li><Link href="/about" className="hover:text-brand-300 transition-colors">เกี่ยวกับสาขา</Link></li>
-              <li><Link href="/about/facilities" className="hover:text-brand-300 transition-colors">อุปกรณ์การเรียนและห้องปฏิบัติการ</Link></li>
-              <li><Link href="/programs/bachelor" className="hover:text-brand-300 transition-colors">ปริญญาตรี</Link></li>
-              <li><Link href="/programs/master" className="hover:text-brand-300 transition-colors">ปริญญาโท</Link></li>
+              <li><Link href="/" className="hover-site-accent transition-colors">หน้าแรก</Link></li>
+              <li><Link href="/apply" className="hover-site-accent transition-colors">สมัครเรียน</Link></li>
+              <li><Link href="/news" className="hover-site-accent transition-colors">ข่าวสาร</Link></li>
+              <li><Link href="/about" className="hover-site-accent transition-colors">เกี่ยวกับสาขา</Link></li>
+              <li><Link href="/about/facilities" className="hover-site-accent transition-colors">อุปกรณ์การเรียนและห้องปฏิบัติการ</Link></li>
+              <li><Link href="/programs/bachelor" className="hover-site-accent transition-colors">ปริญญาตรี</Link></li>
+              <li><Link href="/programs/master" className="hover-site-accent transition-colors">ปริญญาโท</Link></li>
             </ul>
           </div>
 
@@ -93,20 +93,20 @@ const facebookUrl = siteData.facebook;
           <div>
             <h4 className="text-white font-semibold mb-4">สำหรับนักศึกษา</h4>
             <ul className="space-y-2.5 text-sm">
-              <li><Link href="/students/registration" className="hover:text-brand-300 transition-colors">ทะเบียน</Link></li>
+              <li><Link href="/students/registration" className="hover-site-accent transition-colors">ทะเบียน</Link></li>
               <li>
                 <a
                   href={loanUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-brand-300 transition-colors"
+                  className="hover-site-accent transition-colors"
                 >
                   กยศ.
                 </a>
               </li>
-              <li><Link href="/students/welfare" className="hover:text-brand-300 transition-colors">สวัสดิการ</Link></li>
-              <li><Link href="/students/complaint" className="hover:text-brand-300 transition-colors">ร้องเรียน/ความคิดเห็น</Link></li>
-              <li><Link href="/works/students" className="hover:text-brand-300 transition-colors">ผลงานนักศึกษา</Link></li>
+              <li><Link href="/students/welfare" className="hover-site-accent transition-colors">สวัสดิการ</Link></li>
+              <li><Link href="/students/complaint" className="hover-site-accent transition-colors">ร้องเรียน/ความคิดเห็น</Link></li>
+              <li><Link href="/works/students" className="hover-site-accent transition-colors">ผลงานนักศึกษา</Link></li>
             </ul>
           </div>
 
@@ -116,18 +116,18 @@ const facebookUrl = siteData.facebook;
             <ul className="space-y-3 text-sm">
               {address && (
                 <li className="notranslate flex gap-2.5" translate="no">
-                  <MapPin className="w-4 h-4 mt-0.5 text-brand-400 shrink-0" />
+                  <MapPin className="w-4 h-4 mt-0.5 text-site-footer-accent shrink-0" />
                   <span className="leading-relaxed">{address}</span>
                 </li>
               )}
               {phone && (
                 <li className="notranslate flex items-center gap-2.5" translate="no">
-                  <Phone className="w-4 h-4 text-brand-400 shrink-0" />
+                  <Phone className="w-4 h-4 text-site-footer-accent shrink-0" />
                   <span>{phone}</span>
                 </li>
               )}
               <li className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-brand-400 shrink-0" />
+                <Clock className="w-4 h-4 text-site-footer-accent shrink-0" />
                 <span>{siteData.workingHours}</span>
               </li>
             </ul>

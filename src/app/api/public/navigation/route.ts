@@ -10,6 +10,7 @@ function toPublicItem(item: NavigationTreeItem): Record<string, unknown> {
   return {
     id: item.id,
     label: item.label,
+    label_en: item.label_en,
     href: item.href,
     type: item.type,
     parent_id: item.parent_id,
@@ -18,6 +19,7 @@ function toPublicItem(item: NavigationTreeItem): Record<string, unknown> {
     location: item.location,
     target: item.target,
     description: item.description,
+    description_en: item.description_en,
     children: item.children.map(toPublicItem),
   };
 }

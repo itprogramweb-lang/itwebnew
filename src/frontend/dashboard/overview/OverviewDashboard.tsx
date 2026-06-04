@@ -1,14 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Activity,
   AlertCircle,
-  ArrowUpRight,
   BookOpen,
   FolderKanban,
   GraduationCap,
-  Image,
+  Image as ImageIcon,
   Loader2,
   MessageSquareWarning,
   Newspaper,
@@ -104,7 +102,7 @@ export default function OverviewDashboard() {
       {
         label: "สไลด์หน้าแรก",
         value: data?.counts?.heroSlides ?? "-",
-        icon: <Image className="w-5 h-5" />,
+        icon: <ImageIcon className="w-5 h-5" />,
         trend: "active",
       },
       {
@@ -203,67 +201,43 @@ export default function OverviewDashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-3xl p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Activity className="w-5 h-5 text-brand-500" />
-            <h2 className="font-semibold text-slate-900">กิจกรรมล่าสุด</h2>
-          </div>
-          {recent.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-              {loading ? "กำลังโหลด..." : "ยังไม่มีข้อมูลล่าสุด"}
-            </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {recent.map((item) => (
-                <li key={`${item.type}-${item.id}`} className="py-3 flex items-start gap-4">
-                  <div
-                    className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${
-                      item.type === "complaint"
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-blue-50 text-blue-600"
-                    }`}
-                  >
-                    {item.type === "complaint" ? (
-                      <MessageSquareWarning className="w-4 h-4" />
-                    ) : (
-                      <Newspaper className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-900 line-clamp-1">{item.title}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {item.sub} • {item.date ? formatDate(item.date) : "-"}
-                    </div>
-                  </div>
-                  {item.status && <StatusBadge status={item.status} />}
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="bg-white border border-slate-100 rounded-3xl p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <Activity className="w-5 h-5 text-brand-500" />
+          <h2 className="font-semibold text-slate-900">กิจกรรมล่าสุด</h2>
         </div>
-
-        <div className="bg-white border border-slate-100 rounded-3xl p-6">
-          <h2 className="font-semibold text-slate-900 mb-1">ลัด</h2>
-          <p className="text-xs text-slate-500 mb-4">เข้าถึงเมนูที่ใช้บ่อย</p>
-          <div className="space-y-2">
-            {[
-              { label: "เพิ่มข่าว/ประกาศใหม่", href: "/dashboard/news" },
-              { label: "เพิ่มผลงานนักศึกษา", href: "/dashboard/student-works" },
-              { label: "ดูข้อร้องเรียน", href: "/dashboard/complaints" },
-              { label: "ตั้งค่าเว็บไซต์", href: "/dashboard/settings" },
-            ].map((action) => (
-              <Link
-                key={action.label}
-                href={action.href}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-700 transition group"
-              >
-                {action.label}
-                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
-              </Link>
+        {recent.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+            {loading ? "กำลังโหลด..." : "ยังไม่มีข้อมูลล่าสุด"}
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {recent.map((item) => (
+              <li key={`${item.type}-${item.id}`} className="py-3 flex items-start gap-4">
+                <div
+                  className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${
+                    item.type === "complaint"
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-blue-50 text-blue-600"
+                  }`}
+                >
+                  {item.type === "complaint" ? (
+                    <MessageSquareWarning className="w-4 h-4" />
+                  ) : (
+                    <Newspaper className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-900 line-clamp-1">{item.title}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {item.sub} • {item.date ? formatDate(item.date) : "-"}
+                  </div>
+                </div>
+                {item.status && <StatusBadge status={item.status} />}
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        )}
       </div>
     </div>
   );

@@ -151,7 +151,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                     </div>
                   </>
                 ) : b.showLogo ? (
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-gradient shadow-sm shadow-orange-900/30 lg:h-11 lg:w-11">
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-site-gradient shadow-site-primary lg:h-11 lg:w-11">
                     <span className="select-none text-sm font-bold text-white lg:text-base">
                       {b.brandShortName.slice(0, 2)}
                     </span>
@@ -184,6 +184,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
               const label = getPublicNavLabel({
                 href: item.type === "link" ? item.href : null,
                 label: item.label,
+                labelEn: item.labelEn,
                 language,
               });
 
@@ -196,7 +197,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                       target="_blank"
                       rel="noopener noreferrer"
                       translate="no"
-                      className="nav-underline notranslate flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] text-slate-200 transition-colors hover:bg-white/5 hover:text-brand-200"
+                      className="nav-underline notranslate flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] text-slate-200 transition-colors hover:bg-white/5 hover-site-accent"
                     >
                       {label}
                       <ExternalLink className="h-3 w-3" />
@@ -212,8 +213,8 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                     className={cn(
                       "nav-underline notranslate rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
                       isActive(item.href)
-                        ? "active bg-white/[0.08] text-brand-200"
-                        : "text-slate-200 hover:bg-white/5 hover:text-brand-200"
+                        ? "active bg-white/[0.08] text-site-accent"
+                        : "text-slate-200 hover:bg-white/5 hover-site-accent"
                     )}
                   >
                     {label}
@@ -240,8 +241,8 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                     className={cn(
                       "nav-underline notranslate flex items-center gap-1 rounded-full px-3.5 py-2 text-[length:var(--site-nav-font-size)] font-[var(--site-nav-font-weight)] transition-colors",
                       isDropdownActive || isOpen
-                        ? "active bg-white/[0.08] text-brand-200"
-                        : "text-slate-200 hover:bg-white/5 hover:text-brand-200"
+                        ? "active bg-white/[0.08] text-site-accent"
+                        : "text-slate-200 hover:bg-white/5 hover-site-accent"
                     )}
                   >
                     {label}
@@ -266,8 +267,11 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                         const subLabel = getPublicNavLabel({
                           href: sub.href,
                           label: sub.label,
+                          labelEn: sub.labelEn,
                           language,
                         });
+                        const subDescription =
+                          language === "en" ? sub.descriptionEn : sub.description;
                         if (sub.external) {
                           return (
                             <a
@@ -276,13 +280,13 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                               target="_blank"
                               rel="noopener noreferrer"
                               translate="no"
-                              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-50 hover:text-brand-600"
+                              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover-site-primary-soft"
                             >
                               <div>
                                 <div className="font-medium">{subLabel}</div>
-                                {language === "th" && sub.description && (
+                                {subDescription && (
                                   <div className="mt-0.5 text-xs text-slate-500">
-                                    {sub.description}
+                                    {subDescription}
                                   </div>
                                 )}
                               </div>
@@ -300,14 +304,14 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                             className={cn(
                               "block rounded-xl px-3 py-2.5 text-sm transition-colors",
                               isActive(sub.href)
-                                ? "bg-brand-50 text-brand-600"
-                                : "text-slate-700 hover:bg-slate-50 hover:text-brand-600"
+                                ? "bg-site-primary-soft"
+                                : "text-slate-700 hover-site-primary-soft"
                               )}
                           >
                             <div className="font-medium">{subLabel}</div>
-                            {language === "th" && sub.description && (
+                            {subDescription && (
                               <div className="mt-0.5 text-xs text-slate-500">
-                                {sub.description}
+                                {subDescription}
                               </div>
                             )}
                           </Link>

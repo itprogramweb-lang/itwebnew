@@ -5,16 +5,20 @@ export type MenuItem =
   | {
       type: "link";
       label: string;
+      labelEn?: string;
       href: string;
       external?: boolean;
     }
   | {
       type: "dropdown";
       label: string;
+      labelEn?: string;
       items: {
         label: string;
+        labelEn?: string;
         href: string;
         description?: string;
+        descriptionEn?: string;
         external?: boolean;
       }[];
     };
@@ -27,97 +31,124 @@ export function buildStaticMenuItems(loanUrl: string, welfareUrl: string): MenuI
     {
       type: "link",
       label: "หน้าแรก",
+      labelEn: "Home",
       href: "/",
     },
     {
       type: "link",
       label: "สมัครเรียน",
+      labelEn: "Admissions",
       href: "/apply",
     },
     {
       type: "link",
       label: "ข่าวสาร",
+      labelEn: "News",
       href: "/news",
     },
 
     {
       type: "dropdown",
       label: "เกี่ยวกับสาขา",
+      labelEn: "About",
       items: [
         {
           label: "เกี่ยวกับสาขา",
+          labelEn: "About the Department",
           href: "/about",
           description: "วิสัยทัศน์ พันธกิจ และจุดเด่น",
+          descriptionEn: "Vision, Mission, and Highlights",
         },
         {
           label: "บุคลากร",
+          labelEn: "Faculty and Staff",
           href: "/about/staff",
           description: "อาจารย์และเจ้าหน้าที่",
+          descriptionEn: "Lecturers and Staff",
         },
         {
           label: "อุปกรณ์การเรียนและห้องปฏิบัติการ",
+          labelEn: "Facilities and Laboratories",
           href: "/about/facilities",
           description: "ห้องเรียน ห้องปฏิบัติการ และอุปกรณ์สนับสนุนการเรียน",
+          descriptionEn: "Classrooms, Laboratories, and Learning Facilities",
         },
         {
           label: "ติดต่อ",
+          labelEn: "Contact",
           href: "/about/contact",
           description: "ที่อยู่ และแผนที่",
+          descriptionEn: "Address and Map",
         },
       ],
     },
     {
       type: "dropdown",
       label: "หลักสูตร",
+      labelEn: "Programs",
       items: [
         {
           label: "ปริญญาตรี",
+          labelEn: "Undergraduate Program",
           href: "/programs/bachelor",
           description: "หลักสูตร 4 ปี",
+          descriptionEn: "4-Year Program",
         },
         {
           label: "ปริญญาโท",
+          labelEn: "Graduate Program",
           href: "/programs/master",
           description: "หลักสูตร 2 ปี",
+          descriptionEn: "2-Year Program",
         },
       ],
     },
     {
       type: "dropdown",
       label: "ผลงาน",
+      labelEn: "Works",
       items: [
         {
           label: "ผลงานนักศึกษา",
+          labelEn: "Student Works",
           href: "/works/students",
           description: "ปริญญานิพนธ์ (Thesis) และรางวัล",
+          descriptionEn: "Theses and Awards",
         },
         {
           label: "ผลงานอาจารย์",
+          labelEn: "Faculty Works",
           href: "/works/teachers",
           description: "งานวิจัยและบทความ",
+          descriptionEn: "Research and Publications",
         },
       ],
     },
     {
       type: "dropdown",
       label: "นักศึกษาปัจจุบัน",
+      labelEn: "Current Students",
       items: [
         {
           label: "ทะเบียน",
+          labelEn: "Registration",
           href: "/students/registration",
         },
         {
           label: "กยศ.",
+          labelEn: "Student Loan Fund",
           href: loanUrl,
           external: true,
         },
         {
           label: "สวัสดิการ",
+          labelEn: "Student Welfare",
           href: welfareUrl,
           external: true,
         },
         {
           label: "ร้องเรียน/ความคิดเห็น",
+          labelEn: "Complaints and Feedback",
           href: "/students/complaint",
         },
       ],
@@ -143,8 +174,10 @@ function isValidHref(item: NavigationItem) {
 function toChildMenuItem(item: NavigationItem): DropdownChildItem {
   return {
     label: item.label,
+    labelEn: item.label_en ?? undefined,
     href: item.href?.trim() ?? "",
     description: item.description ?? undefined,
+    descriptionEn: item.description_en ?? undefined,
     external: item.is_external || item.target === "_blank" || undefined,
   };
 }
@@ -173,6 +206,7 @@ export function navigationItemsToMenuItems(items: NavigationItem[]): MenuItem[] 
       menuItems.push({
         type: "dropdown",
         label: root.label,
+        labelEn: root.label_en ?? undefined,
         items: children.map(toChildMenuItem),
       });
       continue;
@@ -182,6 +216,7 @@ export function navigationItemsToMenuItems(items: NavigationItem[]): MenuItem[] 
       menuItems.push({
         type: "link",
         label: root.label,
+        labelEn: root.label_en ?? undefined,
         href: root.href?.trim() ?? "",
         external: root.is_external || root.target === "_blank" || undefined,
       });
