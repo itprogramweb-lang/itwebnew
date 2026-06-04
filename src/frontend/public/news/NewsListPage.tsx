@@ -47,15 +47,36 @@ function NewsFallback({ large = false }: { large?: boolean }) {
   );
 }
 
+function getNewsTime(item: {
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}) {
+  const source = item.published_at || item.created_at || item.updated_at || "";
+  const time = new Date(source).getTime();
+
+  return Number.isFinite(time) ? time : 0;
+}
+
 export default async function NewsListPage() {
   const newsList = await getNews().catch(() => []);
 
-  const featured =
-    newsList.filter((n) => n.is_featured).slice(0, 1)[0] ?? null;
+  const featuredList = [...newsList]
+    .filter((n) => n.is_featured)
+    .sort((a, b) => {
+      const orderA = a.sort_order ?? 999;
+      const orderB = b.sort_order ?? 999;
 
-  const rest = featured
-    ? newsList.filter((n) => n.id !== featured.id)
-    : newsList;
+      if (orderA !== orderB) return orderA - orderB;
+      return getNewsTime(b) - getNewsTime(a);
+    })
+    .slice(0, 5);
+
+  const featuredIds = new Set(featuredList.map((n) => n.id));
+
+  const rest = [...newsList]
+    .filter((n) => !featuredIds.has(n.id))
+    .sort((a, b) => getNewsTime(b) - getNewsTime(a));
 
   return (
     <>
@@ -95,7 +116,7 @@ export default async function NewsListPage() {
           ) : (
             <div className="space-y-14">
               {/* Featured news */}
-              {featured && (
+              {featuredList.length > 0 && (
                 <div>
                   <div className="mb-6 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
@@ -112,72 +133,73 @@ export default async function NewsListPage() {
                     </div>
                   </div>
 
-                  <Link
-                    href={featured.slug ? `/news/${featured.slug}` : "/news"}
-                    className="group block"
-                  >
-                    <article className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.04] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-slate-950/[0.08]">
-                      <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
-                       <div className="relative aspect-[16/9] max-h-[320px] overflow-hidden bg-slate-50 lg:h-[320px]">
-                          {featured.image_url ? (
-                            <CroppedImage
-                              src={featured.image_url}
-                              alt={featured.image_alt ?? featured.title}
-                              crop={featured.image_crop_settings}
-                              className="h-full w-full rounded-none object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
-                          ) : (
-                            <NewsFallback large />
-                          )}
-
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />
-
-                          <div className="absolute left-5 top-5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur">
-                            ข่าวเด่น
-                          </div>
-                        </div>
-
-                       <div className="flex flex-col p-6 sm:p-8 lg:p-9">
-                          <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            {featured.category && (
-                              <span
-                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium ${categoryClass(
-                                  featured.category
-                                )}`}
-                              >
-                                <Tag className="h-3 w-3" />
-                                {featured.category}
-                              </span>
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {featuredList.map((featured) => (
+                      <Link
+                        key={featured.id}
+                        href={featured.slug ? `/news/${featured.slug}` : "/news"}
+                        className="group block h-full"
+                      >
+                        <article className="flex h-full flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-sm shadow-slate-950/[0.04] transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-xl hover:shadow-slate-950/[0.08]">
+                          <div className="relative aspect-[16/9] max-h-[280px] overflow-hidden bg-slate-50">
+                            {featured.image_url ? (
+                              <CroppedImage
+                                src={featured.image_url}
+                                alt={featured.image_alt ?? featured.title}
+                                crop={featured.image_crop_settings}
+                                className="h-full w-full rounded-none object-cover transition-transform duration-700 group-hover:scale-105"
+                              />
+                            ) : (
+                              <NewsFallback large />
                             )}
 
-                            {featured.published_at && (
-                              <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatDate(featured.published_at)}
-                              </span>
+                            <div className="absolute left-5 top-5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-brand-700 shadow-sm backdrop-blur">
+                              ข่าวเด่น
+                            </div>
+                          </div>
+
+                          <div className="flex flex-1 flex-col p-6 sm:p-7">
+                            <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              {featured.category && (
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium ${categoryClass(
+                                    featured.category
+                                  )}`}
+                                >
+                                  <Tag className="h-3 w-3" />
+                                  {featured.category}
+                                </span>
+                              )}
+
+                              {featured.published_at && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {formatDate(featured.published_at)}
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="line-clamp-2 text-xl font-bold leading-snug text-slate-950 transition-colors group-hover:text-brand-700 sm:text-2xl">
+                              {featured.title}
+                            </h3>
+
+                            {featured.excerpt && (
+                              <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">
+                                {featured.excerpt}
+                              </p>
                             )}
+
+                            <div className="mt-auto pt-5">
+                              <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors group-hover:bg-brand-100">
+                                อ่านรายละเอียด
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                              </span>
+                            </div>
                           </div>
-
-                          <h3 className="line-clamp-3 text-2xl font-bold leading-snug text-slate-950 transition-colors group-hover:text-brand-700 sm:text-3xl">
-                            {featured.title}
-                          </h3>
-
-                          {featured.excerpt && (
-                            <p className="mt-4 line-clamp-4 text-base leading-8 text-slate-600">
-                              {featured.excerpt}
-                            </p>
-                          )}
-
-                          <div className="mt-auto pt-7">
-                            <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition-colors group-hover:bg-brand-100">
-                              อ่านรายละเอียด
-                              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  </Link>
+                        </article>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 

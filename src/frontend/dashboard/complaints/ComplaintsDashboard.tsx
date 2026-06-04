@@ -154,15 +154,16 @@ export default function ComplaintsDashboard() {
     });
   }, [items, q, status, type]);
 
-  const counts = useMemo(
-    () => ({
-      new: items.filter((item) => normalizeStatus(item.status) === "new").length,
-      in_progress: items.filter((item) => normalizeStatus(item.status) === "in_progress").length,
-      resolved: items.filter((item) => normalizeStatus(item.status) === "resolved").length,
-      rejected: items.filter((item) => normalizeStatus(item.status) === "rejected").length,
-    }),
-    [items]
-  );
+const counts = useMemo(
+  () => ({
+    total: items.length,
+    new: items.filter((item) => normalizeStatus(item.status) === "new").length,
+    in_progress: items.filter((item) => normalizeStatus(item.status) === "in_progress").length,
+    resolved: items.filter((item) => normalizeStatus(item.status) === "resolved").length,
+    rejected: items.filter((item) => normalizeStatus(item.status) === "rejected").length,
+  }),
+  [items]
+);
 
   const openDetail = (item: ComplaintRow) => {
     setSelected(item);
@@ -215,19 +216,20 @@ export default function ComplaintsDashboard() {
       {notice && <StatusBox type="success" message={notice} />}
       {error && <StatusBox type="error" message={error} />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        {[
-          { label: "ใหม่", value: counts.new },
-          { label: "กำลังดำเนินการ", value: counts.in_progress },
-          { label: "ดำเนินการแล้ว", value: counts.resolved },
-          { label: "ไม่ดำเนินการ", value: counts.rejected },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-slate-100 rounded-2xl p-4">
-            <div className="text-xs text-slate-500">{stat.label}</div>
-            <div className="text-2xl font-semibold text-slate-900 mt-1">{stat.value}</div>
-          </div>
-        ))}
-      </div>
+<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+  {[
+    { label: "ข้อร้องเรียนทั้งหมด", value: counts.total },
+    { label: "ใหม่", value: counts.new },
+    { label: "กำลังดำเนินการ", value: counts.in_progress },
+    { label: "ดำเนินการแล้ว", value: counts.resolved },
+    { label: "ไม่ดำเนินการ", value: counts.rejected },
+  ].map((stat) => (
+    <div key={stat.label} className="bg-white border border-slate-100 rounded-2xl p-4">
+      <div className="text-xs text-slate-500">{stat.label}</div>
+      <div className="text-2xl font-semibold text-slate-900 mt-1">{stat.value}</div>
+    </div>
+  ))}
+</div>
 
 
       <SearchFilter value={q} onChange={setQ} placeholder="ค้นหาจากเลขที่/หัวข้อ/รายละเอียด/อีเมล...">
@@ -257,11 +259,11 @@ export default function ComplaintsDashboard() {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {loading ? (
-            <EmptyRow colSpan={7} label="กำลังโหลดข้อร้องเรียน..." />
-          ) : filtered.length === 0 ? (
-            <EmptyRow colSpan={7} />
-          ) : (
+        {loading ? (
+  <EmptyRow colSpan={8} label="กำลังโหลดข้อร้องเรียน..." />
+) : filtered.length === 0 ? (
+  <EmptyRow colSpan={8} />
+) : (
             filtered.map((item) => {
               const itemType = normalizeType(item.complaint_type);
               return (
