@@ -184,23 +184,16 @@ function formToPayload(f: FormData) {
 
 
 function getOrderOptions(slides: Slide[], currentSlideId?: string) {
-  const usedOrders = new Set(
-    slides
-      .filter((s) => s.id !== currentSlideId)
-      .map((s) => Number(s.sort_order))
-      .filter((n) => Number.isFinite(n) && n > 0)
-  );
-
   const currentOrder = slides.find((s) => s.id === currentSlideId)?.sort_order;
-  const max = Math.max(slides.length + (currentSlideId ? 0 : 1), Number(currentOrder ?? 0), 1);
+  const max = currentSlideId
+    ? Math.max(slides.length, Number(currentOrder ?? 0), 1)
+    : Math.max(slides.length + 1, 1);
 
-  const options: { value: number; label: string; disabled: boolean }[] = [];
+  const options: { value: number; label: string }[] = [];
   for (let order = 1; order <= max; order += 1) {
-    const locked = usedOrders.has(order);
     options.push({
       value: order,
-      label: locked ? `ลำดับ ${order} — ถูกใช้แล้ว` : `ลำดับ ${order}`,
-      disabled: locked,
+      label: `ลำดับ ${order}`,
     });
   }
 
@@ -339,7 +332,7 @@ function SlideModal({
     const selectedOrder = Number(form.sort_order);
     const selectedOption = orderOptions.find((option) => option.value === selectedOrder);
 
-    if (!selectedOption || selectedOption.disabled) {
+    if (!selectedOption) {
       setTab("main");
       return;
     }
@@ -525,19 +518,21 @@ function SlideModal({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <FL>ลำดับ (ล็อกไม่ให้ชนกัน)</FL>
+                  <FL>ลำดับ</FL>
                   <select
                     value={form.sort_order}
                     onChange={(e) => set("sort_order", Number(e.target.value))}
                     className="w-full border border-slate-200 rounded-lg px-3 h-9 text-sm focus:outline-none focus:border-brand-400 bg-white"
                   >
                     {orderOptions.map((option) => (
-                      <option key={option.value} value={option.value} disabled={option.disabled}>
+                      <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-[11px] text-slate-400">ลำดับที่ถูกใช้แล้วจะเลือกไม่ได้ เพื่อกันสไลด์ชนลำดับกัน</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    ถ้าเลือกตำแหน่งที่มีสไลด์อื่นอยู่ ระบบจะเลื่อนสไลด์ถัดไปลงให้อัตโนมัติ
+                  </p>
                 </div>
                 <div className="flex items-end pb-1">
                   <FToggle checked={form.is_active} onChange={(v) => set("is_active", v)} label="เปิดใช้งาน" />
