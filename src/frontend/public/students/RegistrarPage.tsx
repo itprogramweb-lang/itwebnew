@@ -1,23 +1,63 @@
 import Link from "next/link";
-import { ArrowRight, FileEdit, FileSearch, FileText, GraduationCap, Mail } from "lucide-react";
+import {
+  ArrowRight,
+  FileEdit,
+  FileSearch,
+  FileText,
+  GraduationCap,
+  Mail,
+} from "lucide-react";
 import { PageHeader, SectionTitle } from "@/components/ui/primitives";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { getPageSetting } from "@/lib/supabase/queries";
 
+
+const REGISTRATION_URL = "https://oreg.rmutt.ac.th/Apply/";
+const REQUEST_URL = "https://oreg.rmutt.ac.th/?page_id=2863";
+const DOCUMENT_URL = "https://oreg.rmutt.ac.th/SSC/?p=85";
+const OREG_URL = "https://oreg.rmutt.ac.th/?page_id=14908";
+
 const quickLinks = [
-  { icon: <FileEdit className="w-5 h-5" />, title: "ลงทะเบียนเรียน", href: "/students/registration" },
-  { icon: <FileSearch className="w-5 h-5" />, title: "ตรวจสอบผลการเรียน", href: "/students/registration" },
-  { icon: <FileText className="w-5 h-5" />, title: "คำร้องออนไลน์", href: "/students/registration" },
-  { icon: <GraduationCap className="w-5 h-5" />, title: "ขอเอกสารการศึกษา", href: "/students/registration" },
-  { icon: <Mail className="w-5 h-5" />, title: "ติดต่อฝ่ายทะเบียน", href: "/about/contact" },
+  {
+    icon: <FileEdit className="w-5 h-5" />,
+    title: "ลงทะเบียนเรียน",
+    href: REGISTRATION_URL,
+    external: true,
+  },
+  {
+    icon: <FileSearch className="w-5 h-5" />,
+    title: "ตรวจสอบผลการเรียน",
+    href: OREG_URL,
+    external: true,
+  },
+  {
+    icon: <FileText className="w-5 h-5" />,
+    title: "คำร้องออนไลน์",
+    href: REQUEST_URL,
+    external: true,
+  },
+  {
+    icon: <GraduationCap className="w-5 h-5" />,
+    title: "ขอเอกสารการศึกษา",
+    href: DOCUMENT_URL,
+    external: true,
+  },
+  {
+    icon: <Mail className="w-5 h-5" />,
+    title: "ติดต่อฝ่ายทะเบียน",
+    href: "/about/contact",
+    external: false,
+  },
 ];
 
 export default async function RegistrarPage() {
   const ps = await getPageSetting("students_registrar").catch(() => null);
+
   const pageTitle = ps?.title ?? "งานทะเบียน";
   const pageDescription =
     ps?.description ??
     "บริการงานทะเบียนสำหรับนักศึกษา ครอบคลุมการลงทะเบียน คำร้อง และเอกสารทางการศึกษา";
+
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
 
@@ -29,6 +69,7 @@ export default async function RegistrarPage() {
         title={pageTitle}
         description={pageDescription}
       />
+
       {heroImageUrl && ps?.hero_layout !== "no-image" && (
         <div className="container-wide pt-8">
           <CroppedImage
@@ -47,18 +88,25 @@ export default async function RegistrarPage() {
             title="ลิงก์ด่วนงานทะเบียน"
             description="คลิกเพื่อดูรายละเอียดหรือเข้าสู่ระบบที่เกี่ยวข้อง"
           />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {quickLinks.map((item) => (
               <Link
                 key={item.title}
                 href={item.href}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener noreferrer" : undefined}
                 className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 card-hover"
               >
-                <div className="w-10 h-10 rounded-xl bg-brand-gradient grid place-items-center text-white shadow-brand shrink-0 group-hover:scale-110 transition-transform">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-gradient text-white shadow-brand transition-transform group-hover:scale-110">
                   {item.icon}
                 </div>
-                <span className="font-medium text-slate-900">{item.title}</span>
-                <ArrowRight className="w-4 h-4 text-slate-400 ml-auto group-hover:text-brand-500 group-hover:translate-x-1 transition" />
+
+                <span className="font-medium text-slate-900">
+                  {item.title}
+                </span>
+
+                <ArrowRight className="ml-auto h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-brand-500" />
               </Link>
             ))}
           </div>
@@ -67,21 +115,28 @@ export default async function RegistrarPage() {
 
       <section className="pb-16">
         <div className="container-wide">
-          <div className="rounded-3xl bg-brand-gradient text-white p-8 relative overflow-hidden">
+          <div className="relative overflow-hidden rounded-3xl bg-brand-gradient p-8 text-white">
             <div className="absolute inset-0 bg-brand-mesh opacity-30" />
-            <div className="relative flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+
+            <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
               <div>
-                <h2 className="text-xl font-semibold">ข้อมูลงานทะเบียนทั้งหมด</h2>
-                <p className="text-white/85 mt-1 text-sm">
-                  ดูรายละเอียดครบถ้วน รวมปฏิทินการศึกษาและ FAQ
+                <h2 className="text-xl font-semibold">
+                  เข้าสู่ระบบทะเบียนนักศึกษา
+                </h2>
+
+                <p className="mt-1 text-sm text-white/85">
+                  สำหรับลงทะเบียนเรียน ตรวจสอบผลการเรียน คำร้อง และเอกสารทางการศึกษา
                 </p>
               </div>
+
               <Link
-                href="/students/registration"
-                className="inline-flex items-center gap-2 h-11 px-5 bg-white text-brand-600 rounded-2xl font-medium text-sm hover:opacity-95 shrink-0"
+                href={OREG_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-white px-5 text-sm font-medium text-brand-600 hover:opacity-95"
               >
-                ไปที่หน้าทะเบียน
-                <ArrowRight className="w-4 h-4" />
+                ไปที่เว็บทะเบียน
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
