@@ -92,14 +92,27 @@ export const complaintsData: Complaint[] = [
   },
 ];
 
-export const complaintTypeLabels: Record<ComplaintType, string> = {
+export const complaintTypeLabels: Record<string, string> = {
+  // ประเภทใหม่จากฟอร์มข้อร้องเรียน
+  suggestion: "ข้อเสนอแนะ",
+  teaching: "การจัดการเรียนการสอนของอาจารย์",
+  staff_operation: "การดำเนินงานของเจ้าหน้าที่",
+  harassment_rights: "การคุกคามและการละเมิดสิทธิ์",
+  environment: "สถานที่และสภาพแวดล้อม",
+  other: "อื่น ๆ",
+
+  // เผื่อข้อมูลเก่าในระบบ
   complaint: "ร้องเรียน",
-  suggestion: "เสนอแนะ",
   study: "ปัญหาการเรียน",
   people: "ปัญหาบุคลากร",
   system: "ปัญหาระบบ/เว็บไซต์",
-  other: "อื่น ๆ",
 };
+
+export function getComplaintTypeLabel(type?: string | null) {
+  if (!type) return "ไม่ระบุประเภท";
+
+  return complaintTypeLabels[type] ?? type;
+}
 
 export const complaintStatusLabels: Record<ComplaintStatus, string> = {
   new: "ใหม่",
@@ -107,3 +120,4 @@ export const complaintStatusLabels: Record<ComplaintStatus, string> = {
   resolved: "ดำเนินการแล้ว",
   rejected: "ไม่ดำเนินการ",
 };
+

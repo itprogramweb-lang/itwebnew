@@ -15,17 +15,59 @@ function getTeacherWorkPdfSource(work: Awaited<ReturnType<typeof getTeacherWorks
   return null;
 }
 
+function getWorkTime(work: Awaited<ReturnType<typeof getTeacherWorks>>[number]) {
+  const row = work as {
+    created_at?: string | null;
+    updated_at?: string | null;
+    published_at?: string | null;
+    id?: string | number | null;
+  };
+
+  const dateValue = row.created_at ?? row.published_at ?? row.updated_at;
+
+  if (dateValue) {
+    const time = new Date(dateValue).getTime();
+    if (Number.isFinite(time)) return time;
+  }
+
+  const numericId = Number(row.id);
+  if (Number.isFinite(numericId)) return numericId;
+
+  return 0;
+}
+
+function isFeaturedWork(work: Awaited<ReturnType<typeof getTeacherWorks>>[number]) {
+  const row = work as {
+    is_featured?: boolean | null;
+    featured?: boolean | null;
+  };
+
+  return Boolean(row.is_featured ?? row.featured);
+}
+
 export default async function TeacherWorksPage() {
   const works = await getTeacherWorks();
+
   const sortedWorks = works
     .map((work, index) => ({
       work,
       index,
-      hasPdf: getTeacherWorkPdfSource(work) !== null,
+      isFeatured: isFeaturedWork(work),
+      time: getWorkTime(work),
     }))
     .sort((a, b) => {
-      if (a.hasPdf !== b.hasPdf) return a.hasPdf ? -1 : 1;
-      return a.index - b.index;
+      // 1) ผลงานเด่นขึ้นก่อน
+      if (a.isFeatured !== b.isFeatured) {
+        return a.isFeatured ? -1 : 1;
+      }
+
+      // 2) ในกลุ่มเดียวกัน ให้รายการใหม่กว่า / เพิ่มทีหลัง ขึ้นก่อน
+      if (a.time !== b.time) {
+        return b.time - a.time;
+      }
+
+      // 3) กันกรณีไม่มีวันที่ ให้ตัวที่มาทีหลังใน array ขึ้นก่อน
+      return b.index - a.index;
     })
     .map((item) => item.work);
 
@@ -57,7 +99,7 @@ export default async function TeacherWorksPage() {
               <p className="text-sm text-slate-500">ยังไม่มีข้อมูลในขณะนี้</p>
             </div>
           ) : (
-           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {sortedWorks.map((work) => {
                 const pdfSource = getTeacherWorkPdfSource(work);
                 const pdfUrl = resolveStudentWorkPdfUrl(pdfSource);
@@ -69,8 +111,12 @@ export default async function TeacherWorksPage() {
                   returnLabel: "กลับไปผลงานอาจารย์",
                   source: "teacher",
                 });
+
                 return (
-                  <article key={work.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white card-hover">
+                  <article
+                    key={work.id}
+                    className="overflow-hidden rounded-3xl border border-slate-200 bg-white card-hover"
+                  >
                     <CroppedImage
                       src={work.image_url}
                       fallbackSrc={workFallback}
@@ -78,6 +124,7 @@ export default async function TeacherWorksPage() {
                       crop={work.image_crop_settings}
                       className="h-44 w-full rounded-none bg-slate-100"
                     />
+
                     <div className="p-5">
                       <div className="flex items-center justify-between gap-3 text-xs">
                         <span className="rounded-full bg-brand-50 px-2.5 py-1 font-medium text-brand-700">
@@ -85,11 +132,19 @@ export default async function TeacherWorksPage() {
                         </span>
                         <span className="text-slate-500">{work.year}</span>
                       </div>
-                      <h2 className="mt-3 font-semibold text-slate-900 leading-snug">{work.title}</h2>
-                      <p className="mt-2 text-sm text-slate-600 leading-relaxed line-clamp-3">{work.description}</p>
+
+                      <h2 className="mt-3 font-semibold text-slate-900 leading-snug">
+                        {work.title}
+                      </h2>
+
+                      <p className="mt-2 text-sm text-slate-600 leading-relaxed line-clamp-3">
+                        {work.description}
+                      </p>
+
                       <div className="mt-4 text-xs text-slate-500">
                         เจ้าของผลงาน: {work.teacher_name || "-"}
                       </div>
+
                       <div className="mt-5 border-t border-slate-100 pt-4">
                         {pdfUrl && pdfViewerHref ? (
                           <div className="flex flex-col gap-2 sm:flex-row">
@@ -100,6 +155,7 @@ export default async function TeacherWorksPage() {
                               <FileText className="h-4 w-4" />
                               ดูเล่มผลงาน
                             </Link>
+
                             <a
                               href={pdfUrl}
                               download={work.pdf_filename ?? `${work.title}.pdf`}

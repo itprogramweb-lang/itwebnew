@@ -180,6 +180,7 @@ function normalizeCoverCrop(
         return getDefaultImageCrop({ frameShape: "rounded", aspectPreset: "16:9" });
     }
 }
+
 function normalizeCropForDisplay(
     value: LearningFacilityRow["cover_image_crop"],
 ): ImageCropSettings | null {
@@ -271,7 +272,7 @@ export default function LearningFacilitiesDashboard() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [q, setQ] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState("active");
+   const [statusFilter, setStatusFilter] = useState("all");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -547,18 +548,15 @@ export default function LearningFacilitiesDashboard() {
                 <TableShell>
                     <thead className="bg-slate-50/60">
                         <tr>
-                            <Th>รายการ</Th>
+                            <Th>ชื่อรายการ</Th>
                             <Th>ประเภท</Th>
                             <Th>สถานที่</Th>
-                            <Th>รูป Gallery</Th>
-                            <Th>ลำดับ</Th>
-                            <Th>สถานะ</Th>
                             <Th className="text-right">จัดการ</Th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {filtered.length === 0 ? (
-                            <EmptyRow colSpan={7} />
+                            <EmptyRow colSpan={4} />
                         ) : (
                             filtered.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50/50">
@@ -571,10 +569,13 @@ export default function LearningFacilitiesDashboard() {
                                                 crop={normalizeCropForDisplay(item.cover_image_crop)}
                                                 className="h-12 w-16 shrink-0 rounded-xl bg-slate-100"
                                             />
-                                            <div>
+                                            <div className="min-w-0">
                                                 <div className="font-medium text-slate-900">{item.title}</div>
-                                                <div className="line-clamp-1 text-xs text-slate-500">
-                                                    {item.short_description || item.slug || "-"}
+                                                <div className="text-xs text-slate-500">
+                                                    {(() => {
+                                                        const text = item.short_description || item.slug || "-";
+                                                        return text.length > 50 ? text.slice(0, 50) + "..." : text;
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -587,24 +588,6 @@ export default function LearningFacilitiesDashboard() {
                                     </Td>
 
                                     <Td className="text-xs text-slate-600">{item.location || "-"}</Td>
-
-                                    <Td className="text-xs text-slate-600">
-                                        {Array.isArray(item.gallery_images) ? item.gallery_images.length : 0} รูป
-                                    </Td>
-
-                                    <Td className="text-xs text-slate-600">{item.sort_order ?? "-"}</Td>
-
-                                    <Td>
-                                        <span
-                                            className={
-                                                item.is_active !== false
-                                                    ? "inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"
-                                                    : "inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-500"
-                                            }
-                                        >
-                                            {item.is_active !== false ? "แสดงอยู่" : "ซ่อนอยู่"}
-                                        </span>
-                                    </Td>
 
                                     <Td className="text-right">
                                         <div className="inline-flex gap-1">

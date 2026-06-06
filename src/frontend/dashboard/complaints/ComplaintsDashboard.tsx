@@ -15,8 +15,12 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react";
-import type { ComplaintStatus, ComplaintType } from "@/types";
-import { complaintStatusLabels, complaintTypeLabels } from "@/data/complaints";
+import type { ComplaintStatus } from "@/types";
+import {
+  complaintStatusLabels,
+  complaintTypeLabels,
+  getComplaintTypeLabel,
+} from "@/data/complaints";
 import {
   DashboardPageHeader,
   EmptyRow,
@@ -77,10 +81,6 @@ function normalizeStatus(status: string | null): ComplaintStatus {
   return "new";
 }
 
-function normalizeType(type: string | null): ComplaintType {
-  const allowed = Object.keys(complaintTypeLabels);
-  return (type && allowed.includes(type) ? type : "other") as ComplaintType;
-}
 
 async function getAuthHeaders() {
   const supabase = createBrowserSupabaseClient();
@@ -129,30 +129,33 @@ export default function ComplaintsDashboard() {
     loadComplaints();
   }, [loadComplaints]);
 
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return items.filter((item) => {
-      const itemStatus = normalizeStatus(item.status);
-      const itemType = normalizeType(item.complaint_type);
-      const text = [
-        item.tracking_code,
-        item.title,
-        item.detail,
-        item.sender_name,
-        item.email,
-        item.phone,
-        item.student_id,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+const filtered = useMemo(() => {
+  const query = q.trim().toLowerCase();
 
-      const matchQ = !query || text.includes(query);
-      const matchStatus = status === "all" || itemStatus === status;
-      const matchType = type === "all" || itemType === type;
-      return matchQ && matchStatus && matchType;
-    });
-  }, [items, q, status, type]);
+  return items.filter((item) => {
+    const itemStatus = normalizeStatus(item.status);
+    const itemType = item.complaint_type ?? "";
+
+    const text = [
+      item.tracking_code,
+      item.title,
+      item.detail,
+      item.sender_name,
+      item.email,
+      item.phone,
+      item.student_id,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    const matchQ = !query || text.includes(query);
+    const matchStatus = status === "all" || itemStatus === status;
+    const matchType = type === "all" || itemType === type;
+
+    return matchQ && matchStatus && matchType;
+  });
+}, [items, q, status, type]);
 
 const counts = useMemo(
   () => ({
@@ -264,15 +267,14 @@ const counts = useMemo(
 ) : filtered.length === 0 ? (
   <EmptyRow colSpan={8} />
 ) : (
-            filtered.map((item) => {
-              const itemType = normalizeType(item.complaint_type);
-              return (
+           filtered.map((item) => {
+  return (
 <tr key={item.id} className="hover:bg-slate-50/50">
   <Td className="font-mono text-xs text-brand-600 whitespace-nowrap">
     {item.tracking_code || item.id.slice(0, 8)}
   </Td>
   <Td className="whitespace-nowrap text-xs text-slate-600">
-    {complaintTypeLabels[itemType]}
+  {getComplaintTypeLabel(item.complaint_type)}
   </Td>
   <Td>
     <div className="font-medium text-slate-900 line-clamp-1 max-w-xs">{item.title}</div>
@@ -330,7 +332,7 @@ const counts = useMemo(
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs bg-brand-50 text-brand-700 border border-brand-100">
-                    {complaintTypeLabels[normalizeType(selected.complaint_type)]}
+                   {getComplaintTypeLabel(selected.complaint_type)}
                   </span>
                   <StatusBadge status={normalizeStatus(selected.status)} />
                 </div>

@@ -146,6 +146,7 @@ export function PageHeader({
   );
 }
 
+
 export function StatCard({
   label,
   value,
@@ -168,21 +169,23 @@ export function StatCard({
           : "border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03]"
       )}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className={cn("text-xs mb-1", dark ? "text-slate-500" : "text-slate-500")}>
-            {label}
-          </div>
-          <div
-            className={cn(
-              "text-2xl lg:text-3xl font-[var(--site-heading-weight,600)]",
-              dark ? "text-white" : "text-slate-900"
-            )}
-          >
-            {value}
-          </div>
-          {trend && <div className="text-xs text-emerald-400 mt-1">{trend}</div>}
-        </div>
+      <div className={cn("text-xs mb-1", dark ? "text-slate-500" : "text-slate-500")}>
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-2xl lg:text-3xl font-[var(--site-heading-weight,600)]",
+          dark ? "text-white" : "text-slate-900"
+        )}
+      >
+        {value}
+      </div>
+      <div className="flex items-end justify-between mt-1">
+        {trend ? (
+          <div className="text-xs text-emerald-400">{trend}</div>
+        ) : (
+          <div />
+        )}
         {icon && (
           <div className="w-10 h-10 rounded-xl bg-site-gradient grid place-items-center text-white shadow-sm">
             {icon}
