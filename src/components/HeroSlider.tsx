@@ -90,10 +90,10 @@ function getReadabilityOverlayStyle(
   };
 }
 const TITLE_SIZES: Record<string, string> = {
-  small: "text-2xl sm:text-3xl lg:text-4xl",
-  medium: "text-2xl sm:text-4xl lg:text-5xl",
-  large: "text-2xl sm:text-4xl lg:text-5xl",
-  xl: "text-3xl sm:text-5xl lg:text-6xl",
+  small: "text-lg sm:text-3xl lg:text-4xl",
+  medium: "text-xl sm:text-4xl lg:text-5xl",
+  large: "text-xl sm:text-4xl lg:text-5xl",
+  xl: "text-2xl sm:text-5xl lg:text-6xl",
 };
 
 const CONTENT_WIDTHS: Record<string, string> = {
@@ -104,9 +104,9 @@ const CONTENT_WIDTHS: Record<string, string> = {
 };
 
 const VERTICAL_CLASSES: Record<string, string> = {
-  top: "items-start pt-10 pb-12 sm:pt-16 sm:pb-16 lg:pt-28",
-  center: "items-center py-8 sm:py-12 lg:py-24",
-  bottom: "items-end pb-12 pt-10 sm:pb-16 sm:pt-16 lg:pb-28",
+  top: "items-start pt-5 pb-6 sm:pt-16 sm:pb-16 lg:pt-28",
+  center: "items-center py-5 sm:py-12 lg:py-24",
+  bottom: "items-end pb-6 pt-5 sm:pb-16 sm:pt-16 lg:pb-28",
 };
 
 const TEXT_ALIGN_CLASSES: Record<string, string> = {
@@ -299,12 +299,12 @@ export default function HeroSlider({
         })}
 
         {/* Content layer */}
-<div
-  className={cn(
-    "container-wide absolute inset-0 z-10 flex min-h-0 sm:relative sm:inset-auto sm:min-h-[320px] lg:min-h-[680px]",
-    verticalClass
-  )}
->
+        <div
+          className={cn(
+            "container-wide absolute inset-0 z-10 flex min-h-0 px-5 sm:relative sm:inset-auto sm:min-h-[320px] sm:px-8 lg:min-h-[680px] lg:px-20",
+            verticalClass
+          )}
+        >
           <div
             className={cn(
               "w-full text-white",
@@ -332,13 +332,13 @@ export default function HeroSlider({
             )}
 
             {showDescription && currentSlide.description && (
-              <p className="text-shadow-soft mt-4 text-base leading-relaxed text-white/90 sm:text-lg">
+              <p className="text-shadow-soft mt-2 text-sm leading-relaxed text-white/90 sm:mt-4 sm:text-lg">
                 {currentSlide.description}
               </p>
             )}
 
             {showRightItems && rightItems.length > 0 && (
-              <div className={cn("mt-4 flex flex-wrap gap-2", flexJustify)}>
+              <div className={cn("mt-4 hidden flex-wrap gap-2 sm:flex", flexJustify)}>
                 {rightItems.map((item) => (
                   <span
                     key={item}
@@ -351,11 +351,11 @@ export default function HeroSlider({
             )}
 
             {(hasPrimaryBtn || hasSecondaryBtn) && (
-              <div className={cn("mt-7 flex flex-wrap gap-3", flexJustify)}>
+              <div className={cn("mt-7 hidden flex-wrap gap-3 sm:flex", flexJustify)}>
                 {hasPrimaryBtn && (
                   <Link
                     href={currentSlide.primary_button_url!}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 text-sm font-semibold text-white shadow-sm shadow-orange-950/30 transition-all hover:bg-orange-400 active:scale-[0.97] sm:h-12 sm:w-auto sm:px-6"
+                    className="inline-flex h-12 w-auto items-center justify-center gap-2 rounded-2xl bg-orange-500 px-6 text-sm font-semibold text-white shadow-sm shadow-orange-950/30 transition-all hover:bg-orange-400 active:scale-[0.97]"
                   >
                     {currentSlide.primary_button_text}
                     <ArrowRight className="h-4 w-4" />
@@ -365,7 +365,7 @@ export default function HeroSlider({
                 {hasSecondaryBtn && (
                   <Link
                     href={currentSlide.secondary_button_url!}
-                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-5 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-[0.97] sm:h-12 sm:w-auto sm:px-6"
+                    className="inline-flex h-12 w-auto items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 text-sm font-medium text-white backdrop-blur-sm transition-all hover:bg-white/20 active:scale-[0.97]"
                   >
                     {currentSlide.secondary_button_text}
                   </Link>
@@ -389,7 +389,7 @@ export default function HeroSlider({
             <button
               type="button"
               onClick={goPrev}
-              className="absolute left-[10%] top-1/2 z-40 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/35 text-white backdrop-blur-sm transition hover:bg-slate-950/55 active:scale-95 sm:left-[10%] sm:h-9 sm:w-9 md:left-[8%] md:h-10 md:w-10 lg:left-10 lg:h-12 lg:w-12"
+             className="absolute left-3 top-1/2 z-40 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/45 text-white backdrop-blur-sm transition hover:bg-slate-950/60 active:scale-95 sm:left-[10%] sm:h-9 sm:w-9 md:left-[8%] md:h-10 md:w-10 lg:left-10 lg:h-12 lg:w-12"
               aria-label="Previous slide"
             >
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7" />
@@ -398,7 +398,7 @@ export default function HeroSlider({
             <button
               type="button"
               onClick={goNext}
-              className="absolute right-[15%] top-1/2 z-40 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/35 text-white backdrop-blur-sm transition hover:bg-slate-950/55 active:scale-95 sm:right-[10%] sm:h-9 sm:w-9 md:right-[8%] md:h-10 md:w-10 lg:right-10 lg:h-12 lg:w-12"
+             className="absolute right-3 top-1/2 z-40 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/45 text-white backdrop-blur-sm transition hover:bg-slate-950/60 active:scale-95 sm:right-[10%] sm:h-9 sm:w-9 md:right-[8%] md:h-10 md:w-10 lg:right-10 lg:h-12 lg:w-12"
               aria-label="Next slide"
             >
               <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 lg:h-7 lg:w-7" />
@@ -408,8 +408,8 @@ export default function HeroSlider({
 
         {/* Navigation dots */}
         {slides.length > 1 && (
-          <div className="absolute inset-x-0 bottom-3 z-20 flex justify-center sm:bottom-5">
-            <div className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-2 backdrop-blur-sm">
+     <div className="absolute inset-x-0 bottom-2 z-20 flex justify-center sm:bottom-5">
+  <div className="flex items-center gap-1.5 rounded-full bg-black/30 px-2 py-1.5 backdrop-blur-sm sm:gap-2 sm:px-3 sm:py-2">
               {slides.map((_, index) => (
                 <button
                   key={index}
