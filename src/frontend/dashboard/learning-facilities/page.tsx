@@ -595,8 +595,8 @@ export default function LearningFacilitiesDashboard() {
                                                 onClick={() => handleToggleActive(item)}
                                                 className={
                                                     item.is_active !== false
-                                                        ? "rounded-lg p-2 text-emerald-600 transition hover:bg-amber-50 hover:text-amber-600"
-                                                        : "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600"
+                                                        ? "rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                                                        : "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
                                                 }
                                                 title={item.is_active !== false ? "กดเพื่อซ่อนข้อมูล" : "กดเพื่อเปิดแสดงข้อมูล"}
                                             >

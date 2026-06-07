@@ -522,7 +522,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                           type="button"
                           onClick={() => !hideDisabled && setHideId(item.id)}
                           disabled={hideDisabled}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
                           title={
                             item.is_core
                               ? "เมนูหลักของระบบไม่สามารถซ่อนด้วยปุ่มนี้ได้"

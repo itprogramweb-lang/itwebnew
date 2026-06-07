@@ -666,8 +666,8 @@ export default function ProgramsDashboard() {
                       onClick={() => handleToggleActive(program)}
                       className={
                         program.is_active !== false
-                          ? "p-2 rounded-lg text-emerald-600 hover:bg-amber-50 hover:text-amber-600 transition"
-                          : "p-2 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition"
+                          ? "p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition"
+                          : "p-2 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 transition"
                       }
                       title={program.is_active !== false ? "กดเพื่อซ่อนหลักสูตร" : "กดเพื่อเปิดแสดงหลักสูตร"}
                     >

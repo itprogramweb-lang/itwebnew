@@ -345,8 +345,8 @@ export default function CoursesDashboard() {
                       disabled={saving}
                       className={`rounded-lg p-2 transition disabled:cursor-not-allowed disabled:text-slate-200 ${
                         course.is_active
-                          ? "text-emerald-600 hover:bg-amber-50 hover:text-amber-600"
-                          : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                          ? "text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                          : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
                       }`}
                       title={course.is_active ? "ซ่อนรายวิชา" : "แสดงรายวิชา"}
                     >

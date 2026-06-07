@@ -496,8 +496,8 @@ filtered.map((s) => (
           onClick={() => handleToggleActive(s)}
           className={
             s.is_active !== false
-              ? "p-2 rounded-lg text-emerald-600 hover:bg-amber-50 hover:text-amber-600 transition"
-              : "p-2 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition"
+              ? "p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition"
+              : "p-2 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 transition"
           }
           title={s.is_active !== false ? "กดเพื่อซ่อนบุคลากร" : "กดเพื่อเปิดแสดงบุคลากร"}
         >

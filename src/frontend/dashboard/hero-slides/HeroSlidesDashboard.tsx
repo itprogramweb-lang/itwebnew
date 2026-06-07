@@ -1321,8 +1321,8 @@ export default function HeroSlidesDashboard() {
                       className={cn(
                         "rounded-lg p-2 transition",
                         slide.is_active
-                          ? "text-emerald-500 hover:bg-amber-50 hover:text-amber-600"
-                          : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-600"
+                          ? "text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
+                          : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
                       )}
                       title={slide.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                     >

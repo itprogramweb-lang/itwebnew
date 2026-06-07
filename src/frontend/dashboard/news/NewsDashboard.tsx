@@ -1355,8 +1355,8 @@ function DraggableNewsCard({
             onClick={() => onToggleStatus(item)}
             className={
               item.status === "archived"
-                ? "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-600"
-                : "rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-100 hover:text-emerald-700"
+                ? "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+                : "rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700"
             }
             title={
               item.status === "archived"
