@@ -333,14 +333,6 @@ export default function CoursesDashboard() {
                   <div className="flex justify-end gap-1">
                     <button
                       type="button"
-                      onClick={() => openEdit(course)}
-                      className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                      title="แก้ไข"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => toggleCourseActive(course)}
                       disabled={saving}
                       className={`rounded-lg p-2 transition disabled:cursor-not-allowed disabled:text-slate-200 ${
@@ -355,6 +347,14 @@ export default function CoursesDashboard() {
                       ) : (
                         <EyeOff className="h-4 w-4" />
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(course)}
+                      className="rounded-lg p-2 text-slate-500 hover:bg-brand-50 hover:text-brand-600 transition"
+                      title="แก้ไข"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
