@@ -134,7 +134,7 @@ const DEFAULT_FORM: FormData = {
   imagePosition: "center",
   overlayColor: "#000000",
   overlayOpacity: 0.55,
-  gradientDirection: "to right",
+  gradientDirection: "to top",
   slideDuration: 5000,
   titleSize: "large",
   contentMaxWidth: "xl",
@@ -210,7 +210,7 @@ function slideToForm(slide: Slide): FormData {
     gradientDirection:
       typeof settings.gradientDirection === "string"
         ? settings.gradientDirection
-        : "to right",
+        : "to top",
     slideDuration:
       typeof settings.slideDuration === "number"
         ? settings.slideDuration
