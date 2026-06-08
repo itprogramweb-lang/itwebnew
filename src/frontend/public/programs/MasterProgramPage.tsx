@@ -8,11 +8,11 @@ import {
   Download,
   FolderSearch,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { getPrograms, getPageSetting } from "@/lib/supabase/queries";
 import { normalizeProgramEnglishNames } from "@/lib/programDegreeNames";
+// 🛠️ เปลี่ยนมานำเข้า PageHero ที่เป็นคอมโพเนนต์แบนเนอร์ส่วนกลางและรองรับระบบออโต้ Breadcrumb
+import PageHero from "@/components/ui/PageHero";
 
 const programFallback = "/placeholders/program-placeholder.svg";
 
@@ -74,14 +74,10 @@ function valueToHtml(value: unknown, depth = 0): string {
 function getProgramDetailsHtml(details: DetailObject | null | undefined) {
   if (!details) return "";
 
-  // รูปแบบใหม่จาก RichTextEditor ช่องเดียว
-  // details = { version: 3, content: "<h2>...</h2><p>...</p>" }
   if (typeof details.content === "string") {
     return details.content;
   }
 
-  // รองรับรูปแบบเก่าแบบ sections
-  // details = { version: 2, sections: [{ title, content }] }
   if (Array.isArray(details.sections)) {
     return details.sections
       .filter((item): item is DetailObject => isPlainObject(item))
@@ -96,7 +92,6 @@ function getProgramDetailsHtml(details: DetailObject | null | undefined) {
       .join("");
   }
 
-  // รองรับ JSON เดิม เช่น { "ข้อมูลหลักสูตร": "...", "โครงสร้างหลักสูตร": {...} }
   return Object.entries(details)
     .filter(([key, value]) => key !== "version" && hasValue(value))
     .map(([key, value]) => `<h2>${escapeHtml(key)}</h2>${valueToHtml(value)}`)
@@ -121,7 +116,6 @@ function renderHtmlContent(html: string) {
       [&_figure]:my-6
       [&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-slate-500
       [&_.news-crop-frame]:my-6"
-
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -141,25 +135,18 @@ export default async function MasterProgramPage() {
     "หลักสูตรระดับบัณฑิตศึกษา เน้นการวิจัยและพัฒนานวัตกรรมด้านเทคโนโลยีคอมพิวเตอร์";
   const eyebrow = ps?.subtitle ?? "ปริญญาโท";
 
+  // ============================================================
+  // 🚫 กรณีที่ 1: หน้าฟอลแบ็กเมื่อไม่พบข้อมูลหลักสูตรปริญญาโทในฐานข้อมูล
+  // ============================================================
   if (!program) {
     return (
       <>
-        <PageHeader
-          dark
-          eyebrow={eyebrow}
+        <PageHero
+          template="no-image-clean"
+          imageUrl={null}
           title={fallbackTitle}
+          eyebrow={eyebrow}
           description={fallbackDesc}
-          breadcrumb={
-            <BreadcrumbTrail
-              dark
-              backHref="/"
-              items={[
-                { label: "หน้าแรก", href: "/" },
-                { label: "หลักสูตร", href: "/programs/master" },
-                { label: "หลักสูตรปริญญาโท" },
-              ]}
-            />
-          }
         />
 
         <section className="section">
@@ -182,47 +169,36 @@ export default async function MasterProgramPage() {
     normalizeProgramEnglishNames(ps?.description ?? program.description) ??
     undefined;
 
-  const summaryItems = [
-    {
-      label: "ชื่อปริญญา",
-      value: program.degree_name || "-",
-      icon: <Award className="h-5 w-5" />,
-    },
-    {
-      label: "ระยะเวลา",
-      value: program.duration || "-",
-      icon: <Clock className="h-5 w-5" />,
-    },
-    {
-      label: "หน่วยกิตรวม",
-      value: program.credits ? `${program.credits} หน่วยกิต` : "-",
-      icon: <BookOpen className="h-5 w-5" />,
-    },
-  ];
+  // ดึงโครงสร้างชุดแบนเนอร์และ Layout จากระบบตั้งค่าเพจหลังบ้าน
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
 
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
+  // ============================================================
+  // ✨ กรณีที่ 2: แสดงผลหน้าข้อมูลโครงสร้างหลักสูตรฉบับเต็ม
+  // ============================================================
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={eyebrow}
+      {/* 🚀 สวมแบนเนอร์ครอบหัวด้วย PageHero ตัวใหม่ พร้อมส่งกลุ่มปุ่มไปเป็น children ด้านใน */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
-        description={pageDescription}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "หลักสูตร", href: "/programs/master" },
-              { label: "หลักสูตรปริญญาโท" },
-            ]}
-          />
-        }
+        eyebrow={eyebrow}
+        description={pageDescription ?? ""}
       >
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 mt-6">
           <Link
             href="/about/contact"
-            className="inline-flex h-12 items-center gap-2 rounded-2xl bg-orange-500 px-6 font-semibold text-white shadow-sm shadow-orange-950/25 transition-colors hover:bg-orange-400"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-500 px-5 text-sm font-semibold text-white shadow-sm shadow-orange-950/25 transition-colors hover:bg-orange-400 sm:h-12 sm:text-base"
           >
             ติดต่อสอบถาม <ArrowRight className="h-4 w-4" />
           </Link>
@@ -230,51 +206,14 @@ export default async function MasterProgramPage() {
           {program.curriculum_url && program.curriculum_url !== "#" && (
             <Link
               href={program.curriculum_url}
-              className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 sm:h-12 sm:text-base"
             >
               <Download className="h-4 w-4" />
               ดาวน์โหลดหลักสูตร
             </Link>
           )}
         </div>
-      </PageHeader>
-
-      {/* <section className="border-b border-slate-100 bg-white py-10">
-        <div className="container-wide">
-          <div className="grid gap-4 md:grid-cols-3">
-            {summaryItems.map((item) => (
-              <div
-                key={item.label}
-                className="flex min-h-[110px] items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5"
-              >
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-gradient text-white">
-                  {item.icon}
-                </div>
-
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-slate-500">
-                    {item.label}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold leading-relaxed text-slate-900">
-                    {item.value}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {program.description && (
-            <div className="mt-7 rounded-3xl border border-orange-100 bg-orange-50/40 p-6">
-              <h2 className="text-sm font-semibold text-orange-700">
-                ภาพรวมหลักสูตร
-              </h2>
-              <p className="mt-3 whitespace-pre-line text-base leading-relaxed text-slate-700">
-                {program.description}
-              </p>
-            </div>
-          )}
-        </div>
-      </section> */}
+      </PageHero>
 
       {rawDetailsHtml.trim() ? (
         <section className="bg-slate-50 py-14">

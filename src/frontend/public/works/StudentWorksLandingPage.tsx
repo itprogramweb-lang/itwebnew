@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, GraduationCap } from "lucide-react";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
-import { PageHeader } from "@/components/ui/primitives";
+import { getPageSetting } from "@/lib/supabase/queries";
+// 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 const items = [
   {
@@ -18,25 +19,38 @@ const items = [
   },
 ];
 
-export default function StudentWorksLandingPage() {
+export default async function StudentWorksLandingPage() {
+  // 🛠️ ดึงข้อมูลการตั้งค่าแบนเนอร์จากหลังบ้านผ่านหน้าคีย์ที่เชื่อมโยงคือ "works_students"
+  const ps = await getPageSetting("works_students").catch(() => null);
+
+  const pageTitle = ps?.title ?? "ผลงานนักศึกษา";
+  const pageDescription =
+    ps?.description ??
+    "เลือกดูผลงานรายวิชาและปริญญานิพนธ์ (Thesis) ของนักศึกษาตามหมวดหมู่";
+  const eyebrow = ps?.subtitle ?? "ผลงานนักศึกษา";
+
+  // ตรวจจับเทมเพลต Layout แบนเนอร์ให้แสดงตามระบบหลังบ้านที่เลือกไว้ใน Dashboard
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
   return (
     <>
-      <PageHeader
-        dark
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "ผลงาน" },
-              { label: "ผลงานนักศึกษา" },
-            ]}
-          />
-        }
-        eyebrow="ผลงานนักศึกษา"
-        title="ผลงานนักศึกษา"
-        description="เลือกดูผลงานรายวิชาและปริญญานิพนธ์ (Thesis) ของนักศึกษาตามหมวดหมู่"
+      {/* 🚀 เรียกใช้ PageHero ส่วนกลางเพื่อวาดโครงสร้างบานเนอร์สาดแสงส้ม และเจนระบบ Breadcrumb ให้อัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
+        title={pageTitle}
+        eyebrow={eyebrow}
+        description={pageDescription}
       />
 
       <section className="section">

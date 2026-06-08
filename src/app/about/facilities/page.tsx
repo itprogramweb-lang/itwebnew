@@ -6,9 +6,9 @@ import {
   Network,
   Sparkles,
 } from "lucide-react";
-import { getLearningFacilities } from "@/lib/supabase/queries";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import { getLearningFacilities, getPageSetting } from "@/lib/supabase/queries";
+// 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +62,17 @@ function typeIcon(type: string) {
 }
 
 export default async function FacilitiesPage() {
-  const facilities = await getLearningFacilities();
+  // 🛠️ ดึงข้อมูลห้องปฏิบัติการพร้อมดึงข้อมูลการตั้งค่าแบนเนอร์หลังบ้านผ่านคีย์ "laboratories"
+  const [facilities, ps] = await Promise.all([
+    getLearningFacilities(),
+    getPageSetting("laboratories").catch(() => null),
+  ]);
+
+  const fallbackTitle = ps?.title ?? "อุปกรณ์การเรียนและห้องปฏิบัติการ";
+  const fallbackDesc =
+    ps?.description ??
+    "พื้นที่ อุปกรณ์ และห้องปฏิบัติการที่สนับสนุนการเรียนรู้แบบลงมือทำจริง เพื่อให้นักศึกษาได้ฝึกทักษะด้านเทคโนโลยีผ่านสภาพแวดล้อมที่ใกล้เคียงกับการทำงานจริง";
+  const eyebrow = ps?.subtitle ?? "สิ่งสนับสนุนการเรียนรู้";
 
   const featured = facilities.filter((item) => item.is_featured);
 
@@ -94,25 +104,28 @@ export default async function FacilitiesPage() {
     (item) => item.type === "equipment",
   ).length;
 
+  // ตรวจจับเทมเพลต Layout แบนเนอร์ให้แสดงตามหลังบ้านคุม
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow="สิ่งสนับสนุนการเรียนรู้"
-        title="อุปกรณ์การเรียนและห้องปฏิบัติการ"
-        description="พื้นที่ อุปกรณ์ และห้องปฏิบัติการที่สนับสนุนการเรียนรู้แบบลงมือทำจริง เพื่อให้นักศึกษาได้ฝึกทักษะด้านเทคโนโลยีผ่านสภาพแวดล้อมที่ใกล้เคียงกับการทำงานจริง"
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/about"
-            backLabel="ย้อนกลับ"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "เกี่ยวกับสาขา", href: "/about" },
-              { label: "อุปกรณ์การเรียนและห้องปฏิบัติการ" },
-            ]}
-          />
-        }
+      {/* 🚀 เรียกใช้ PageHero ส่วนกลางเพื่อสร้างแบนเนอร์สาดแสงส้ม และเจนระบบ Breadcrumb ให้อัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
+        title={fallbackTitle}
+        eyebrow={eyebrow}
+        description={fallbackDesc}
       />
 
       <main className="bg-slate-50">
@@ -387,13 +400,13 @@ function FacilityDetailCard({
               </h4>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {highlights.map((text) => (
-                  <li
+                  <td
                     key={text}
                     className="flex gap-2 text-sm leading-6 text-slate-600"
                   >
                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                     <span>{text}</span>
-                  </li>
+                  </td>
                 ))}
               </ul>
             </div>

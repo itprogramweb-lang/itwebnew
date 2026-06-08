@@ -28,19 +28,23 @@ type PageSetting = {
 const PAGE_ITEMS = [
   { key: "home", label: "หน้าแรก" },
   { key: "apply", label: "สมัครเรียน" },
+  { key: "news", label: "ข่าวสารและประชาสัมพันธ์" },
   { key: "about", label: "เกี่ยวกับสาขา" },
+  { key: "staff", label: "บุคลากรสาขา" },
+  { key: "laboratories", label: "อุปกรณ์และห้องปฏิบัติการ" },
   { key: "contact", label: "ติดต่อเรา" },
   { key: "programs_bachelor", label: "หลักสูตรปริญญาตรี" },
   { key: "programs_master", label: "หลักสูตรปริญญาโท" },
-  { key: "students_registration", label: "ทะเบียนนักศึกษา" },
+  { key: "works_students", label: "ผลงานนักศึกษา (Thesis)" },
+  { key: "works_teachers", label: "ผลงานอาจารย์และงานวิจัย" },
   { key: "students_registrar", label: "งานทะเบียน" },
-  { key: "students_feedback", label: "ความคิดเห็น / ข้อเสนอแนะ" },
   { key: "students_complaint", label: "ร้องเรียน / ความคิดเห็น" },
 ] as const;
 
 const PAGE_LABEL: Record<string, string> = Object.fromEntries(
   PAGE_ITEMS.map((item) => [item.key, item.label])
 );
+
 const APPLY_LAYOUTS = [
   { value: "default", label: "ใช้ค่าจาก ตั้งค่าเว็บไซต์ (fallback)" },
   { value: "no-image-clean", label: "ไม่มีรูป — สะอาด" },
@@ -129,28 +133,29 @@ export default function PagesDashboard() {
     loadPages();
   }, [loadPages]);
 
-function selectPage(key: string) {
-  if (!PAGE_LABEL[key]) return;
+  function selectPage(key: string) {
+    if (!PAGE_LABEL[key]) return;
 
-  const found = pages.find((p) => p.page_key === key);
+    const found = pages.find((p) => p.page_key === key);
 
-  setSelectedKey(key);
-  setSaveStatus("idle");
-  setErrorMsg(null);
+    setSelectedKey(key);
+    setSaveStatus("idle");
+    setErrorMsg(null);
 
-  if (found) {
-    setForm({
-      ...emptyForm(),
-      ...found,
-      hero_image_crop_settings: found.hero_image_crop_settings ?? null,
-      hero_layout: found.hero_layout ?? "default",
-      is_active: found.is_active !== false,
-      cta_external: found.cta_external === true,
-    });
-  } else {
-    setForm({ ...emptyForm(), page_key: key });
+    if (found) {
+      setForm({
+        ...emptyForm(),
+        ...found,
+        hero_image_crop_settings: found.hero_image_crop_settings ?? null,
+        hero_layout: found.hero_layout ?? "default",
+        is_active: found.is_active !== false,
+        cta_external: found.cta_external === true,
+      });
+    } else {
+      setForm({ ...emptyForm(), page_key: key });
+    }
   }
-}
+
   function setField<K extends keyof PageSetting>(key: K, value: PageSetting[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (saveStatus !== "idle") setSaveStatus("idle");
@@ -186,14 +191,21 @@ function selectPage(key: string) {
     }
   }
 
-const pageList = PAGE_ITEMS.map((item) => {
-  const found = pages.find((p) => p.page_key === item.key);
+  const pageList = PAGE_ITEMS.map((item) => {
+    const found = pages.find((p) => p.page_key === item.key);
+    return found ?? { ...emptyForm(), page_key: item.key };
+  });
 
-  return found ?? { ...emptyForm(), page_key: item.key };
-});
+  const isDetailedLayoutPage =
+    selectedKey === "apply" ||
+    selectedKey === "about" ||
+    selectedKey === "news" ||
+    selectedKey === "staff" ||
+    selectedKey === "laboratories" ||
+    selectedKey === "works_students" ||
+    selectedKey === "works_teachers";
 
-const isApplyPage = selectedKey === "apply";
-const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
+  const layoutOptions = isDetailedLayoutPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -244,307 +256,301 @@ const layoutOptions = isApplyPage ? APPLY_LAYOUTS : OTHER_LAYOUTS;
             </div>
           )}
 
-          <div className="grid lg:grid-cols-4 gap-5">
-        {/* Page list */}
-        <div className="lg:col-span-1">
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm shadow-slate-950/[0.03]">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">หน้าเว็บ</p>
-              <p className="mt-1 text-xs text-slate-500">
-                ส่วนนี้เป็นการตั้งค่าและซ่อน/เปิดแสดงหน้าหลักของระบบ ไม่ใช่การลบถาวร
-              </p>
-            </div>
-            {loadingList ? (
-              <div className="p-6 flex justify-center">
-                <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
+          <div className="grid lg:grid-cols-4 gap-5 items-start">
+            {/* กล่องรายชื่อหน้าเว็บฝั่งซ้ายแบบเลื่อนธรรมชาติ */}
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03]">
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">หน้าเว็บ</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  ส่วนนี้เป็นการตั้งค่าแบนเนอร์และข้อมูลรายหน้าของระบบหลัก
+                </p>
               </div>
-            ) : (
-              <ul className="py-1">
-             {pageList.map((p) => (
-  <li key={p.page_key}>
-                    <button
-                      type="button"
-                      onClick={() => selectPage(p.page_key)}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition hover:bg-slate-50 ${
-                        selectedKey === p.page_key
-                          ? "bg-brand-50 text-brand-700 font-medium border-l-2 border-brand-500"
-                          : "text-slate-700"
-                      }`}
-                    >
-                      {PAGE_LABEL[p.page_key] ?? p.page_key}
-                      <span className="ml-2 text-[10px] text-slate-400">
-                        {p.sort_order !== null && p.sort_order !== undefined
-                          ? `#${p.sort_order}`
-                          : "ไม่กำหนดลำดับ"}
-                      </span>
-                      {p.is_active === false && (
-                        <span className="ml-2 text-[10px] text-slate-400">(ปิดใช้งานหน้า)</span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        {/* Editor */}
-        <div className="lg:col-span-3">
-          {!selectedKey ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
-              <LayoutTemplate className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500">เลือกหน้าเว็บจากรายการทางซ้ายเพื่อแก้ไข</p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03] overflow-hidden">
-              {/* Editor Header */}
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {PAGE_LABEL[selectedKey] ?? selectedKey}
-                  </p>
-                  <code className="text-[11px] text-slate-400">{selectedKey}</code>
+              {loadingList ? (
+                <div className="p-6 flex justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-brand-500" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled
-                    title="หน้าหลักของระบบไม่สามารถลบถาวรได้"
-                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    ลบถาวร
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
+              ) : (
+                <ul className="py-1">
+                  {pageList.map((p) => (
+                    <li key={p.page_key}>
+                      <button
+                        type="button"
+                        onClick={() => selectPage(p.page_key)}
+                        className={`w-full text-left px-4 py-3 text-sm transition hover:bg-slate-50 flex flex-col gap-0.5 ${
+                          selectedKey === p.page_key
+                            ? "bg-brand-50 text-brand-700 font-medium border-l-2 border-brand-500"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {/* 🛠️ จุดที่แก้ไข: ลบข้อความตัวเลข # ลำดับออกเรียบร้อย เหลือเฉพาะจุดไอคอน bullet นำสายตาสวยๆ */}
+                        <div className="flex items-baseline gap-2 w-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0 self-center" />
+                          <span className="break-words min-w-0 flex-1">
+                            {PAGE_LABEL[p.page_key] ?? p.page_key}
+                          </span>
+                        </div>
+                        
+                        {p.is_active === false && (
+                          <span className="text-[10px] text-rose-500 font-medium ml-3.5">(ปิดใช้งานหน้า)</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Editor */}
+            <div className="lg:col-span-3">
+              {!selectedKey ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+                  <LayoutTemplate className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                  <p className="text-sm text-slate-500">เลือกหน้าเว็บจากรายการทางซ้ายเพื่อแก้ไข</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03] overflow-hidden">
+                  {/* Editor Header */}
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {PAGE_LABEL[selectedKey] ?? selectedKey}
+                      </p>
+                      <code className="text-[11px] text-slate-400">{selectedKey}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled
+                        title="หน้าหลักของระบบไม่สามารถลบถาวรได้"
+                        className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        ลบถาวร
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        บันทึก
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {saveStatus === "success" && (
+                      <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <p className="text-sm text-emerald-700">บันทึกสำเร็จแล้ว</p>
+                      </div>
                     )}
-                    บันทึก
-                  </button>
-                </div>
-              </div>
+                    {saveStatus === "error" && errorMsg && (
+                      <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5">
+                        <AlertCircle className="w-4 h-4 text-rose-500" />
+                        <p className="text-sm text-rose-700">{errorMsg}</p>
+                      </div>
+                    )}
 
-              <div className="p-6 space-y-6">
-                {saveStatus === "success" && (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <p className="text-sm text-emerald-700">บันทึกสำเร็จแล้ว</p>
-                  </div>
-                )}
-                {saveStatus === "error" && errorMsg && (
-                  <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5">
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                    <p className="text-sm text-rose-700">{errorMsg}</p>
-                  </div>
-                )}
-
-                <section>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">ข้อความหลัก</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        Title (หัวข้อหน้า)
-                      </label>
-                      <input
-                        type="text"
-                        value={form.title ?? ""}
-                        onChange={(e) => setField("title", e.target.value || null)}
-                        placeholder="ปล่อยว่าง = ใช้ค่า default ของหน้า"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        Subtitle / Eyebrow (ข้อความเล็กด้านบน)
-                      </label>
-                      <input
-                        type="text"
-                        value={form.subtitle ?? ""}
-                        onChange={(e) => setField("subtitle", e.target.value || null)}
-                        placeholder="ปล่อยว่าง = ใช้ค่า default"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        Description (คำอธิบาย)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={form.description ?? ""}
-                        onChange={(e) => setField("description", e.target.value || null)}
-                        placeholder="ปล่อยว่าง = ใช้ค่า default"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 resize-none"
-                      />
-                    </div>
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">รูปหลัก (Hero Image)</h3>
-                  <div className="space-y-4">
-                    <CloudinaryImageUploader
-                      value={form.hero_image_url ?? undefined}
-                      onChange={(url) => setField("hero_image_url", url || null)}
-                      folder="page-heroes"
-                      label="อัปโหลดรูปหลักของหน้า"
-                    />
-                    {form.hero_image_url && (
-                      <>
+                    <section>
+                      <h3 className="text-sm font-semibold text-slate-800 mb-3">ข้อความหลัก</h3>
+                      <div className="space-y-4">
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                            Alt text (คำอธิบายรูป)
+                            Title (หัวข้อหน้า)
                           </label>
                           <input
                             type="text"
-                            value={form.hero_image_alt ?? ""}
-                            onChange={(e) => setField("hero_image_alt", e.target.value || null)}
-                            placeholder="คำอธิบายรูปสำหรับ accessibility"
+                            value={form.title ?? ""}
+                            onChange={(e) => setField("title", e.target.value || null)}
+                            placeholder="ปล่อยว่าง = ใช้ค่า default ของหน้า"
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
                           />
                         </div>
-                        <ImageCropControls
-                          imageUrl={form.hero_image_url}
-                          alt="hero preview"
-                          value={form.hero_image_crop_settings as ImageCropSettings | null}
-                          onChange={(crop) =>
-                            setField("hero_image_crop_settings", crop as Record<string, unknown>)
-                          }
-                          aspectPreset="16:9"
-                          frameShape="rounded"
-                          previewClassName="aspect-video w-full"
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Subtitle / Eyebrow (ข้อความเล็กด้านบน)
+                          </label>
+                          <input
+                            type="text"
+                            value={form.subtitle ?? ""}
+                            onChange={(e) => setField("subtitle", e.target.value || null)}
+                            placeholder="ปล่อยว่าง = ใช้ค่า default"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Description (คำอธิบาย)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={form.description ?? ""}
+                            onChange={(e) => setField("description", e.target.value || null)}
+                            placeholder="ปล่อยว่าง = ใช้ค่า default"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 resize-none"
+                          />
+                        </div>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-semibold text-slate-800 mb-3">รูปหลัก (Hero Image)</h3>
+                      <div className="space-y-4">
+                        <CloudinaryImageUploader
+                          value={form.hero_image_url ?? undefined}
+                          onChange={(url) => setField("hero_image_url", url || null)}
+                          folder="page-heroes"
+                          label="อัปโหลดรูปหลักของหน้า"
                         />
-                      </>
-                    )}
+                        {form.hero_image_url && (
+                          <>
+                            <div>
+                              <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                                Alt text (คำอธิบายรูป)
+                              </label>
+                              <input
+                                type="text"
+                                value={form.hero_image_alt ?? ""}
+                                onChange={(e) => setField("hero_image_alt", e.target.value || null)}
+                                placeholder="คำอธิบายรูปสำหรับ accessibility"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                              />
+                            </div>
+                            <ImageCropControls
+                              imageUrl={form.hero_image_url}
+                              alt="hero preview"
+                              value={form.hero_image_crop_settings as ImageCropSettings | null}
+                              onChange={(crop) =>
+                                setField("hero_image_crop_settings", crop as Record<string, unknown>)
+                              }
+                              aspectPreset="16:9"
+                              frameShape="rounded"
+                              previewClassName="aspect-video w-full"
+                            />
+                          </>
+                        )}
 
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        Hero Layout{isApplyPage ? " (template หน้าสมัครเรียน)" : ""}
-                      </label>
-                      <select
-                        value={form.hero_layout ?? "default"}
-                        onChange={(e) => setField("hero_layout", e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            Hero Layout {isDetailedLayoutPage ? " (มีตัวเลือกรูปแบบละเอียด)" : ""}
+                          </label>
+                          <select
+                            value={form.hero_layout ?? "default"}
+                            onChange={(e) => setField("hero_layout", e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                          >
+                            {layoutOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-semibold text-slate-800 mb-3">ปุ่ม CTA (Call to Action)</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            ชื่อปุ่ม CTA
+                          </label>
+                          <input
+                            type="text"
+                            value={form.cta_label ?? ""}
+                            onChange={(e) => setField("cta_label", e.target.value || null)}
+                            placeholder="เช่น ดูรายละเอียด, สมัครเลย"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            URL ของปุ่ม CTA
+                          </label>
+                          <input
+                            type="text"
+                            value={form.cta_url ?? ""}
+                            onChange={(e) => setField("cta_url", e.target.value || null)}
+                            placeholder="/apply หรือ https://..."
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={form.cta_external === true}
+                            onChange={(e) => setField("cta_external", e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 accent-brand-500"
+                          />
+                          <span className="text-sm text-slate-700">เปิดในแท็บใหม่ (external link)</span>
+                        </label>
+                      </div>
+                    </section>
+
+                    <section>
+                      <h3 className="text-sm font-semibold text-slate-800 mb-3">การแสดงผลหน้าเว็บ</h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={form.is_active !== false}
+                            onChange={(e) => setField("is_active", e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 accent-brand-500"
+                          />
+                          <span className="text-sm text-slate-700">เปิดแสดงหน้าเว็บไซต์</span>
+                        </label>
+                        <p className="text-xs text-slate-500 sm:col-span-2">
+                          หากปิดไว้ ระบบจะซ่อนการตั้งค่าหน้านี้จากส่วน public ที่อ้าง page_settings แต่จะไม่ลบข้อมูลหน้าออกจากฐานข้อมูล
+                        </p>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                            ลำดับในตัวจัดการ
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={form.sort_order ?? ""}
+                            onChange={(e) =>
+                              setField(
+                                "sort_order",
+                                e.target.value === "" ? null : Number(e.target.value)
+                              )
+                            }
+                            placeholder="ไม่กำหนด"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
+                          />
+                        </div>
+                      </div>
+                    </section>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {layoutOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        บันทึกการเปลี่ยนแปลง
+                      </button>
                     </div>
                   </div>
-                </section>
-
-                <section>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">ปุ่ม CTA (Call to Action)</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        ชื่อปุ่ม CTA
-                      </label>
-                      <input
-                        type="text"
-                        value={form.cta_label ?? ""}
-                        onChange={(e) => setField("cta_label", e.target.value || null)}
-                        placeholder="เช่น ดูรายละเอียด, สมัครเลย"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        URL ของปุ่ม CTA
-                      </label>
-                      <input
-                        type="text"
-                        value={form.cta_url ?? ""}
-                        onChange={(e) => setField("cta_url", e.target.value || null)}
-                        placeholder="/apply หรือ https://..."
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
-                      />
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={form.cta_external === true}
-                        onChange={(e) => setField("cta_external", e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 accent-brand-500"
-                      />
-                      <span className="text-sm text-slate-700">เปิดในแท็บใหม่ (external link)</span>
-                    </label>
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-3">การแสดงผลหน้าเว็บ</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={form.is_active !== false}
-                        onChange={(e) => setField("is_active", e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 accent-brand-500"
-                      />
-                      <span className="text-sm text-slate-700">เปิดแสดงหน้าเว็บไซต์</span>
-                    </label>
-                    <p className="text-xs text-slate-500 sm:col-span-2">
-                      หากปิดไว้ ระบบจะซ่อนการตั้งค่าหน้านี้จากส่วน public ที่อ้าง page_settings แต่จะไม่ลบข้อมูลหน้าออกจากฐานข้อมูล
-                    </p>
-
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                        ลำดับในตัวจัดการ
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={form.sort_order ?? ""}
-                        onChange={(e) =>
-                          setField(
-                            "sort_order",
-                            e.target.value === "" ? null : Number(e.target.value)
-                          )
-                        }
-                        placeholder="ไม่กำหนด"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    เมนูหลักของเว็บไซต์ยังใช้โครงสร้างคงที่ในรอบนี้ ค่าเหล่านี้ใช้จัดการ page settings และลำดับในตัวจัดการเท่านั้น
-                  </p>
-                </section>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-brand-gradient text-white text-sm font-medium shadow-brand disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    บันทึกการเปลี่ยนแปลง
-                  </button>
-                  <p className="mt-2 text-xs text-slate-400">
-                    ปล่อยช่องว่าง = ใช้ข้อความ default ของหน้า, refresh แล้วข้อมูลยังอยู่
-                  </p>
                 </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
           </div>
         </>
       )}

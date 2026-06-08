@@ -5,11 +5,12 @@ import {
   Download,
   FolderSearch,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import { SectionTitle } from "@/components/ui/primitives";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { getPrograms, getPageSetting } from "@/lib/supabase/queries";
 import { normalizeProgramEnglishNames } from "@/lib/programDegreeNames";
+// 🛠️ ดึง PageHero ชิ้นงานส่วนกลางเข้ามาจัดการแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 const programFallback = "/placeholders/program-placeholder.svg";
 
@@ -132,25 +133,18 @@ export default async function BachelorProgramPage() {
     "หลักสูตรที่เน้นทักษะปฏิบัติจริง ครอบคลุม Software, Data, Network และ AI";
   const eyebrow = ps?.subtitle ?? "ปริญญาตรี";
 
+  // ============================================================
+  // 🚫 กรณีที่ 1: ดักฟอลแบ็กหากยังไม่มีรูปหรือข้อมูลรายวิชาในฐานข้อมูล
+  // ============================================================
   if (!program) {
     return (
       <>
-        <PageHeader
-          dark
-          eyebrow={eyebrow}
+        <PageHero
+          template="no-image-clean"
+          imageUrl={null}
           title={fallbackTitle}
+          eyebrow={eyebrow}
           description={fallbackDesc}
-          breadcrumb={
-            <BreadcrumbTrail
-              dark
-              backHref="/"
-              items={[
-                { label: "หน้าแรก", href: "/" },
-                { label: "หลักสูตร", href: "/programs/bachelor" },
-                { label: "หลักสูตรปริญญาตรี" },
-              ]}
-            />
-          }
         />
 
         <section className="section">
@@ -173,29 +167,35 @@ export default async function BachelorProgramPage() {
     normalizeProgramEnglishNames(ps?.description ?? program.description) ??
     undefined;
 
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
+  // ============================================================
+  // ✨ กรณีที่ 2: แสดงผลข้อมูลหลักสูตรฉบับเต็มพรีเมียมครบถ้วน
+  // ============================================================
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={eyebrow}
+      {/* 🚀 สวมแบนเนอร์ PageHero ชิดซ้ายสว่างนวลตา พร้อมยัดปุ่มติดต่อและดาวน์โหลดเข้าไปที่ส่วน children */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
-        description={pageDescription}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "หลักสูตร", href: "/programs/bachelor" },
-              { label: "หลักสูตรปริญญาตรี" },
-            ]}
-          />
-        }
+        eyebrow={eyebrow}
+        description={pageDescription ?? ""}
       >
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 mt-6">
           <Link
             href="/about/contact"
-            className="inline-flex h-12 items-center gap-2 rounded-2xl bg-orange-500 px-6 font-semibold text-white shadow-sm shadow-orange-950/25 transition-colors hover:bg-orange-400"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-orange-500 px-5 text-sm font-semibold text-white shadow-sm shadow-orange-950/25 transition-colors hover:bg-orange-400 sm:h-12 sm:text-base"
           >
             ติดต่อสอบถาม <ArrowRight className="h-4 w-4" />
           </Link>
@@ -203,14 +203,14 @@ export default async function BachelorProgramPage() {
           {program.curriculum_url && program.curriculum_url !== "#" && (
             <Link
               href={program.curriculum_url}
-              className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/10 px-6 font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20 sm:h-12 sm:text-base"
             >
               <Download className="h-4 w-4" />
               ดาวน์โหลดหลักสูตร
             </Link>
           )}
         </div>
-      </PageHeader>
+      </PageHero>
 
       {rawDetailsHtml.trim() ? (
         <section className="bg-slate-50 py-14">

@@ -12,10 +12,11 @@ import {
   Award,
   Trophy,
 } from "lucide-react";
-import { PageHeader, SectionTitle, FeatureCard } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+
 import { siteData, siteStats } from "@/data/site";
-import CroppedImage from "@/components/ui/CroppedImage";
+import { SectionTitle, FeatureCard } from "@/components/ui/primitives";
+// 🛠️ แก้ไขการ import มาเรียกใช้งานแบนเนอร์กลางชิ้นใหม่ที่แชร์ไว้ใน components/ui
+import PageHero from "@/components/ui/PageHero";
 import { getPageSetting } from "@/lib/supabase/queries";
 
 const mission = [
@@ -79,54 +80,54 @@ const atmosphere = [
 
 export default async function AboutPage() {
   const ps = await getPageSetting("about").catch(() => null);
-  const pageTitle = ps?.title ?? `${siteData.departmentName} ${siteData.facultyName}`;
+
+  const pageTitle =
+    ps?.title ?? `${siteData.departmentName} ${siteData.facultyName}`;
+
   const pageDescription =
     ps?.description ??
     "สาขาที่มุ่งสร้างบัณฑิตที่พร้อมก้าวสู่โลกดิจิทัล ด้วยการเรียนรู้แบบลงมือทำจริง พร้อมเครือข่ายอาจารย์และพันธมิตรในอุตสาหกรรม";
+
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
-  const heroImageAlt = ps?.hero_image_alt ?? pageTitle;
+
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
 
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={ps?.subtitle ?? "เกี่ยวกับสาขา"}
+      {/* 🚀 เรียกใช้งานแบนเนอร์กลาง PageHero สไตล์เตี้ยกระชับ คลีนชิดซ้าย สว่างละมุนตา */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
+        eyebrow={ps?.subtitle ?? "เกี่ยวกับสาขา"}
         description={pageDescription}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "เกี่ยวกับสาขา" },
-            ]}
-          />
-        }
       />
-      {heroImageUrl && ps?.hero_layout !== "no-image" && (
-        <div className="container-wide pt-8">
-          <CroppedImage
-            src={heroImageUrl}
-            alt={heroImageAlt}
-            crop={heroImageCrop}
-            className="aspect-video w-full rounded-3xl border border-slate-100 bg-slate-100"
-          />
-        </div>
-      )}
 
       {/* History */}
       <section className="section">
-        <div className="container-wide grid lg:grid-cols-5 gap-10 items-center">
+        <div className="container-wide grid items-center gap-10 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <SectionTitle eyebrow="ประวัติสาขา" title="จากห้องเรียนเล็ก สู่ผู้นำด้านเทคโนโลยีสารสนเทศ" />
-            <div className="space-y-4 text-slate-600 leading-relaxed">
+            <SectionTitle
+              eyebrow="ประวัติสาขา"
+              title="จากห้องเรียนเล็ก สู่ผู้นำด้านเทคโนโลยีสารสนเทศ"
+            />
+
+            <div className="space-y-4 leading-relaxed text-slate-600">
               <p>
                 สาขาเทคโนโลยีสารสนเทศ {siteData.universityName} ก่อตั้งขึ้นเพื่อตอบสนองความต้องการของอุตสาหกรรมเทคโนโลยีที่เติบโตอย่างรวดเร็ว
                 ตลอดระยะเวลากว่า 22 ปี เราได้ผลิตบัณฑิตคุณภาพออกสู่ตลาดแรงงานอย่างต่อเนื่อง
                 และได้รับการยอมรับจากองค์กรชั้นนำทั้งในและต่างประเทศ
               </p>
+
               <p>
                 หลักสูตรของเราได้รับการพัฒนาอย่างต่อเนื่องเพื่อตามให้ทันเทคโนโลยีใหม่ ๆ
                 ทั้ง Cloud Computing, Artificial Intelligence, Cybersecurity และ Internet of Things
@@ -134,14 +135,20 @@ export default async function AboutPage() {
               </p>
             </div>
           </div>
-          <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-2 gap-3 lg:col-span-2">
             {siteStats.map((s) => (
               <div
                 key={s.label}
                 className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm shadow-slate-950/[0.03]"
               >
-                <div className="gradient-text text-3xl font-semibold">{s.value}</div>
-                <div className="text-xs text-slate-500 mt-1">{s.label}</div>
+                <div className="gradient-text text-3xl font-semibold">
+                  {s.value}
+                </div>
+
+                <div className="mt-1 text-xs text-slate-500">
+                  {s.label}
+                </div>
               </div>
             ))}
           </div>
@@ -149,26 +156,39 @@ export default async function AboutPage() {
       </section>
 
       {/* Vision & Mission */}
-      <section className="section bg-white border-y border-slate-100">
-        <div className="container-wide grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div className="bg-brand-gradient text-white rounded-3xl p-8 lg:p-10 relative overflow-hidden">
+      <section className="section border-y border-slate-100 bg-white">
+        <div className="container-wide grid gap-8 md:grid-cols-2 lg:gap-12">
+          <div className="relative overflow-hidden rounded-3xl bg-brand-gradient p-8 text-white lg:p-10">
             <div className="absolute inset-0 bg-brand-mesh opacity-30" />
+
             <div className="relative">
-              <Compass className="w-10 h-10 mb-4" />
-              <h3 className="text-2xl font-semibold">วิสัยทัศน์</h3>
+              <Compass className="mb-4 h-10 w-10" />
+
+              <h3 className="text-2xl font-semibold">
+                วิสัยทัศน์
+              </h3>
+
               <p className="mt-4 leading-relaxed text-white/95">
                 เป็นสาขาวิชาเทคโนโลยีสารสนเทศชั้นนำของประเทศ ที่สร้างบัณฑิตคุณภาพสูง
                 พร้อมขับเคลื่อนการเปลี่ยนแปลงดิจิทัลของประเทศไทย ภายในปี 2570
               </p>
             </div>
           </div>
+
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm shadow-slate-950/[0.03] lg:p-10">
-            <Target className="w-10 h-10 text-brand-500 mb-4" />
-            <h3 className="text-2xl font-semibold text-slate-900">พันธกิจ</h3>
+            <Target className="mb-4 h-10 w-10 text-brand-500" />
+
+            <h3 className="text-2xl font-semibold text-slate-900">
+              พันธกิจ
+            </h3>
+
             <ul className="mt-4 space-y-2.5">
               {mission.map((m) => (
-                <li key={m} className="flex gap-3 text-sm text-slate-600 leading-relaxed">
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-2 shrink-0" />
+                <li
+                  key={m}
+                  className="flex gap-3 text-sm leading-relaxed text-slate-600"
+                >
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                   {m}
                 </li>
               ))}
@@ -186,7 +206,8 @@ export default async function AboutPage() {
             description="หลักสูตรครอบคลุมทักษะหลักของอุตสาหกรรมเทคโนโลยีทั้งหมด เน้นการเรียนรู้แบบลงมือทำ"
             align="center"
           />
-         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {learnings.map((l) => (
               <FeatureCard
                 key={l.title}
@@ -200,14 +221,15 @@ export default async function AboutPage() {
       </section>
 
       {/* Atmosphere */}
-      <section className="section bg-white border-y border-slate-100">
+      <section className="section border-y border-slate-100 bg-white">
         <div className="container-wide">
           <SectionTitle
             eyebrow="บรรยากาศการเรียน"
             title="เพื่อน อาจารย์ และโอกาสที่ผลักดันให้คุณก้าวหน้า"
             align="center"
           />
-         <div className="grid md:grid-cols-3 gap-8">
+
+          <div className="grid gap-8 md:grid-cols-3">
             {atmosphere.map((a) => (
               <FeatureCard
                 key={a.title}
@@ -223,12 +245,16 @@ export default async function AboutPage() {
       {/* Quote */}
       <section className="section">
         <div className="container-wide max-w-3xl text-center">
-          <Lightbulb className="w-10 h-10 mx-auto text-brand-500 mb-4" />
-          <blockquote className="text-2xl lg:text-3xl font-semibold text-slate-900 leading-snug">
+          <Lightbulb className="mx-auto mb-4 h-10 w-10 text-brand-500" />
+
+          <blockquote className="text-2xl font-semibold leading-snug text-slate-900 lg:text-3xl">
             &ldquo;เรียน IT ที่นี่ ไม่ใช่แค่เก่งโค้ด แต่ต้องเก่งคิด เก่งทำงานเป็นทีม
             และเก่งสร้างสิ่งใหม่ ๆ ที่มีคุณค่ากับสังคม&rdquo;
           </blockquote>
-          <p className="mt-4 text-sm text-slate-500">— หัวหน้าสาขา</p>
+
+          <p className="mt-4 text-sm text-slate-500">
+            — หัวหน้าสาขา
+          </p>
         </div>
       </section>
     </>

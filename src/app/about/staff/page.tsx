@@ -1,9 +1,9 @@
 import { Mail, MapPin, Phone, Users } from "lucide-react";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import CroppedImage from "@/components/ui/CroppedImage";
-import { getStaffMembers, getSiteSettings } from "@/lib/supabase/queries";
+import { getStaffMembers, getPageSetting } from "@/lib/supabase/queries";
 import { sortStaffMembersWithDepartmentHeadFirst } from "@/lib/staffOrdering";
+// 🛠️ ดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 export const dynamic = "force-dynamic";
 
@@ -23,36 +23,42 @@ function splitMultiValue(value: string) {
 }
 
 export default async function StaffPage() {
-  const [staff, settings] = await Promise.all([
+  // 🛠️ ดึงข้อมูลบุคลากรพร้อมสลับท่อมาดึงข้อมูลแบนเนอร์หลังบ้านผ่านรหัส "staff"
+  const [staff, ps] = await Promise.all([
     getStaffMembers(),
-    getSiteSettings().catch(() => null),
+    getPageSetting("staff").catch(() => null),
   ]);
 
   const sortedStaff = sortStaffMembersWithDepartmentHeadFirst(staff);
 
-  const pageTitle = settings?.staff_intro_title ?? "บุคลากรสาขา";
+  const pageTitle = ps?.title ?? "บุคลากรสาขา";
   const pageDesc =
-    settings?.staff_intro_description ??
+    ps?.description ??
     "พบกับทีมอาจารย์และเจ้าหน้าที่ผู้เชี่ยวชาญที่จะร่วมเป็นเส้นทางการเรียนรู้และพัฒนาคุณ";
+  const eyebrow = ps?.subtitle ?? "ทีมงาน";
+
+  // ตรวจจับเงื่อนไขการจัด Layout แบนเนอร์ให้เป็นไปตามระบบที่แอดมินเลือกใน Dashboard
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
 
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow="ทีมงาน"
+      {/* 🚀 สวมครอบแบนเนอร์ด้วย PageHero ตัวพรีเมียม สาดแสงส้มละมุน และแกะ URL เจนแถบ Breadcrumb นำทางอัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
+        eyebrow={eyebrow}
         description={pageDesc}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "เกี่ยวกับสาขา", href: "/about" },
-              { label: "บุคลากร" },
-            ]}
-          />
-        }
       />
 
       <section className="section bg-slate-50">

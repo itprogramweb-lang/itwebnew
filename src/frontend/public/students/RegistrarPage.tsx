@@ -7,10 +7,10 @@ import {
   GraduationCap,
   Mail,
 } from "lucide-react";
-import { PageHeader, SectionTitle } from "@/components/ui/primitives";
-import CroppedImage from "@/components/ui/CroppedImage";
+import { SectionTitle } from "@/components/ui/primitives";
 import { getPageSetting } from "@/lib/supabase/queries";
-
+// 🛠️ ดึง PageHero เข้ามาใช้งานแทน PageHeader เดิม
+import PageHero from "@/components/ui/PageHero";
 
 const REGISTRATION_URL = "https://oreg.rmutt.ac.th/Apply/";
 const REQUEST_URL = "https://oreg.rmutt.ac.th/?page_id=2863";
@@ -60,26 +60,26 @@ export default async function RegistrarPage() {
 
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
 
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={ps?.subtitle ?? "งานทะเบียน"}
+      {/* 🚀 สวมแบนเนอร์พรีเมียมตัวเดียวกับหน้าอื่น ๆ ครอบคลุมรูปภาพพื้นหลังให้ซ้อนเป็นเลเยอร์อย่างถูกต้อง */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
+        eyebrow={ps?.subtitle ?? "งานทะเบียน"}
         description={pageDescription}
       />
-
-      {heroImageUrl && ps?.hero_layout !== "no-image" && (
-        <div className="container-wide pt-8">
-          <CroppedImage
-            src={heroImageUrl}
-            alt={ps?.hero_image_alt ?? pageTitle}
-            crop={heroImageCrop}
-            className="aspect-video w-full rounded-3xl border border-slate-100 bg-slate-100"
-          />
-        </div>
-      )}
 
       <section className="section">
         <div className="container-wide">

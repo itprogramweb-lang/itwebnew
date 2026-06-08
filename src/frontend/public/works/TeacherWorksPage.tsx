@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Download, ExternalLink, FileText, FolderSearch } from "lucide-react";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import CroppedImage from "@/components/ui/CroppedImage";
-import { getTeacherWorks } from "@/lib/supabase/queries";
+import { getTeacherWorks, getPageSetting } from "@/lib/supabase/queries";
 import { buildPdfViewerHref, resolveStudentWorkPdfUrl } from "./pdfLinks";
+// 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 const workFallback = "/placeholders/teacher-work-placeholder.svg";
 
@@ -46,7 +46,17 @@ function isFeaturedWork(work: Awaited<ReturnType<typeof getTeacherWorks>>[number
 }
 
 export default async function TeacherWorksPage() {
-  const works = await getTeacherWorks();
+  // 🛠️ ดึงข้อมูลผลงานอาจารย์พร้อมดึงข้อมูลการตั้งค่าแบนเนอร์หลังบ้านผ่านคีย์ "works_teachers"
+  const [works, ps] = await Promise.all([
+    getTeacherWorks(),
+    getPageSetting("works_teachers").catch(() => null),
+  ]);
+
+  const fallbackTitle = ps?.title ?? "ผลงานอาจารย์";
+  const fallbackDesc =
+    ps?.description ??
+    "งานวิจัย บทความวิชาการ รางวัล และการบริการวิชาการของคณาจารย์ในสาขา";
+  const eyebrow = ps?.subtitle ?? "ผลงานวิชาการ";
 
   const sortedWorks = works
     .map((work, index) => ({
@@ -71,24 +81,28 @@ export default async function TeacherWorksPage() {
     })
     .map((item) => item.work);
 
+  // ตรวจจับเทมเพลต Layout แบนเนอร์ให้แสดงตามระบบหลังบ้านที่เลือกไว้ใน Dashboard
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow="ผลงานวิชาการ"
-        title="ผลงานอาจารย์"
-        description="งานวิจัย บทความวิชาการ รางวัล และการบริการวิชาการของคณาจารย์ในสาขา"
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "ผลงาน" },
-              { label: "ผลงานอาจารย์" },
-            ]}
-          />
-        }
+      {/* 🚀 เรียกใช้ PageHero ส่วนกลางเพื่อวาดโครงสร้างบานเนอร์สาดแสงส้ม และเจนระบบ Breadcrumb ให้อัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
+        title={fallbackTitle}
+        eyebrow={eyebrow}
+        description={fallbackDesc}
       />
 
       <section className="section">

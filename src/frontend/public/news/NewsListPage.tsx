@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Calendar, Tag, ArrowRight, Newspaper, Megaphone } from "lucide-react";
-import { getNews } from "@/lib/supabase/queries";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import { getNews, getPageSetting } from "@/lib/supabase/queries";
 import CroppedImage from "@/components/ui/CroppedImage";
+// 🛠️ ดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
+import PageHero from "@/components/ui/PageHero";
 
 const CATEGORY_COLORS: Record<string, string> = {
   รับสมัคร: "bg-blue-50 text-blue-700 border-blue-200",
@@ -59,7 +59,17 @@ function getNewsTime(item: {
 }
 
 export default async function NewsListPage() {
-  const newsList = await getNews().catch(() => []);
+  // ดึงข้อมูลข่าวสารพร้อมข้อมูลตั้งค่าหน้าบานเนอร์หลังบ้านร่วมกันแบบ Parallel
+  const [newsList, ps] = await Promise.all([
+    getNews().catch(() => []),
+    getPageSetting("news").catch(() => null),
+  ]);
+
+  const fallbackTitle = ps?.title ?? "ข่าวจากสาขา";
+  const fallbackDesc =
+    ps?.description ??
+    "ติดตามข่าวประกาศ กิจกรรม ทุนการศึกษา และความสำเร็จของสาขาวิชา";
+  const eyebrow = ps?.subtitle ?? "ข่าวสารและประกาศ";
 
   const featuredList = [...newsList]
     .filter((n) => n.is_featured)
@@ -78,23 +88,28 @@ export default async function NewsListPage() {
     .filter((n) => !featuredIds.has(n.id))
     .sort((a, b) => getNewsTime(b) - getNewsTime(a));
 
+  // ตรวจจับเงื่อนไขจัดหน้า Layout แบนเนอร์ให้เป็นไปตามระบบหลังบ้านคุม
+  const heroImageUrl = ps?.hero_image_url ?? null;
+  const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow="ข่าวสารและประกาศ"
-        title="ข่าวจากสาขา"
-        description="ติดตามข่าวประกาศ กิจกรรม ทุนการศึกษา และความสำเร็จของสาขาวิชา"
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "ข่าวสาร" },
-            ]}
-          />
-        }
+      {/* 🚀 สวมครอบแบนเนอร์ด้วย PageHero ตัวพรีเมียม สาดแสงส้มละมุน และขึงแถบ Breadcrumb นำทางอัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
+        title={fallbackTitle}
+        eyebrow={eyebrow}
+        description={fallbackDesc}
       />
 
       <section className="bg-gradient-to-b from-white via-white to-slate-50 py-12 sm:py-14 lg:py-16">
@@ -106,7 +121,7 @@ export default async function NewsListPage() {
               </div>
 
               <h2 className="text-xl font-semibold text-slate-700">
-                ยังไม่มีข่าวสารในขณะนี้
+                ยังไม่มีข่าวสาร in ขณะนี้
               </h2>
 
               <p className="mt-2 text-sm leading-relaxed text-slate-400">

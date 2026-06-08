@@ -1,9 +1,8 @@
 import { Phone, MapPin, Clock, Map } from "lucide-react";
-import { PageHeader } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import { siteData } from "@/data/site";
-import CroppedImage from "@/components/ui/CroppedImage";
 import { getPageSetting } from "@/lib/supabase/queries";
+// 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางที่ฝังตัวควบคุมสี แสง และ Breadcrumb ไว้ในตัวแล้วมาใช้งาน
+import PageHero from "@/components/ui/PageHero";
 
 const contactItems = [
   {
@@ -35,37 +34,29 @@ export default async function ContactPage() {
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
 
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  // คุม Logic สไตล์หน้าตาของเทมเพลตเหมือนใน AboutPage
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
+
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={ps?.subtitle ?? "ติดต่อเรา"}
+      {/* 🚀 เรียกใช้งานแบนเนอร์กลาง PageHero สไตล์พรีเมียม คลีนชิดซ้าย จัดการรูปภาพและฝัง Breadcrumb อัตโนมัติ */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
+        eyebrow={ps?.subtitle ?? "ติดต่อเรา"}
         description={pageDescription}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "เกี่ยวกับสาขา", href: "/about" },
-              { label: "ติดต่อ" },
-            ]}
-          />
-        }
       />
 
-      {heroImageUrl && ps?.hero_layout !== "no-image" && (
-        <div className="container-wide pt-8">
-          <CroppedImage
-            src={heroImageUrl}
-            alt={ps?.hero_image_alt ?? pageTitle}
-            crop={heroImageCrop}
-            className="aspect-video w-full rounded-3xl border border-slate-100 bg-slate-100 shadow-sm"
-          />
-        </div>
-      )}
-
+      {/* ─── ส่วนรายละเอียดเนื้อหาข้อมูลติดต่อและแผนที่ด้านล่าง (คงเดิม) ─── */}
       <section className="section">
         <div className="container-wide">
           <div className="mb-8 max-w-2xl">
@@ -84,7 +75,7 @@ export default async function ContactPage() {
           </div>
 
           <div className="grid gap-8 lg:grid-cols-5 lg:items-stretch">
-            {/* Contact Cards */}
+            {/* Contact Cards ด้านซ้าย */}
             <div className="space-y-4 lg:col-span-2">
               {contactItems.map((c) => {
                 const content = (
@@ -115,19 +106,19 @@ export default async function ContactPage() {
               })}
             </div>
 
-            {/* Location แบบเดิม แต่อยู่ข้าง ๆ Card */}
-  <div className="lg:col-span-3">
-    <div className="h-full min-h-[320px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03]">
-      <iframe
-        title="แผนที่สาขาเทคโนโลยีสารสนเทศและการสื่อสารดิจิทัล"
-        src="https://www.google.com/maps?q=คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี&output=embed"
-        className="h-full min-h-[320px] w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        allowFullScreen
-      />
-    </div>
-  </div>
+            {/* แผนที่พิกัด Iframe ด้านขวา */}
+            <div className="lg:col-span-3">
+              <div className="h-full min-h-[320px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03]">
+                <iframe
+                  title="แผนที่สาขาเทคโนโลยีสารสนเทศและการสื่อสารดิจิทัล"
+                  src="https://www.google.com/maps?q=คณะวิทยาศาสตร์และเทคโนโลยี มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี&output=embed"
+                  className="h-full min-h-[320px] w-full border-0"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>

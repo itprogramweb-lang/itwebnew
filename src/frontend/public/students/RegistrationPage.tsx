@@ -8,12 +8,11 @@ import {
   ArrowRight,
   HelpCircle,
 } from "lucide-react";
-import { PageHeader, SectionTitle } from "@/components/ui/primitives";
-import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import { SectionTitle } from "@/components/ui/primitives";
 import { registrationFaqs } from "@/data/faqs";
-import CroppedImage from "@/components/ui/CroppedImage";
 import { getPageSetting } from "@/lib/supabase/queries";
-
+// 🛠️ ดึง PageHero เข้ามาใช้งานแทน PageHeader เดิม
+import PageHero from "@/components/ui/PageHero";
 
 const REGISTRATION_URL = "https://oreg.rmutt.ac.th/Apply/";
 const REQUEST_URL = "https://oreg.rmutt.ac.th/?page_id=2863";
@@ -81,37 +80,26 @@ export default async function RegistrationPage() {
 
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
+  const rawHeroTemplate = ps?.hero_layout ?? null;
+
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
 
   return (
     <>
-      <PageHeader
-        dark
-        eyebrow={ps?.subtitle ?? "งานทะเบียน"}
+      {/* 🚀 สวมแบนเนอร์พรีเมียม สาดแสงส้มละมุน และขึงแถบ Breadcrumb นำทางอัตโนมัติตามโครงสร้างหลังบ้าน */}
+      <PageHero
+        template={heroTemplate}
+        imageUrl={heroImageUrl}
+        imageCropSettings={heroImageCrop}
         title={pageTitle}
+        eyebrow={ps?.subtitle ?? "งานทะเบียน"}
         description={pageDescription}
-        breadcrumb={
-          <BreadcrumbTrail
-            dark
-            backHref="/"
-            items={[
-              { label: "หน้าแรก", href: "/" },
-              { label: "นักศึกษาปัจจุบัน" },
-              { label: "ทะเบียน" },
-            ]}
-          />
-        }
       />
-
-      {heroImageUrl && ps?.hero_layout !== "no-image" && (
-        <div className="container-wide pt-8">
-          <CroppedImage
-            src={heroImageUrl}
-            alt={ps?.hero_image_alt ?? pageTitle}
-            crop={heroImageCrop}
-            className="aspect-video w-full rounded-3xl border border-slate-100 bg-slate-100"
-          />
-        </div>
-      )}
 
       {/* Services grid */}
       <section className="section">
