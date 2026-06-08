@@ -735,10 +735,10 @@ function SlideModal({
                     ))}
                   </select>
 
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    "ไม่มีลำดับ" จะแสดงท้ายสุด · ถ้าเลือกตำแหน่งที่มีสไลด์อื่นอยู่
-                    ระบบจะเลื่อนถัดไปลงให้อัตโนมัติ
-                  </p>
+                 <p className="mt-1 text-[11px] text-slate-400">
+  &quot;ไม่มีลำดับ&quot; จะแสดงท้ายสุด · ถ้าเลือกตำแหน่งที่มีสไลด์อื่นอยู่
+  ระบบจะเลื่อนถัดไปลงให้อัตโนมัติ
+</p>
                 </div>
 
                 <div className="flex items-end pb-1">
