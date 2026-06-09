@@ -18,7 +18,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { ComplaintType } from "@/types";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 const complaintCategoryOptions = [
   {
@@ -59,19 +58,14 @@ const initialState = {
   attachment_url: "",
 };
 
-function generateTrackingCode() {
-  const date = new Date();
-
-  const yyyymmdd = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("");
-
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-
-  return `CMP-${yyyymmdd}-${suffix}`;
-}
+type ComplaintCreateResponse = {
+  success?: boolean;
+  complaint?: {
+    id?: string;
+    tracking_code?: string | null;
+  };
+  error?: string;
+};
 
 export default function ComplaintForm() {
   const [form, setForm] = useState(initialState);
@@ -142,10 +136,7 @@ export default function ComplaintForm() {
     setLoading(true);
     setError(null);
 
-    const trackingCode = generateTrackingCode();
-
     const payload = {
-      tracking_code: trackingCode,
       complaint_type: form.complaint_type,
       title: form.title.trim(),
       detail: form.detail.trim(),
@@ -159,27 +150,26 @@ export default function ComplaintForm() {
     };
 
     try {
-      const supabase = createBrowserSupabaseClient();
+      const res = await fetch("/api/public/complaints", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-      const { error: insertError } = await supabase
-        .from("complaints")
-        .insert(payload);
+      const data = (await res.json().catch(() => ({}))) as ComplaintCreateResponse;
 
-      if (insertError) {
-        throw insertError;
+      if (!res.ok || !data.success || !data.complaint?.tracking_code) {
+        throw new Error(data.error || "ไม่สามารถส่งข้อมูลได้");
       }
 
-      setSubmittedCode(trackingCode);
+      setSubmittedCode(data.complaint.tracking_code);
       setForm(initialState);
     } catch (err) {
       const message = err instanceof Error ? err.message : "ไม่สามารถส่งข้อมูลได้";
 
-      setError(
-        message.toLowerCase().includes("row-level security") ||
-          message.toLowerCase().includes("rls")
-          ? `ส่งข้อมูลไม่สำเร็จ: Supabase RLS ไม่อนุญาตให้ insert complaints (${message})`
-          : `ส่งข้อมูลไม่สำเร็จ: ${message}`
-      );
+      setError(`ส่งข้อมูลไม่สำเร็จ: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -200,6 +190,13 @@ if (submittedCode) {
         ข้อมูลของคุณถูกส่งเข้าสู่ระบบเรียบร้อยแล้ว
         ผู้รับผิดชอบจะพิจารณาตามขั้นตอนต่อไป
       </p>
+
+      <div className="mx-auto mt-4 inline-flex flex-col rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm">
+        <span className="text-emerald-700">รหัสติดตาม</span>
+        <span className="font-semibold tracking-wide text-emerald-950">
+          {submittedCode}
+        </span>
+      </div>
 
       <button
         type="button"
