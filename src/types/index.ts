@@ -43,6 +43,34 @@ export interface LineOAuthState {
   created_at: string;
 }
 
+export interface LineNewsDraft {
+  id: string;
+  user_id: string;
+  line_user_id: string;
+  status: "pending" | "previewed" | "published" | "cancelled" | "expired";
+  raw_text: string | null;
+  parsed_title: string | null;
+  parsed_category: string | null;
+  parsed_excerpt: string | null;
+  parsed_content: string | null;
+  parsed_status: string | null;
+  parsed_is_featured: boolean | null;
+  parsed_published_at: string | null;
+  parsed_notes_for_ai: string | null;
+  cover_image_url: string | null;
+  cover_image_alt: string | null;
+  content_image_urls: string[] | null;
+  ai_output_json: Record<string, unknown> | null;
+  preview_text: string | null;
+  published_news_id: string | null;
+  confirmed_at: string | null;
+  published_at: string | null;
+  cancelled_at: string | null;
+  expires_at: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export type StaffCategory =
   | "executive" // ผู้บริหารสาขา
   | "teacher" // อาจารย์ประจำ
