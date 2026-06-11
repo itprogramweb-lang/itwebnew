@@ -12,7 +12,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
-import { DashboardPageHeader } from "@/components/ui/DataTable";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -195,11 +194,6 @@ export default function AccountDashboard() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <DashboardPageHeader
-        title="บัญชีของฉัน"
-        description="จัดการการเชื่อมต่อบัญชีสำหรับรับการแจ้งเตือน"
-      />
-
       {notice && (
         <div
           className={cn(
