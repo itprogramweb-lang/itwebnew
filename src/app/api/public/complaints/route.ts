@@ -53,27 +53,45 @@ function logNotificationOutcome(
     trackingCode: complaint.tracking_code,
   };
 
-  if (result.status === "sent") {
+  if (result.email.status === "sent") {
     console.info("Complaint email notification sent", {
       ...metadata,
-      providerStatus: result.providerStatus,
+      providerStatus: result.email.providerStatus,
     });
-    return;
-  }
-
-  if (result.status === "skipped") {
+  } else if (result.email.status === "skipped") {
     console.warn("Complaint email notification skipped", {
       ...metadata,
-      reason: result.reason,
+      reason: result.email.reason,
     });
-    return;
+  } else {
+    console.warn("Complaint email notification failed", {
+      ...metadata,
+      reason: result.email.reason,
+      providerStatus: result.email.providerStatus,
+    });
   }
 
-  console.warn("Complaint email notification failed", {
-    ...metadata,
-    reason: result.reason,
-    providerStatus: result.providerStatus,
-  });
+  if (result.line.status === "sent") {
+    console.info("Complaint LINE notification sent", {
+      ...metadata,
+      providerStatus: result.line.providerStatus,
+      staffId: result.line.staffId,
+      resolution: result.line.resolution,
+    });
+  } else if (result.line.status === "skipped") {
+    console.warn("Complaint LINE notification skipped", {
+      ...metadata,
+      reason: result.line.reason,
+      staffId: result.line.staffId,
+    });
+  } else {
+    console.warn("Complaint LINE notification failed", {
+      ...metadata,
+      reason: result.line.reason,
+      providerStatus: result.line.providerStatus,
+      staffId: result.line.staffId,
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -149,7 +167,7 @@ export async function POST(request: NextRequest) {
       const notificationResult = await notifyDepartmentHeadOfNewComplaint(data);
       logNotificationOutcome(data, notificationResult);
     } catch (error) {
-      console.warn("Complaint email notification threw", {
+      console.warn("Complaint notification flow threw", {
         complaintId: data.id,
         trackingCode: data.tracking_code,
         reason: error instanceof Error ? error.message : "unknown_error",

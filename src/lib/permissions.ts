@@ -179,6 +179,7 @@ export function hasPermissionFromList(
 
 const dashboardRoutePermissions: Record<string, readonly Permission[]> = {
   "/dashboard": ["view_dashboard"],
+  "/dashboard/account": ["view_own_profile"],
   "/dashboard/hero-slides": ["manage_hero_slides"],
   "/dashboard/news": ["manage_news"],
   "/dashboard/staff": ["manage_staff"],

@@ -21,6 +21,28 @@ export interface User {
   effectivePermissions?: string[];
 }
 
+export interface UserLineConnection {
+  id: string;
+  user_id: string;
+  line_user_id: string;
+  line_display_name: string | null;
+  line_picture_url: string | null;
+  notify_enabled: boolean;
+  linked_at: string;
+  updated_at: string;
+  revoked_at: string | null;
+}
+
+export interface LineOAuthState {
+  id: string;
+  user_id: string;
+  state_hash: string;
+  redirect_path: string | null;
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
+}
+
 export type StaffCategory =
   | "executive" // ผู้บริหารสาขา
   | "teacher" // อาจารย์ประจำ

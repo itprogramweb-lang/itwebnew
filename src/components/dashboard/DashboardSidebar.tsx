@@ -17,6 +17,7 @@ import {
   LayoutTemplate,
   Award,
   Bookmark,
+  UserCircle,
   Monitor, // 🌟 เปลี่ยนมา Import ไอคอน Monitor (หน้าจอคอมพิวเตอร์) แทน Cctv
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "ภาพรวม", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { href: "/dashboard/account", label: "บัญชีของฉัน", icon: <UserCircle className="w-4 h-4" /> },
   { href: "/dashboard/hero-slides", label: "สไลด์หน้าแรก", icon: <MonitorPlay className="w-4 h-4" /> },
   { href: "/dashboard/news", label: "ข่าว/ประกาศ", icon: <Newspaper className="w-4 h-4" /> },
   { href: "/dashboard/staff", label: "บุคลากร", icon: <Users className="w-4 h-4" /> },
