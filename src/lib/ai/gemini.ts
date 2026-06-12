@@ -48,19 +48,22 @@ type GeminiGenerateContentResponse = {
   };
 };
 
+type GeminiJsonParseResult =
+  | {
+      ok: true;
+      data: Record<string, unknown>;
+      parseStage: "direct_json" | "fenced_json" | "extracted_json";
+    }
+  | {
+      ok: false;
+      parseStage: "failed";
+    };
+
 function getGeminiModel() {
   return (
     process.env.GEMINI_MODEL_TEXT?.trim().replace(/^models\//, "") ||
     DEFAULT_GEMINI_TEXT_MODEL
   );
-}
-
-function stripJsonFence(value: string) {
-  return value
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
 }
 
 function getAiNewsEnabled() {
@@ -86,6 +89,91 @@ function truncateLogText(value: unknown, maxLength = 200) {
 
 function logLineNewsAi(message: string, details: Record<string, unknown>) {
   console.warn(`[line-news-ai] ${message}`, details);
+}
+
+function isNonEmptyPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value as Record<string, unknown>).length > 0
+  );
+}
+
+function tryParseJsonObject(value: string, parseStage: GeminiJsonParseResult["parseStage"]): GeminiJsonParseResult {
+  if (parseStage === "failed") return { ok: false, parseStage };
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!isNonEmptyPlainObject(parsed)) return { ok: false, parseStage: "failed" };
+    return { ok: true, data: parsed, parseStage };
+  } catch {
+    return { ok: false, parseStage: "failed" };
+  }
+}
+
+function stripSingleCodeFence(value: string) {
+  const match = value.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractFirstBalancedJsonObject(value: string) {
+  const start = value.indexOf("{");
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < value.length; i += 1) {
+    const char = value[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return value.slice(start, i + 1).trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseGeminiJsonText(text: string): GeminiJsonParseResult {
+  const trimmed = text.trim();
+  const direct = tryParseJsonObject(trimmed, "direct_json");
+  if (direct.ok) return direct;
+
+  const fenced = stripSingleCodeFence(trimmed);
+  if (fenced) {
+    const parsedFence = tryParseJsonObject(fenced, "fenced_json");
+    if (parsedFence.ok) return parsedFence;
+  }
+
+  const extracted = extractFirstBalancedJsonObject(trimmed);
+  if (extracted) {
+    const parsedExtracted = tryParseJsonObject(extracted, "extracted_json");
+    if (parsedExtracted.ok) return parsedExtracted;
+  }
+
+  return { ok: false, parseStage: "failed" };
 }
 
 export async function generateGeminiJson<T>(
@@ -182,6 +270,7 @@ export async function generateGeminiJson<T>(
       model,
       hasCandidates,
       hasText,
+      textLength: text?.length ?? 0,
       hasPromptFeedback: Boolean(json?.promptFeedback),
     });
 
@@ -211,31 +300,33 @@ export async function generateGeminiJson<T>(
       };
     }
 
-    try {
-      const data = JSON.parse(stripJsonFence(text)) as T;
+    const parsedJson = parseGeminiJsonText(text);
+    if (parsedJson.ok) {
       logLineNewsAi("gemini_json_parse", {
         model,
         jsonParseOk: true,
+        parseStage: parsedJson.parseStage,
       });
       return {
         ok: true,
-        data,
+        data: parsedJson.data as T,
         model,
         warnings: [],
       };
-    } catch {
-      logLineNewsAi("gemini_json_parse", {
-        model,
-        jsonParseOk: false,
-        fallbackReason: "gemini_invalid_json",
-      });
-      return {
-        ok: false,
-        reason: "gemini_invalid_json",
-        model,
-        warnings: ["Gemini ส่ง JSON ไม่ถูกต้อง จึงใช้ตัวอย่างจากข้อมูลที่กรอกโดยตรง"],
-      };
     }
+
+    logLineNewsAi("gemini_json_parse", {
+      model,
+      jsonParseOk: false,
+      parseStage: parsedJson.parseStage,
+      fallbackReason: "gemini_invalid_json",
+    });
+    return {
+      ok: false,
+      reason: "gemini_invalid_json",
+      model,
+      warnings: ["Gemini ส่ง JSON ไม่ถูกต้อง จึงใช้ตัวอย่างจากข้อมูลที่กรอกโดยตรง"],
+    };
   } catch (error) {
     logLineNewsAi("network_error", {
       fallbackReason: "gemini_network_error",

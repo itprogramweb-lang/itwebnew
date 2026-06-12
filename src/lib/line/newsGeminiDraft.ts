@@ -54,6 +54,10 @@ function sanitizeGeminiHtml(value: string, fallbackText: string) {
   return html.length > 6000 ? plainTextToSafeHtml(fallbackText) : html;
 }
 
+function getGeminiString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function fallbackOutput(
   draft: ParsedLineNewsForm,
   warning: string,
@@ -92,21 +96,27 @@ function normalizeGeminiOutput(
   draft: ParsedLineNewsForm,
   model: string
 ): NewsDraftAiOutput {
+  const aiTitle = getGeminiString(value.title);
+  const aiExcerpt = getGeminiString(value.excerpt);
+  const aiContent = getGeminiString(value.content);
+  const aiContentHtml = getGeminiString(value.content_html);
+  const aiCategory = getGeminiString(value.category);
+  const aiImageAlt = getGeminiString(value.image_alt);
   const content = limitText(
-    (value.content || draft.content).trim() || draft.content,
+    aiContent || draft.content,
     3000
   );
   const excerpt =
-    limitText((value.excerpt || draft.excerpt).trim(), 300) ||
+    limitText(aiExcerpt || draft.excerpt, 300) ||
     limitText(content.replace(/\n+/g, " "), 180);
 
   return {
-    title: limitText((value.title || draft.title).trim() || draft.title, 180),
+    title: limitText(aiTitle || draft.title, 180),
     excerpt,
     content,
-    content_html: sanitizeGeminiHtml(value.content_html || "", content),
-    category: (value.category || draft.category).trim() || draft.category,
-    image_alt: (value.image_alt || draft.title).trim() || draft.title,
+    content_html: sanitizeGeminiHtml(aiContentHtml, content),
+    category: aiCategory || draft.category,
+    image_alt: aiImageAlt || draft.title,
     missingFields: Array.isArray(value.missingFields)
       ? value.missingFields.filter((item): item is string => typeof item === "string")
       : [],
@@ -125,7 +135,8 @@ function normalizeGeminiOutput(
 function buildPrompt(draft: ParsedLineNewsForm) {
   return [
     "คุณคือผู้ช่วยเรียบเรียงข่าวประชาสัมพันธ์ภาษาไทยของสาขาวิชาในมหาวิทยาลัย",
-    "ตอบกลับเป็น JSON เท่านั้น ตาม schema: {\"title\":\"\",\"excerpt\":\"\",\"content\":\"\",\"content_html\":\"\",\"category\":\"\",\"image_alt\":\"\",\"missingFields\":[],\"warnings\":[]}",
+    "ตอบกลับเป็น JSON object เท่านั้น ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON",
+    "schema ที่ต้องใช้: {\"title\":\"\",\"excerpt\":\"\",\"content\":\"\",\"content_html\":\"\",\"category\":\"\",\"image_alt\":\"\",\"missingFields\":[],\"warnings\":[]}",
     "ข้อกำหนด:",
     "- ใช้ภาษาไทย สุภาพ เป็นทางการ อ่านง่าย เหมาะกับประชาสัมพันธ์มหาวิทยาลัย/สาขาวิชา",
     "- ใช้เฉพาะข้อเท็จจริงที่ผู้ดูแลให้มาเท่านั้น",
@@ -137,6 +148,7 @@ function buildPrompt(draft: ParsedLineNewsForm) {
     "- content_html ใช้ HTML ปลอดภัยแบบ paragraph เท่านั้น เช่น <p>...</p>",
     "- ห้ามใส่ script, iframe, external embed หรือ HTML อันตราย",
     "- ห้ามใช้คำว่า คำโปรย ในข้อความที่ส่งกลับ",
+    "- ถ้าไม่แน่ใจ ให้คงข้อความเดิมจากผู้ดูแลและใส่คำเตือนใน warnings",
     "",
     "ข้อมูลจากผู้ดูแล:",
     JSON.stringify({
