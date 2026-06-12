@@ -14,7 +14,7 @@ import { getPageSetting } from "@/lib/supabase/queries";
 // 🛠️ ดึง PageHero เข้ามาใช้งานแทน PageHeader เดิม
 import PageHero from "@/components/ui/PageHero";
 
-const REGISTRATION_URL = "https://oreg.rmutt.ac.th/Apply/";
+const REGISTRATION_URL = "https://oreg.rmutt.ac.th/?page_id=14908";
 const REQUEST_URL = "https://oreg.rmutt.ac.th/?page_id=2863";
 const DOCUMENT_URL = "https://oreg.rmutt.ac.th/SSC/?p=85";
 const OREG_URL = "https://oreg.rmutt.ac.th/?page_id=14908";

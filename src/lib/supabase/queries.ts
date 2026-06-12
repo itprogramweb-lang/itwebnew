@@ -691,47 +691,74 @@ export async function getTeacherWorks() {
   if (error) throwQueryError("getTeacherWorks", error);
   return data ?? [];
 }
-
 export async function getNews() {
+  const now = new Date().toISOString();
   const supabase = createServerSupabaseClient();
+
   const { data, error } = await supabase
     .from("news")
     .select("*")
     .eq("status", "published")
+    .lte("published_at", now)
     .order("published_at", { ascending: false })
     .returns<NewsRow[]>();
 
   if (error) throwQueryError("getNews", error);
   return data ?? [];
 }
-
 export async function getNewsBySlug(slug: string) {
   const decoded = safeDecodeSlug(slug);
+  const now = new Date().toISOString();
   const supabase = createServerSupabaseClient();
+
   const { data, error } = await supabase
     .from("news")
     .select("*")
     .eq("slug", decoded)
     .eq("status", "published")
+    .lte("published_at", now)
     .maybeSingle<NewsRow>();
 
   if (error) throwQueryError("getNewsBySlug", error);
   return data;
 }
 
-export async function getRelatedNews(currentId: string, category: string | null, limit = 3) {
+export async function getRelatedNews(
+  currentId: string,
+  category: string | null,
+  limit = 3
+) {
+  const now = new Date().toISOString();
   const supabase = createServerSupabaseClient();
+
   let query = supabase
     .from("news")
-    .select("id,title,slug,excerpt,image_url,image_alt,image_crop_settings,category,published_at")
+    .select(
+      "id,title,slug,excerpt,image_url,image_alt,image_crop_settings,category,published_at"
+    )
     .eq("status", "published")
+    .lte("published_at", now)
     .neq("id", currentId)
     .order("published_at", { ascending: false })
     .limit(limit);
 
   if (category) query = query.eq("category", category);
 
-  const { data, error } = await query.returns<Pick<NewsRow, "id" | "title" | "slug" | "excerpt" | "image_url" | "image_alt" | "image_crop_settings" | "category" | "published_at">[]>();
+  const { data, error } = await query.returns<
+    Pick<
+      NewsRow,
+      | "id"
+      | "title"
+      | "slug"
+      | "excerpt"
+      | "image_url"
+      | "image_alt"
+      | "image_crop_settings"
+      | "category"
+      | "published_at"
+    >[]
+  >();
+
   if (error) throwQueryError("getRelatedNews", error);
   return data ?? [];
 }

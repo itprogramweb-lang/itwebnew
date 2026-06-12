@@ -400,8 +400,10 @@ export default function LearningFacilitiesDashboard() {
             setItems((prev) =>
                 editingId ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev],
             );
-            setEditingId(saved.id);
-            setForm(toForm(saved));
+            setModalOpen(false);
+            setEditingId(null);
+            setForm(createEmptyForm());
+            setFormErrors([]);
             showToast(editingId ? "บันทึกการแก้ไขเรียบร้อยแล้ว" : "เพิ่มข้อมูลเรียบร้อยแล้ว");
         } catch (err) {
             showToast(err instanceof Error ? err.message : "บันทึกข้อมูลไม่สำเร็จ", false);
@@ -640,9 +642,6 @@ export default function LearningFacilitiesDashboard() {
                                     <h2 className="font-semibold text-slate-900">
                                         {editingId ? "แก้ไขอุปกรณ์และห้องปฏิบัติการ" : "เพิ่มอุปกรณ์และห้องปฏิบัติการ"}
                                     </h2>
-                                    <p className="mt-0.5 text-xs text-slate-500">
-                                        รูปจริงเก็บใน Cloudinary ส่วน Supabase เก็บ URL และรายละเอียด
-                                    </p>
                                 </div>
                                 <button
                                     onClick={() => !saving && setModalOpen(false)}
@@ -770,13 +769,17 @@ export default function LearningFacilitiesDashboard() {
                                     </div>
 
                                     <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-                                        <CroppedImage
-                                            src={form.cover_image_url || null}
-                                            fallbackSrc={FALLBACK}
-                                            alt={form.cover_image_alt || form.title || "facility cover"}
-                                            crop={form.cover_image_crop}
-                                            className="aspect-video w-full rounded-2xl border border-slate-200 bg-slate-100"
-                                        />
+                                       {form.cover_image_url ? (
+  <CroppedImage
+    src={form.cover_image_url}
+    fallbackSrc={FALLBACK}
+    alt={form.cover_image_alt || form.title || "รูปปก"}
+    crop={form.cover_image_crop}
+    className="aspect-video w-full rounded-2xl border border-slate-200 bg-slate-100"
+  />
+) : (
+  <div className="hidden aspect-video w-full rounded-2xl border border-slate-200 bg-slate-50 lg:block" />
+)}
                                         <div className="space-y-3">
                                             <CloudinaryImageUploader
                                                 value={form.cover_image_url}

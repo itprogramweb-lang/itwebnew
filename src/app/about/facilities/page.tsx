@@ -9,6 +9,7 @@ import {
 import { getLearningFacilities, getPageSetting } from "@/lib/supabase/queries";
 // 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
 import PageHero from "@/components/ui/PageHero";
+import CroppedImage from "@/components/ui/CroppedImage";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ const TYPE_META: Record<
 };
 
 const TYPE_ORDER = ["lab", "network", "equipment", "project_space", "gallery"];
+const FALLBACK = "/placeholders/facility-placeholder.svg";
 
 function typeLabel(type: string) {
   return TYPE_META[type]?.label ?? type;
@@ -59,6 +61,39 @@ function typeDescription(type: string) {
 
 function typeIcon(type: string) {
   return TYPE_META[type]?.icon ?? FlaskConical;
+}
+
+function normalizeCropForDisplay(value: unknown) {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  return value;
+}
+
+function facilitySort(
+  a: Awaited<ReturnType<typeof getLearningFacilities>>[number],
+  b: Awaited<ReturnType<typeof getLearningFacilities>>[number],
+) {
+  const aOrder = Number.isFinite(Number(a.sort_order))
+    ? Number(a.sort_order)
+    : Number.MAX_SAFE_INTEGER;
+  const bOrder = Number.isFinite(Number(b.sort_order))
+    ? Number(b.sort_order)
+    : Number.MAX_SAFE_INTEGER;
+
+  if (aOrder !== bOrder) return aOrder - bOrder;
+
+  return (
+    new Date(b.created_at ?? 0).getTime() -
+    new Date(a.created_at ?? 0).getTime()
+  );
 }
 
 export default async function FacilitiesPage() {
@@ -74,16 +109,20 @@ export default async function FacilitiesPage() {
     "พื้นที่ อุปกรณ์ และห้องปฏิบัติการที่สนับสนุนการเรียนรู้แบบลงมือทำจริง เพื่อให้นักศึกษาได้ฝึกทักษะด้านเทคโนโลยีผ่านสภาพแวดล้อมที่ใกล้เคียงกับการทำงานจริง";
   const eyebrow = ps?.subtitle ?? "สิ่งสนับสนุนการเรียนรู้";
 
-  const featured = facilities.filter((item) => item.is_featured);
+  const visibleFacilities = facilities
+    .filter((item) => item.is_active !== false)
+    .sort(facilitySort);
+
+  const featured = visibleFacilities.filter((item) => item.is_featured);
 
   const grouped = TYPE_ORDER.map((type) => ({
     type,
     label: typeLabel(type),
     description: typeDescription(type),
-    items: facilities.filter((item) => item.type === type),
+    items: visibleFacilities.filter((item) => item.type === type),
   })).filter((group) => group.items.length > 0);
 
-  const galleryImages = facilities.flatMap((item) => {
+  const galleryImages = visibleFacilities.flatMap((item) => {
     if (!Array.isArray(item.gallery_images)) return [];
 
     return item.gallery_images
@@ -96,11 +135,11 @@ export default async function FacilitiesPage() {
       }));
   });
 
-  const totalRooms = facilities.filter((item) =>
+  const totalRooms = visibleFacilities.filter((item) =>
     ["lab", "network", "project_space"].includes(item.type),
   ).length;
 
-  const totalEquipment = facilities.filter(
+  const totalEquipment = visibleFacilities.filter(
     (item) => item.type === "equipment",
   ).length;
 
@@ -150,14 +189,14 @@ export default async function FacilitiesPage() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 text-center">
-                  <StatCard label="รายการทั้งหมด" value={facilities.length} />
+                  <StatCard label="รายการทั้งหมด" value={visibleFacilities.length} />
                   <StatCard label="ห้อง/พื้นที่" value={totalRooms} />
                   <StatCard label="อุปกรณ์" value={totalEquipment} />
                 </div>
               </div>
             </div>
 
-            {facilities.length === 0 ? (
+            {visibleFacilities.length === 0 ? (
               <EmptyState />
             ) : (
               <>
@@ -170,7 +209,7 @@ export default async function FacilitiesPage() {
                     />
 
                     <div className="grid gap-6 lg:grid-cols-3">
-                      {featured.slice(0, 3).map((item) => (
+                      {featured.map((item) => (
                         <FeatureCard key={item.id} item={item} />
                       ))}
                     </div>
@@ -292,17 +331,13 @@ function FeatureCard({
   return (
     <article className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-        {item.cover_image_url ? (
-          <img
-            src={item.cover_image_url}
-            alt={item.cover_image_alt || item.title}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-400">
-            ไม่มีรูปภาพ
-          </div>
-        )}
+        <CroppedImage
+          src={item.cover_image_url}
+          fallbackSrc={FALLBACK}
+          alt={item.cover_image_alt || item.title}
+          crop={normalizeCropForDisplay(item.cover_image_crop)}
+          className="h-full w-full bg-slate-100 transition duration-500 group-hover:scale-105"
+        />
       </div>
 
       <div className="p-6">
@@ -355,17 +390,13 @@ function FacilityDetailCard({
               : "relative h-[260px] overflow-hidden bg-slate-100 lg:h-full lg:min-h-[380px]"
           }
         >
-          {item.cover_image_url ? (
-            <img
-              src={item.cover_image_url}
-              alt={item.cover_image_alt || item.title}
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-slate-400">
-              ไม่มีรูปภาพ
-            </div>
-          )}
+          <CroppedImage
+            src={item.cover_image_url}
+            fallbackSrc={FALLBACK}
+            alt={item.cover_image_alt || item.title}
+            crop={normalizeCropForDisplay(item.cover_image_crop)}
+            className="h-full w-full bg-slate-100 transition duration-500 group-hover:scale-105"
+          />
         </div>
 
         <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
@@ -400,13 +431,13 @@ function FacilityDetailCard({
               </h4>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {highlights.map((text) => (
-                  <td
+                  <li
                     key={text}
                     className="flex gap-2 text-sm leading-6 text-slate-600"
                   >
                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                     <span>{text}</span>
-                  </td>
+                  </li>
                 ))}
               </ul>
             </div>

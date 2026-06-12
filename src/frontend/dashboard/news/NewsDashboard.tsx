@@ -85,10 +85,10 @@ type NewsRow = {
   image_url: string | null;
   image_alt: string | null;
   image_crop_settings:
-    | Record<string, unknown>
-    | string
-    | ImageCropSettings
-    | null;
+  | Record<string, unknown>
+  | string
+  | ImageCropSettings
+  | null;
   author_name: string | null;
   status: string | null;
   published_at: string | null;
@@ -345,11 +345,11 @@ export default function NewsDashboard() {
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-const boardRef = useRef<HTMLDivElement | null>(null);
-const restrictToBoard = useMemo(
-  () => createRestrictToElementModifier(boardRef),
-  [],
-);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const restrictToBoard = useMemo(
+    () => createRestrictToElementModifier(boardRef),
+    [],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -475,8 +475,8 @@ const restrictToBoard = useMemo(
         sortNewsNewestFirst(
           isEdit
             ? prev.map((item) =>
-                item.id === data.newsItem.id ? data.newsItem : item,
-              )
+              item.id === data.newsItem.id ? data.newsItem : item,
+            )
             : [data.newsItem, ...prev],
         ),
       );
@@ -527,8 +527,8 @@ const restrictToBoard = useMemo(
         sortNewsNewestFirst(
           isEdit
             ? prev.map((item) =>
-                item.id === data.newsItem.id ? data.newsItem : item,
-              )
+              item.id === data.newsItem.id ? data.newsItem : item,
+            )
             : [data.newsItem, ...prev],
         ),
       );
@@ -724,13 +724,17 @@ const restrictToBoard = useMemo(
     }
   };
 
+  const isScheduledNews = (publishedAt?: string | null) => {
+  if (!publishedAt) return false;
+  return new Date(publishedAt).getTime() > Date.now();
+};
+
   return (
     <div className="mx-auto max-w-7xl">
       <DashboardPageHeader
         title="ข่าว/ประกาศ"
-        description={`ทั้งหมด ${items.length} รายการ · เผยแพร่ ${
-          items.filter((i) => i.status === "published").length
-        } รายการ · ข่าวเด่น ${featuredCount}/${FEATURED_LIMIT}`}
+        description={`ทั้งหมด ${items.length} รายการ · เผยแพร่ ${items.filter((i) => i.status === "published").length
+          } รายการ · ข่าวเด่น ${featuredCount}/${FEATURED_LIMIT}`}
         action={<AddButton label="เพิ่มข่าว" onClick={openAdd} />}
       />
 
@@ -753,66 +757,66 @@ const restrictToBoard = useMemo(
           ]}
         />
       </SearchFilter>
-<DndContext
-  sensors={sensors}
-  collisionDetection={closestCorners}
-  modifiers={[restrictToBoard]}
-  autoScroll={false}
-  onDragStart={handleDragStart}
-  onDragEnd={handleDragEnd}
-  onDragCancel={handleDragCancel}
->
-  <div
-    ref={boardRef}
-    className="relative mt-6 grid gap-6 overflow-hidden xl:grid-cols-2"
-  >
-<NewsDropColumn
-  id="featured-zone"
-  title={`ข่าวเด่น ${featuredItems.length}/${FEATURED_LIMIT}`}
-  description="ลากข่าวเด่นกลับไปฝั่งข่าวทั่วไปได้"
-  items={featuredItems}
-  loading={loading}
-  emptyLabel="ลากข่าวทั่วไปมาวางที่นี่เพื่อตั้งเป็นข่าวเด่น"
-  onEdit={openEdit}
-  onDelete={setDeleteId}
-  onToggleStatus={handleToggleStatus}
-  featured
-  scrollable={false}
-/>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        modifiers={[restrictToBoard]}
+        autoScroll={false}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div
+          ref={boardRef}
+          className="relative mt-6 grid gap-6 overflow-hidden xl:grid-cols-2"
+        >
+          <NewsDropColumn
+            id="featured-zone"
+            title={`ข่าวเด่น ${featuredItems.length}/${FEATURED_LIMIT}`}
+            description="ลากข่าวเด่นกลับไปฝั่งข่าวทั่วไปได้"
+            items={featuredItems}
+            loading={loading}
+            emptyLabel="ลากข่าวทั่วไปมาวางที่นี่เพื่อตั้งเป็นข่าวเด่น"
+            onEdit={openEdit}
+            onDelete={setDeleteId}
+            onToggleStatus={handleToggleStatus}
+            featured
+            scrollable={false}
+          />
 
-<NewsDropColumn
-  id="normal-zone"
-  title={`ข่าวทั่วไป ${normalItems.length} รายการ`}
-  description="ลากข่าวจากฝั่งนี้ไปวางที่ช่องข่าวเด่น"
-  items={normalItems}
-  loading={loading}
-  emptyLabel="ยังไม่มีข่าวทั่วไป"
-  onEdit={openEdit}
-  onDelete={setDeleteId}
-  onToggleStatus={handleToggleStatus}
-  scrollable
-/>
-</div>
+          <NewsDropColumn
+            id="normal-zone"
+            title={`ข่าวทั่วไป ${normalItems.length} รายการ`}
+            description="ลากข่าวจากฝั่งนี้ไปวางที่ช่องข่าวเด่น"
+            items={normalItems}
+            loading={loading}
+            emptyLabel="ยังไม่มีข่าวทั่วไป"
+            onEdit={openEdit}
+            onDelete={setDeleteId}
+            onToggleStatus={handleToggleStatus}
+            scrollable
+          />
+        </div>
 
-<DragOverlay modifiers={[restrictToBoard]} dropAnimation={null}>
-  {activeDragItem ? (
-    <div className="pointer-events-none w-[300px] rounded-2xl border border-brand-200 bg-white p-4 shadow-2xl sm:w-[360px]">
-      <div className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900">
-        {activeDragItem.title}
-      </div>
+        <DragOverlay modifiers={[restrictToBoard]} dropAnimation={null}>
+          {activeDragItem ? (
+            <div className="pointer-events-none w-[300px] rounded-2xl border border-brand-200 bg-white p-4 shadow-2xl sm:w-[360px]">
+              <div className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900">
+                {activeDragItem.title}
+              </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-        <span>{activeDragItem.category || "ไม่ระบุหมวดหมู่"}</span>
-        {activeDragItem.is_featured && (
-          <span className="inline-flex items-center gap-1 text-amber-600">
-            <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-            ข่าวเด่น
-          </span>
-        )}
-      </div>
-    </div>
-  ) : null}
-</DragOverlay>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>{activeDragItem.category || "ไม่ระบุหมวดหมู่"}</span>
+                {activeDragItem.is_featured && (
+                  <span className="inline-flex items-center gap-1 text-amber-600">
+                    <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                    ข่าวเด่น
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       {modalOpen && (
@@ -942,6 +946,7 @@ const restrictToBoard = useMemo(
                     </div>
 
                     <FormSelect
+
                       label="สถานะ"
                       value={form.status}
                       onChange={(e) => set("status", e.target.value)}
@@ -951,18 +956,60 @@ const restrictToBoard = useMemo(
                         { value: "archived", label: "ซ่อน" },
                       ]}
                     />
-<div>
-  <FormInput
-    label="ตั้งเวลาเผยแพร่ล่วงหน้า"
-    type="datetime-local"
-    value={form.published_at}
-    onChange={(e) => set("published_at", e.target.value)}
-  />
-  <p className="mt-1 text-xs text-slate-400">
-    ค่าเริ่มต้นคือเวลาปัจจุบัน สามารถแก้เป็นเวลาล่วงหน้าได้
-  </p>
-</div>
+<ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-500">
+  <li>
+    เลือก “ฉบับร่าง” หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์
+  </li>
+  <li>
+    เลือก “เผยแพร่แล้ว” หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด
+  </li>
+</ul>
                   </div>
+
+                  <div>
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    ตั้งเวลาเผยแพร่ล่วงหน้า
+  </label>
+
+  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+    <input
+      type="datetime-local"
+      value={form.published_at}
+      onChange={(e) => set("published_at", e.target.value)}
+      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-site-primary focus:ring-4 focus:ring-site-primary/10"
+    />
+
+    <div>
+      {form.status === "draft" && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          ข่าวนี้เป็นฉบับร่าง ยังไม่แสดงบนหน้าเว็บไซต์
+        </div>
+      )}
+
+      {form.status === "published" &&
+        form.published_at &&
+        new Date(form.published_at).getTime() > Date.now() && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            ข่าวนี้ถูกตั้งเวลาเผยแพร่ไว้ และจะแสดงบนเว็บไซต์เมื่อถึงเวลาที่กำหนด
+          </div>
+        )}
+
+      {form.status === "published" &&
+        (!form.published_at ||
+          new Date(form.published_at).getTime() <= Date.now()) && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+            ข่าวนี้จะเผยแพร่ทันทีหลังจากกดบันทึก
+          </div>
+        )}
+
+      {form.status === "archived" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+          ข่าวนี้ถูกซ่อน จะไม่แสดงบนหน้าเว็บไซต์
+        </div>
+      )}
+    </div>
+  </div>
+</div>
 
                   <label className="flex items-center gap-2.5 text-sm text-slate-700">
                     <input
@@ -1136,17 +1183,42 @@ const restrictToBoard = useMemo(
                           </span>
                         )}
 
-                        <span>
-                          {form.status === "published"
-                            ? "เผยแพร่แล้ว"
-                            : form.status === "archived"
-                              ? "ซ่อน"
-                              : "ฉบับร่าง"}
-                        </span>
+                      <span
+  className={
+    form.status === "published" &&
+    form.published_at &&
+    new Date(form.published_at).getTime() > Date.now()
+      ? "rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
+      : form.status === "published"
+        ? "rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700"
+        : form.status === "archived"
+          ? "rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700"
+          : "rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600"
+  }
+>
+  {form.status === "published" &&
+  form.published_at &&
+  new Date(form.published_at).getTime() > Date.now()
+    ? "ตั้งเวลาไว้"
+    : form.status === "published"
+      ? "เผยแพร่แล้ว"
+      : form.status === "archived"
+        ? "ซ่อน"
+        : "ฉบับร่าง"}
+</span>
 
-                        {form.published_at && (
-                          <span>· {formatDate(form.published_at)}</span>
-                        )}
+                       {form.published_at && (
+  <span>
+    ·{" "}
+    {form.status === "published" &&
+    new Date(form.published_at).getTime() > Date.now()
+      ? `ตั้งเวลาเผยแพร่: ${new Date(form.published_at).toLocaleString("th-TH", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })}`
+      : formatDate(form.published_at)}
+  </span>
+)}
 
                         <span>· Admin</span>
                       </div>
@@ -1286,21 +1358,25 @@ function DraggableNewsCard({
   onDelete: (id: string) => void;
   onToggleStatus: (item: NewsRow) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: item.id,
-    });
+const { attributes, listeners, setNodeRef, transform, isDragging } =
+  useDraggable({
+    id: item.id,
+  });
 
+const isScheduled =
+  item.status === "published" &&
+  item.published_at &&
+  new Date(item.published_at).getTime() > Date.now();
 
 
   return (
-<article
-  ref={setNodeRef}
-  className={cn(
-    "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition",
-    isDragging && "opacity-30",
-  )}
->
+    <article
+      ref={setNodeRef}
+      className={cn(
+        "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition",
+        isDragging && "opacity-30",
+      )}
+    >
       <div className="flex items-start gap-3">
         <button
           type="button"
@@ -1318,7 +1394,10 @@ function DraggableNewsCard({
               <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
             )}
 
-            <NewsStatus status={item.status || "draft"} />
+           <NewsStatus
+  status={item.status || "draft"}
+  isScheduled={Boolean(isScheduled)}
+/>
           </div>
 
           <h3 className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-900">
@@ -1328,13 +1407,22 @@ function DraggableNewsCard({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
             <span>{item.category || "ไม่ระบุหมวดหมู่"}</span>
 
-            {item.published_at && (
-              <>
-                <span>·</span>
-                <span>{formatDate(item.published_at)}</span>
-              </>
-            )}
+           {item.published_at && (
+  <>
+    <span>·</span>
+    <span>{formatDate(item.published_at)}</span>
+  </>
+)}
           </div>
+          {isScheduled && item.published_at && (
+  <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+    ตั้งเวลาเผยแพร่ไว้:{" "}
+    {new Date(item.published_at).toLocaleString("th-TH", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    })}
+  </div>
+)}
 
           {item.slug && (
             <a
@@ -1405,11 +1493,10 @@ function StatusBox({
 
   return (
     <div
-      className={`mb-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${
-        ok
+      className={`mb-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${ok
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
           : "border-rose-200 bg-rose-50 text-rose-700"
-      }`}
+        }`}
     >
       {ok ? (
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1422,23 +1509,33 @@ function StatusBox({
   );
 }
 
-function NewsStatus({ status }: { status: string }) {
+function NewsStatus({
+  status,
+  isScheduled = false,
+}: {
+  status: string;
+  isScheduled?: boolean;
+}) {
   return (
     <span
       className={cn(
         "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        status === "published"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : status === "archived"
-            ? "border-slate-200 bg-slate-100 text-slate-500"
-            : "border-amber-200 bg-amber-50 text-amber-700",
+        isScheduled
+          ? "border-amber-200 bg-amber-50 text-amber-700"
+          : status === "published"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : status === "archived"
+              ? "border-slate-200 bg-slate-100 text-slate-500"
+              : "border-amber-200 bg-amber-50 text-amber-700",
       )}
     >
-      {status === "published"
-        ? "เผยแพร่แล้ว"
-        : status === "archived"
-          ? "ซ่อนอยู่"
-          : "ฉบับร่าง"}
+      {isScheduled
+        ? "ตั้งเวลาไว้"
+        : status === "published"
+          ? "เผยแพร่แล้ว"
+          : status === "archived"
+            ? "ซ่อนอยู่"
+            : "ฉบับร่าง"}
     </span>
   );
 }
