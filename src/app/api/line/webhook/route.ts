@@ -152,6 +152,10 @@ function buildMissingFieldsReply(missingFields: string[]) {
   ].join("\n");
 }
 
+function logLineNewsAi(details: Record<string, unknown>) {
+  console.warn("[line-news-ai] usage", details);
+}
+
 async function handleConfirmCommand(
   event: LineWebhookEvent,
   permission: AuthorizedLineNewsPermission
@@ -510,14 +514,24 @@ async function handleTextMessageEvent(event: LineWebhookEvent) {
   const coverImageAlt = coverDraft?.cover_image_alt ?? null;
 
   const aiLimit = await checkLineNewsAiDailyLimit(permission.profile.id);
+  logLineNewsAi({
+    aiUsageAllowed: aiLimit.status !== "limited",
+    aiUsageStatus: aiLimit.status,
+  });
   const aiOutput =
     aiLimit.status === "limited"
       ? generateLineNewsFallbackDraft(
           parsed.draft,
           "วันนี้ใช้ AI ครบโควต้าแล้ว ระบบจะแสดงตัวอย่างจากข้อมูลที่กรอกโดยตรง",
-          "daily_limit"
+          "daily_limit_exceeded"
         )
       : await generateLineNewsAiDraft(parsed.draft);
+
+  logLineNewsAi({
+    source: aiOutput.source,
+    fallbackReason: aiOutput.fallbackReason,
+    aiCalled: aiOutput.aiCalled === true,
+  });
 
   if (aiOutput.aiCalled) {
     await logLineNewsAiUsage({

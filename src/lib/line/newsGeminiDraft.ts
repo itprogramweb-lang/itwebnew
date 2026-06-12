@@ -75,10 +75,7 @@ function fallbackOutput(
     source: "fallback",
     model,
     fallbackReason,
-    aiCalled:
-      fallbackReason === "request_failed" ||
-      fallbackReason === "invalid_response" ||
-      fallbackReason === "invalid_json",
+    aiCalled: fallbackReason?.startsWith("gemini_") ?? false,
   };
 }
 
