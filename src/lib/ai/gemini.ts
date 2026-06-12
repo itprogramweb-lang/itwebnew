@@ -15,6 +15,9 @@ export type GeminiFailureReason =
   | "gemini_network_error"
   | "gemini_empty_candidates"
   | "gemini_empty_text"
+  | "gemini_malformed_json"
+  | "gemini_truncated_json"
+  | "gemini_max_tokens"
   | "gemini_invalid_json"
   | "unknown_error";
 
@@ -44,6 +47,7 @@ export type GeminiJsonResult<T> =
 
 type GeminiGenerateContentResponse = {
   candidates?: Array<{
+    finishReason?: string;
     content?: {
       parts?: Array<{
         text?: string;
@@ -126,6 +130,55 @@ function stripSingleCodeFence(value: string) {
   return match?.[1]?.trim() ?? null;
 }
 
+function looksJsonLike(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return true;
+  if (/^```json/i.test(trimmed) || trimmed.startsWith("```")) return true;
+  return /"(?:title|excerpt|content|content_html)"\s*:/i.test(
+    trimmed.slice(0, 320)
+  );
+}
+
+function classifyJsonParseFailure(
+  text: string,
+  finishReason?: string
+): {
+  reason: GeminiFailureReason;
+  parseStage: "malformed_json" | "truncated_json";
+} | null {
+  const trimmed = text.trim();
+  const extracted = extractFirstBalancedJsonObject(trimmed);
+  const startsObjectOrArray = trimmed.startsWith("{") || trimmed.startsWith("[");
+  const startsFence = /^```json/i.test(trimmed) || trimmed.startsWith("```");
+  const hasFieldHints = /"(?:title|excerpt|content|content_html)"\s*:/i.test(
+    trimmed.slice(0, 320)
+  );
+
+  if (finishReason === "MAX_TOKENS") {
+    return { reason: "gemini_max_tokens", parseStage: "truncated_json" };
+  }
+
+  if (!looksJsonLike(trimmed) && !extracted) {
+    return null;
+  }
+
+  const looksTruncated =
+    (startsObjectOrArray && !trimmed.endsWith("}") && !trimmed.endsWith("]")) ||
+    (startsFence && !trimmed.endsWith("```")) ||
+    /"(?:title|excerpt|content|content_html)"\s*:\s*[^,\n]*$/.test(trimmed);
+
+  if (looksTruncated) {
+    return { reason: "gemini_truncated_json", parseStage: "truncated_json" };
+  }
+
+  if (startsObjectOrArray || startsFence || hasFieldHints || extracted) {
+    return { reason: "gemini_malformed_json", parseStage: "malformed_json" };
+  }
+
+  return { reason: "gemini_malformed_json", parseStage: "malformed_json" };
+}
+
 function extractFirstBalancedJsonObject(value: string) {
   const start = value.indexOf("{");
   if (start < 0) return null;
@@ -187,7 +240,7 @@ function parseGeminiJsonText(text: string): GeminiJsonParseResult {
 }
 
 function normalizeGeminiPlainText(text: string) {
-  return (stripSingleCodeFence(text) ?? text).trim();
+  return text.trim();
 }
 
 export async function generateGeminiJson<T>(
@@ -236,7 +289,7 @@ export async function generateGeminiJson<T>(
         body: JSON.stringify({
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 1200,
+            maxOutputTokens: 1500,
             responseMimeType: "application/json",
           },
           contents: [
@@ -273,6 +326,7 @@ export async function generateGeminiJson<T>(
       | GeminiGenerateContentResponse
       | null;
     const hasCandidates = Boolean(json?.candidates?.length);
+    const finishReason = json?.candidates?.[0]?.finishReason;
     const text = json?.candidates?.[0]?.content?.parts
       ?.map((part) => part.text ?? "")
       .join("")
@@ -286,6 +340,7 @@ export async function generateGeminiJson<T>(
       hasText,
       textLength: text?.length ?? 0,
       hasPromptFeedback: Boolean(json?.promptFeedback),
+      finishReason,
     });
 
     if (!hasCandidates) {
@@ -328,6 +383,26 @@ export async function generateGeminiJson<T>(
         parseStage: parsedJson.parseStage,
         model,
         warnings: [],
+      };
+    }
+
+    const jsonFailure = classifyJsonParseFailure(text, finishReason);
+    if (jsonFailure) {
+      logLineNewsAi("gemini_json_parse", {
+        model,
+        jsonParseOk: false,
+        parseStage: jsonFailure.parseStage,
+        fallbackReason: jsonFailure.reason,
+      });
+      return {
+        ok: false,
+        reason: jsonFailure.reason,
+        model,
+        warnings: [
+          jsonFailure.reason === "gemini_max_tokens"
+            ? "Gemini ตอบไม่ครบถ้วน จึงใช้ตัวอย่างจากข้อมูลที่กรอกโดยตรง"
+            : "Gemini ส่ง JSON ไม่ถูกต้อง จึงใช้ตัวอย่างจากข้อมูลที่กรอกโดยตรง",
+        ],
       };
     }
 

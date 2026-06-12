@@ -17,7 +17,14 @@ export type NewsDraftAiOutput = {
   fallbackReason?: string;
   aiCalled?: boolean;
   jsonParseOk?: boolean;
-  parseStage?: "direct_json" | "fenced_json" | "extracted_json" | "plain_text" | "failed";
+  parseStage?:
+    | "direct_json"
+    | "fenced_json"
+    | "extracted_json"
+    | "plain_text"
+    | "malformed_json"
+    | "truncated_json"
+    | "failed";
 };
 
 function limitText(value: string, maxLength: number) {
@@ -64,7 +71,8 @@ function fallbackOutput(
   draft: ParsedLineNewsForm,
   warning: string,
   model?: string,
-  fallbackReason?: string
+  fallbackReason?: string,
+  parseStage?: NewsDraftAiOutput["parseStage"]
 ): NewsDraftAiOutput {
   const excerpt =
     draft.excerpt.trim() || limitText(draft.content.replace(/\n+/g, " "), 180);
@@ -82,6 +90,8 @@ function fallbackOutput(
     model,
     fallbackReason,
     aiCalled: fallbackReason?.startsWith("gemini_") ?? false,
+    jsonParseOk: fallbackReason?.startsWith("gemini_") ? false : undefined,
+    parseStage,
   };
 }
 
@@ -206,7 +216,12 @@ export async function generateLineNewsAiDraft(
       draft,
       "AI ไม่พร้อมใช้งานชั่วคราว ระบบจะแสดงตัวอย่างจากข้อมูลที่กรอกโดยตรง",
       result.model,
-      result.reason
+      result.reason,
+      result.reason === "gemini_malformed_json"
+        ? "malformed_json"
+        : result.reason === "gemini_truncated_json" || result.reason === "gemini_max_tokens"
+          ? "truncated_json"
+          : undefined
     );
   }
 
