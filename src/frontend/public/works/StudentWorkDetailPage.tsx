@@ -4,7 +4,17 @@ import { Download, ExternalLink, FileText, GraduationCap, Users, CalendarDays } 
 import { getStudentWorkBySlug } from "@/lib/supabase/queries";
 import CroppedImage from "@/components/ui/CroppedImage";
 import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
+import NewsContentRenderer from "@/components/news/NewsContentRenderer";
 import { buildPdfViewerHref, resolveStudentWorkPdfUrl } from "./pdfLinks";
+
+function hasRenderableHtml(html: string | null | undefined) {
+  if (!html) return false;
+  const text = html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+  return text.length > 0 || /<(img|table|iframe|video|ul|ol)\b/i.test(html);
+}
 
 export default async function StudentWorkDetailPage({
   params,
@@ -29,11 +39,12 @@ export default async function StudentWorkDetailPage({
     title: work.title,
     filename: work.pdf_filename,
     returnTo: detailHref ?? backHref,
-    returnLabel: "กลับไปหน้ารายละเอียดผลงาน",
+    returnLabel: "กลับไปหน้าสรุปผลงาน",
     source: isCourseWork ? "course" : "final_project",
   });
   const pdfUrl = resolveStudentWorkPdfUrl(work.pdf_url);
   if (!isCourseWork && !pdfUrl) notFound();
+  const hasRichContent = hasRenderableHtml(work.content_html);
   const advisorLabel = isCourseWork ? "อาจารย์ผู้สอน" : "อาจารย์ที่ปรึกษา";
   const courseHref =
     isCourseWork && work.course_id ? `/works/students/course/${encodeURIComponent(work.course_id)}` : null;
@@ -124,10 +135,17 @@ export default async function StudentWorkDetailPage({
                 crop={work.image_crop_settings}
                 className="aspect-video w-full rounded-2xl bg-slate-100"
               />
-              {work.description && (
-                <p className="text-slate-700 leading-relaxed text-[1.05rem]">
-                  {work.description}
-                </p>
+              {hasRichContent ? (
+                <NewsContentRenderer
+                  html={work.content_html}
+                  emptyText="ยังไม่มีเนื้อหาผลงานนี้"
+                />
+              ) : (
+                work.description && (
+                  <p className="text-slate-700 leading-relaxed text-[1.05rem]">
+                    {work.description}
+                  </p>
+                )
               )}
               {hasExternal && (
                 <Link

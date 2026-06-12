@@ -123,6 +123,7 @@ export type StudentWorkRow = {
   id: string;
   title: string;
   description: string | null;
+  content_html: string | null;
   category: string | null;
   academic_year: string | null;
   work_type: string | null;
@@ -274,6 +275,7 @@ export type TeacherWorkRow = {
   id: string;
   title: string;
   description: string | null;
+  content_html: string | null;
   category: string | null;
   year: string | null;
   teacher_name: string | null;
@@ -373,6 +375,7 @@ function throwQueryError(label: string, error: { message: string }) {
 function normalizeStudentWorkRow(row: StudentWorkRow): StudentWorkRow {
   return {
     ...row,
+    content_html: row.content_html ?? null,
     work_type: row.work_type ?? "final_project",
     course_id: row.course_id ?? null,
     course_name: row.course_name ?? null,
@@ -383,6 +386,19 @@ function normalizeStudentWorkRow(row: StudentWorkRow): StudentWorkRow {
 
 function normalizeStudentWorkRows(rows: StudentWorkRow[] | null) {
   return (rows ?? []).map(normalizeStudentWorkRow);
+}
+
+function normalizeTeacherWorkRow(row: TeacherWorkRow): TeacherWorkRow {
+  return {
+    ...row,
+    content_html: row.content_html ?? null,
+    pdf_url: row.pdf_url ?? null,
+    pdf_filename: row.pdf_filename ?? null,
+  };
+}
+
+function normalizeTeacherWorkRows(rows: TeacherWorkRow[] | null) {
+  return (rows ?? []).map(normalizeTeacherWorkRow);
 }
 
 function sortAcademicYearsDesc(years: string[]) {
@@ -689,7 +705,20 @@ export async function getTeacherWorks() {
     .returns<TeacherWorkRow[]>();
 
   if (error) throwQueryError("getTeacherWorks", error);
-  return data ?? [];
+  return normalizeTeacherWorkRows(data);
+}
+
+export async function getTeacherWorkById(id: string) {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("teacher_works")
+    .select("*")
+    .eq("id", id)
+    .eq("is_active", true)
+    .maybeSingle<TeacherWorkRow>();
+
+  if (error) throwQueryError("getTeacherWorkById", error);
+  return data ? normalizeTeacherWorkRow(data) : null;
 }
 export async function getNews() {
   const now = new Date().toISOString();

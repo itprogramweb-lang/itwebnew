@@ -135,6 +135,11 @@ function isMissingImageCropSettingsColumn(error: SupabaseMutationError | null | 
   return error?.code === "PGRST204" && text.includes("image_crop_settings");
 }
 
+function isMissingContentHtmlColumn(error: SupabaseMutationError | null | undefined) {
+  const text = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
+  return error?.code === "PGRST204" && text.includes("content_html");
+}
+
 function logStudentWorkMutationError(action: string, error: SupabaseMutationError) {
   console.error("student_works mutation failed", {
     action,
@@ -172,6 +177,7 @@ function sanitizeStudentWorkPayload(body: Record<string, unknown>): SanitizedStu
   const payload: Record<string, unknown> = {
     title,
     description: cleanOptionalText(body.description),
+    content_html: cleanOptionalText(body.content_html),
     category: cleanOptionalText(body.category),
     academic_year: academicYear,
     work_type: workType,
@@ -261,6 +267,14 @@ export async function POST(request: NextRequest) {
     error = retry.error;
   }
 
+  if (error && isMissingContentHtmlColumn(error)) {
+    const { content_html: _contentHtml, ...fallbackPayload } = payload;
+    payload = fallbackPayload;
+    const retry = await admin.from("student_works").insert(payload).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) {
     logStudentWorkMutationError("create", error);
     return NextResponse.json({ error: "เพิ่มผลงานไม่สำเร็จ" }, { status: 500 });
@@ -298,6 +312,14 @@ export async function PATCH(request: NextRequest) {
 
   if (error && isMissingImageCropSettingsColumn(error)) {
     const { image_crop_settings: _imageCropSettings, ...fallbackPayload } = payload;
+    payload = fallbackPayload;
+    const retry = await admin.from("student_works").update(payload).eq("id", id).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error && isMissingContentHtmlColumn(error)) {
+    const { content_html: _contentHtml, ...fallbackPayload } = payload;
     payload = fallbackPayload;
     const retry = await admin.from("student_works").update(payload).eq("id", id).select("*").single();
     data = retry.data;

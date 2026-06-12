@@ -366,17 +366,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
         />
       )}
 
-      <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <div className="space-y-1">
-          <p className="font-semibold text-amber-900">
-            เมนู Navbar และ MobileMenu ใช้ข้อมูลจากหน้านี้แล้ว ส่วน Footer ยังใช้โครงสร้างเดิมอยู่
-          </p>
-          <p>
-            ถ้าข้อมูลเมนูโหลดไม่ได้ หน้าเว็บจะใช้เมนูสำรองเดิมอัตโนมัติ เมนูหลัก (Core Item) ไม่สามารถลบถาวรได้ แต่ยังสามารถปรับลำดับหรือซ่อนจากหน้าเว็บไซต์ได้ตามปกติ และสามารถรีเซตเป็นค่าเริ่มต้นได้เสมอ
-          </p>
-        </div>
-      </div>
-
       {listError && (
         <div className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
