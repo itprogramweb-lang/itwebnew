@@ -12,10 +12,12 @@ export type NewsDraftAiOutput = {
   image_alt: string;
   missingFields: string[];
   warnings: string[];
-  source: "gemini" | "fallback";
+  source: "gemini" | "gemini_text" | "fallback";
   model?: string;
   fallbackReason?: string;
   aiCalled?: boolean;
+  jsonParseOk?: boolean;
+  parseStage?: "direct_json" | "fenced_json" | "extracted_json" | "plain_text" | "failed";
 };
 
 function limitText(value: string, maxLength: number) {
@@ -94,7 +96,8 @@ export function generateLineNewsFallbackDraft(
 function normalizeGeminiOutput(
   value: Partial<NewsDraftAiOutput>,
   draft: ParsedLineNewsForm,
-  model: string
+  model: string,
+  parseStage: NewsDraftAiOutput["parseStage"]
 ): NewsDraftAiOutput {
   const aiTitle = getGeminiString(value.title);
   const aiExcerpt = getGeminiString(value.excerpt);
@@ -129,13 +132,43 @@ function normalizeGeminiOutput(
     source: "gemini",
     model,
     aiCalled: true,
+    jsonParseOk: true,
+    parseStage,
+  };
+}
+
+function normalizeGeminiTextOutput(
+  text: string,
+  draft: ParsedLineNewsForm,
+  model: string
+): NewsDraftAiOutput {
+  const content = limitText(text, 3000);
+  const excerpt =
+    limitText(draft.excerpt, 300) ||
+    limitText(content.replace(/\n+/g, " "), 180);
+
+  return {
+    title: draft.title,
+    excerpt,
+    content,
+    content_html: plainTextToSafeHtml(content),
+    category: draft.category,
+    image_alt: draft.title,
+    missingFields: [],
+    warnings: draft.warnings,
+    source: "gemini_text",
+    model,
+    aiCalled: true,
+    jsonParseOk: false,
+    parseStage: "plain_text",
   };
 }
 
 function buildPrompt(draft: ParsedLineNewsForm) {
   return [
     "คุณคือผู้ช่วยเรียบเรียงข่าวประชาสัมพันธ์ภาษาไทยของสาขาวิชาในมหาวิทยาลัย",
-    "ตอบกลับเป็น JSON object เท่านั้น ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON",
+    "ให้ตอบกลับเป็น JSON object เท่านั้นเป็นลำดับแรก ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON",
+    "ถ้าไม่สามารถตอบเป็น JSON ได้ ให้ตอบเฉพาะเนื้อหาข่าวที่เรียบเรียงแล้วเท่านั้น ไม่ต้องมีหัวข้อหรือคำอธิบายประกอบ",
     "schema ที่ต้องใช้: {\"title\":\"\",\"excerpt\":\"\",\"content\":\"\",\"content_html\":\"\",\"category\":\"\",\"image_alt\":\"\",\"missingFields\":[],\"warnings\":[]}",
     "ข้อกำหนด:",
     "- ใช้ภาษาไทย สุภาพ เป็นทางการ อ่านง่าย เหมาะกับประชาสัมพันธ์มหาวิทยาลัย/สาขาวิชา",
@@ -177,5 +210,9 @@ export async function generateLineNewsAiDraft(
     );
   }
 
-  return normalizeGeminiOutput(result.data, draft, result.model);
+  if (result.source === "text") {
+    return normalizeGeminiTextOutput(result.text, draft, result.model);
+  }
+
+  return normalizeGeminiOutput(result.data, draft, result.model, result.parseStage);
 }

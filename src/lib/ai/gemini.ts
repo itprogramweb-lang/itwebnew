@@ -21,7 +21,17 @@ export type GeminiFailureReason =
 export type GeminiJsonResult<T> =
   | {
       ok: true;
+      source: "json";
       data: T;
+      parseStage: "direct_json" | "fenced_json" | "extracted_json";
+      model: string;
+      warnings: string[];
+    }
+  | {
+      ok: true;
+      source: "text";
+      text: string;
+      parseStage: "plain_text";
       model: string;
       warnings: string[];
     }
@@ -112,7 +122,7 @@ function tryParseJsonObject(value: string, parseStage: GeminiJsonParseResult["pa
 }
 
 function stripSingleCodeFence(value: string) {
-  const match = value.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  const match = value.trim().match(/^```(?:[a-z0-9_-]+)?\s*([\s\S]*?)\s*```$/i);
   return match?.[1]?.trim() ?? null;
 }
 
@@ -174,6 +184,10 @@ function parseGeminiJsonText(text: string): GeminiJsonParseResult {
   }
 
   return { ok: false, parseStage: "failed" };
+}
+
+function normalizeGeminiPlainText(text: string) {
+  return (stripSingleCodeFence(text) ?? text).trim();
 }
 
 export async function generateGeminiJson<T>(
@@ -309,7 +323,26 @@ export async function generateGeminiJson<T>(
       });
       return {
         ok: true,
+        source: "json",
         data: parsedJson.data as T,
+        parseStage: parsedJson.parseStage,
+        model,
+        warnings: [],
+      };
+    }
+
+    const plainText = normalizeGeminiPlainText(text);
+    if (plainText) {
+      logLineNewsAi("gemini_json_parse", {
+        model,
+        jsonParseOk: false,
+        parseStage: "plain_text",
+      });
+      return {
+        ok: true,
+        source: "text",
+        text: plainText,
+        parseStage: "plain_text",
         model,
         warnings: [],
       };

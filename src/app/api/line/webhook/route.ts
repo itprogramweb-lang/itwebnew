@@ -531,6 +531,8 @@ async function handleTextMessageEvent(event: LineWebhookEvent) {
     source: aiOutput.source,
     fallbackReason: aiOutput.fallbackReason,
     aiCalled: aiOutput.aiCalled === true,
+    jsonParseOk: aiOutput.jsonParseOk,
+    parseStage: aiOutput.parseStage,
   });
 
   if (aiOutput.aiCalled) {
