@@ -2,6 +2,8 @@ import "server-only";
 
 const GEMINI_API_VERSION = "v1beta";
 const DEFAULT_GEMINI_TEXT_MODEL = "gemini-1.5-flash";
+const DEFAULT_GEMINI_MAX_OUTPUT_TOKENS = 2048;
+const GEMINI_RESPONSE_MIME_TYPE = "application/json";
 
 export type GeminiFailureReason =
   | "ai_disabled"
@@ -44,6 +46,10 @@ export type GeminiJsonResult<T> =
       model: string;
       warnings: string[];
     };
+
+export type GenerateGeminiJsonOptions = {
+  maxOutputTokens?: number;
+};
 
 type GeminiGenerateContentResponse = {
   candidates?: Array<{
@@ -244,16 +250,21 @@ function normalizeGeminiPlainText(text: string) {
 }
 
 export async function generateGeminiJson<T>(
-  prompt: string
+  prompt: string,
+  options: GenerateGeminiJsonOptions = {}
 ): Promise<GeminiJsonResult<T>> {
   const model = getGeminiModel();
   const enabled = getAiNewsEnabled();
   const apiKey = process.env.GEMINI_API_KEY?.trim();
+  const maxOutputTokens =
+    options.maxOutputTokens ?? DEFAULT_GEMINI_MAX_OUTPUT_TOKENS;
 
   logLineNewsAi("config", {
     enabled,
     hasApiKey: Boolean(apiKey),
     model,
+    maxOutputTokens,
+    responseMimeType: GEMINI_RESPONSE_MIME_TYPE,
   });
 
   if (!enabled) {
@@ -289,8 +300,8 @@ export async function generateGeminiJson<T>(
         body: JSON.stringify({
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 1500,
-            responseMimeType: "application/json",
+            maxOutputTokens,
+            responseMimeType: GEMINI_RESPONSE_MIME_TYPE,
           },
           contents: [
             {

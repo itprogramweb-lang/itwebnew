@@ -537,6 +537,8 @@ async function handleTextMessageEvent(event: LineWebhookEvent) {
     aiCalled: aiOutput.aiCalled === true,
     jsonParseOk: aiOutput.jsonParseOk,
     parseStage: aiOutput.parseStage,
+    usedAiOutput: aiOutput.source === "gemini" || aiOutput.source === "gemini_text",
+    showedFallbackWarning: aiOutput.source === "fallback",
   });
 
   if (aiOutput.aiCalled) {

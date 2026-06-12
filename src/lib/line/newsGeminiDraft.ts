@@ -3,6 +3,9 @@ import "server-only";
 import { generateGeminiJson } from "@/lib/ai/gemini";
 import type { ParsedLineNewsForm } from "@/lib/line/newsFormParser";
 
+const LINE_NEWS_GEMINI_MAX_OUTPUT_TOKENS = 3072;
+const LINE_NEWS_GEMINI_RETRY_MAX_OUTPUT_TOKENS = 4096;
+
 export type NewsDraftAiOutput = {
   title: string;
   excerpt: string;
@@ -115,10 +118,7 @@ function normalizeGeminiOutput(
   const aiContentHtml = getGeminiString(value.content_html);
   const aiCategory = getGeminiString(value.category);
   const aiImageAlt = getGeminiString(value.image_alt);
-  const content = limitText(
-    aiContent || draft.content,
-    3000
-  );
+  const content = limitText(aiContent || draft.content, 500);
   const excerpt =
     limitText(aiExcerpt || draft.excerpt, 300) ||
     limitText(content.replace(/\n+/g, " "), 180);
@@ -152,7 +152,7 @@ function normalizeGeminiTextOutput(
   draft: ParsedLineNewsForm,
   model: string
 ): NewsDraftAiOutput {
-  const content = limitText(text, 3000);
+  const content = limitText(text, 500);
   const excerpt =
     limitText(draft.excerpt, 300) ||
     limitText(content.replace(/\n+/g, " "), 180);
@@ -174,22 +174,24 @@ function normalizeGeminiTextOutput(
   };
 }
 
-function buildPrompt(draft: ParsedLineNewsForm) {
+function buildPrompt(draft: ParsedLineNewsForm, options: { retry?: boolean } = {}) {
   return [
     "คุณคือผู้ช่วยเรียบเรียงข่าวประชาสัมพันธ์ภาษาไทยของสาขาวิชาในมหาวิทยาลัย",
-    "ให้ตอบกลับเป็น JSON object เท่านั้นเป็นลำดับแรก ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON",
+    options.retry
+      ? "รอบนี้ต้องตอบ JSON object สั้นมากเท่านั้น ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON"
+      : "ให้ตอบกลับเป็น JSON object เท่านั้นเป็นลำดับแรก ห้ามมี Markdown ห้ามมี code fence ห้ามมีคำอธิบายก่อนหรือหลัง JSON",
     "ถ้าไม่สามารถตอบเป็น JSON ได้ ให้ตอบเฉพาะเนื้อหาข่าวที่เรียบเรียงแล้วเท่านั้น ไม่ต้องมีหัวข้อหรือคำอธิบายประกอบ",
-    "schema ที่ต้องใช้: {\"title\":\"\",\"excerpt\":\"\",\"content\":\"\",\"content_html\":\"\",\"category\":\"\",\"image_alt\":\"\",\"missingFields\":[],\"warnings\":[]}",
+    "schema ที่ต้องใช้: {\"title\":\"\",\"excerpt\":\"\",\"content\":\"\",\"category\":\"\",\"image_alt\":\"\",\"missingFields\":[],\"warnings\":[]}",
     "ข้อกำหนด:",
     "- ใช้ภาษาไทย สุภาพ เป็นทางการ อ่านง่าย เหมาะกับประชาสัมพันธ์มหาวิทยาลัย/สาขาวิชา",
     "- ใช้เฉพาะข้อเท็จจริงที่ผู้ดูแลให้มาเท่านั้น",
     "- ห้ามแต่งวันที่ สถานที่ ชื่อบุคคล ผู้จัด ตารางเวลา ลิงก์ ตัวเลข หรือข้อกล่าวอ้างเพิ่มเติม",
     "- ถ้าข้อมูลสำคัญขาด ให้ใส่ชื่อฟิลด์ใน missingFields แต่อย่าแต่งเติมเอง",
     "- ปรับถ้อยคำโดยรักษาความหมายเดิม",
-    "- title กระชับ",
-    "- excerpt คือ สรุปสั้น ถ้าผู้ดูแลเว้นว่างให้สรุปจากรายละเอียดที่มี",
-    "- content_html ใช้ HTML ปลอดภัยแบบ paragraph เท่านั้น เช่น <p>...</p>",
-    "- ห้ามใส่ script, iframe, external embed หรือ HTML อันตราย",
+    "- title ยาวไม่เกิน 80 ตัวอักษร",
+    "- excerpt คือ สรุปสั้น ยาวไม่เกิน 120 ตัวอักษร และเป็นหนึ่งประโยคสมบูรณ์",
+    "- content เป็นเนื้อหาข่าว 1 ย่อหน้าสั้น ไม่เกิน 500 ตัวอักษร",
+    "- ไม่ต้องส่ง content_html ระบบจะสร้าง HTML ปลอดภัยจาก content เอง",
     "- ห้ามใช้คำว่า คำโปรย ในข้อความที่ส่งกลับ",
     "- ถ้าไม่แน่ใจ ให้คงข้อความเดิมจากผู้ดูแลและใส่คำเตือนใน warnings",
     "",
@@ -207,9 +209,17 @@ function buildPrompt(draft: ParsedLineNewsForm) {
 export async function generateLineNewsAiDraft(
   draft: ParsedLineNewsForm
 ): Promise<NewsDraftAiOutput> {
-  const result = await generateGeminiJson<Partial<NewsDraftAiOutput>>(
-    buildPrompt(draft)
+  let result = await generateGeminiJson<Partial<NewsDraftAiOutput>>(
+    buildPrompt(draft),
+    { maxOutputTokens: LINE_NEWS_GEMINI_MAX_OUTPUT_TOKENS }
   );
+
+  if (!result.ok && result.reason === "gemini_max_tokens") {
+    result = await generateGeminiJson<Partial<NewsDraftAiOutput>>(
+      buildPrompt(draft, { retry: true }),
+      { maxOutputTokens: LINE_NEWS_GEMINI_RETRY_MAX_OUTPUT_TOKENS }
+    );
+  }
 
   if (!result.ok) {
     return fallbackOutput(
