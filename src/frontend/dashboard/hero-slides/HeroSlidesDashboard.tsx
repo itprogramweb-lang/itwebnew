@@ -315,7 +315,7 @@ function getFirstAvailableOrder(slides: Slide[]) {
 
 function FL({ children }: { children: ReactNode }) {
   return (
-    <label className="mb-1 block text-xs font-semibold text-slate-600">
+    <label className="mb-1.5 block text-xs font-semibold text-slate-600 sm:mb-1">
       {children}
     </label>
   );
@@ -338,7 +338,7 @@ function FInput({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-100"
+      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base transition focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-100 sm:h-9 sm:rounded-lg sm:px-3 sm:text-sm"
     />
   );
 }
@@ -356,7 +356,7 @@ function FSelect({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-brand-400 focus:outline-none"
+      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base focus:border-brand-400 focus:outline-none sm:h-9 sm:rounded-lg sm:px-3 sm:text-sm"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -377,23 +377,23 @@ function FToggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer select-none items-center gap-2.5">
+    <label className="flex min-h-11 cursor-pointer select-none items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
       <button
         type="button"
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none",
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none sm:h-5 sm:w-9",
           checked ? "bg-orange-500" : "bg-slate-300"
         )}
       >
         <span
           className={cn(
-            "inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform",
-            checked ? "translate-x-4" : "translate-x-0.5"
+            "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform sm:h-4 sm:w-4",
+            checked ? "translate-x-5 sm:translate-x-4" : "translate-x-0.5"
           )}
         />
       </button>
-      <span className="text-sm text-slate-700">{label}</span>
+      <span className="text-sm font-medium text-slate-700">{label}</span>
     </label>
   );
 }
@@ -408,7 +408,7 @@ function Toast({
   return (
     <div
       className={cn(
-        "fixed bottom-5 right-5 z-[100] flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm font-medium shadow-lg",
+        "fixed inset-x-4 bottom-4 z-[100] flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm font-medium shadow-lg sm:inset-x-auto sm:right-5 sm:bottom-5",
         toast.type === "success"
           ? "border-emerald-200 text-emerald-700"
           : "border-rose-200 text-rose-600"
@@ -495,9 +495,9 @@ function SlideModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 pb-10 pt-10">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-900/50 p-0 sm:items-start sm:p-4 sm:pb-10 sm:pt-10">
+      <div className="relative flex max-h-[100dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:max-h-none sm:max-w-2xl sm:rounded-3xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
           <h2 className="text-base font-bold text-slate-900">
             {slide ? "แก้ไขสไลด์" : "เพิ่มสไลด์ใหม่"}
           </h2>
@@ -505,20 +505,20 @@ function SlideModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700"
+            className="grid h-10 w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex border-b border-slate-100">
+        <div className="sticky top-[73px] z-10 flex border-b border-slate-100 bg-white sm:static">
           {(["main", "settings"] as const).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => setTab(item)}
               className={cn(
-                "px-5 py-2.5 text-sm font-medium transition-colors",
+                "min-h-11 flex-1 px-4 py-2.5 text-sm font-medium transition-colors sm:flex-none sm:px-5",
                 tab === item
                   ? "border-b-2 border-orange-500 text-orange-600"
                   : "text-slate-500 hover:text-slate-700"
@@ -529,11 +529,11 @@ function SlideModal({
           ))}
         </div>
 
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto p-6">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 pb-28 sm:max-h-[70vh] sm:p-6">
           {tab === "main" && (
             <>
-              <div className="flex gap-3">
-                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="aspect-video w-full shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:h-16 sm:w-24">
                   {form.image_url ? (
                     <CroppedImage
                       src={form.image_url}
@@ -611,7 +611,7 @@ function SlideModal({
                   onChange={(event) => set("description", event.target.value)}
                   rows={3}
                   placeholder="คำอธิบายสั้น ๆ สำหรับสไลด์นี้"
-                  className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition focus:border-brand-400 focus:outline-none"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base transition focus:border-brand-400 focus:outline-none sm:rounded-lg sm:px-3 sm:py-2 sm:text-sm"
                 />
               </div>
 
@@ -664,7 +664,7 @@ function SlideModal({
                     onClick={() =>
                       set("right_items", [...form.right_items, ""])
                     }
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     เพิ่มรายการ
@@ -696,7 +696,7 @@ function SlideModal({
                             nextItems.length > 0 ? nextItems : [""]
                           );
                         }}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 sm:h-9 sm:w-9 sm:rounded-lg"
                         title="ลบรายการนี้"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -726,7 +726,7 @@ function SlideModal({
                           : Number(event.target.value)
                       )
                     }
-                    className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-brand-400 focus:outline-none"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base focus:border-brand-400 focus:outline-none sm:h-9 sm:rounded-lg sm:px-3 sm:text-sm"
                   >
                     {orderOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -884,7 +884,7 @@ function SlideModal({
                         onChange={(event) =>
                           set("overlayColor", event.target.value)
                         }
-                        className="h-9 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                        className="h-11 w-16 cursor-pointer rounded-xl border border-slate-200 bg-white p-1 sm:h-9 sm:w-14 sm:rounded-lg"
                       />
 
                       <FInput
@@ -970,7 +970,7 @@ function SlideModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+        <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:static sm:px-6 sm:py-4">
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             ยกเลิก
           </Button>
@@ -1141,7 +1141,7 @@ export default function HeroSlidesDashboard() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl px-3 sm:px-0">
       <DashboardPageHeader
         title="สไลด์หน้าแรก"
         description={`ทั้งหมด ${slides.length} สไลด์ · ใช้งานอยู่ ${
@@ -1151,7 +1151,7 @@ export default function HeroSlidesDashboard() {
           <button
             type="button"
             onClick={() => setModalTarget("new")}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-gradient px-4 text-sm font-semibold text-white shadow-brand transition hover:opacity-90"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-gradient px-4 text-sm font-semibold text-white shadow-brand transition hover:opacity-90 sm:h-10 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             เพิ่มสไลด์
@@ -1191,14 +1191,14 @@ export default function HeroSlidesDashboard() {
 <div
   key={slide.id}
   className={cn(
-    "h-[112px] overflow-hidden rounded-2xl border bg-white transition-all",
+    "overflow-hidden rounded-2xl border bg-white transition-all sm:h-[112px]",
     slide.is_active
       ? "border-slate-200"
       : "border-slate-200 opacity-60"
   )}
 >
-               <div className="flex h-full items-stretch gap-0">
-                 <div className="relative h-full w-[180px] shrink-0 bg-slate-100">
+               <div className="flex h-full flex-col gap-0 sm:flex-row sm:items-stretch">
+                 <div className="relative aspect-video w-full shrink-0 bg-slate-100 sm:h-full sm:w-[180px]">
                     {slide.image_url ? (
                   <CroppedImage
   src={slide.image_url}
@@ -1259,7 +1259,7 @@ export default function HeroSlidesDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1 border-l border-slate-100 px-3">
+                  <div className="flex shrink-0 items-center justify-between gap-1 border-t border-slate-100 px-3 py-2 sm:justify-start sm:border-l sm:border-t-0 sm:py-0">
                     <div className="relative">
                       <select
                         disabled={updatingOrderId === slide.id}
@@ -1276,7 +1276,7 @@ export default function HeroSlidesDashboard() {
                               : Number(event.target.value)
                           )
                         }
-                        className="h-8 cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50 py-0 pl-2.5 pr-7 text-xs font-medium text-slate-600 transition focus:border-brand-400 focus:outline-none disabled:opacity-50"
+                        className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50 py-0 pl-3 pr-8 text-xs font-medium text-slate-600 transition focus:border-brand-400 focus:outline-none disabled:opacity-50 sm:h-8 sm:rounded-lg sm:pl-2.5 sm:pr-7"
                       >
                         {orderOptions.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -1309,7 +1309,7 @@ export default function HeroSlidesDashboard() {
                     <button
                       type="button"
                       onClick={() => handleDuplicate(slide)}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-purple-50 hover:text-purple-600"
+                      className="rounded-xl p-2.5 text-slate-400 transition hover:bg-purple-50 hover:text-purple-600 sm:rounded-lg sm:p-2"
                       title="ทำสำเนา"
                     >
                       <Copy className="h-4 w-4" />
@@ -1319,7 +1319,7 @@ export default function HeroSlidesDashboard() {
                       type="button"
                       onClick={() => handleToggleActive(slide)}
                       className={cn(
-                        "rounded-lg p-2 transition",
+                        "rounded-xl p-2.5 transition sm:rounded-lg sm:p-2",
                         slide.is_active
                           ? "text-emerald-500 hover:bg-emerald-50 hover:text-emerald-700"
                           : "text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"
@@ -1336,7 +1336,7 @@ export default function HeroSlidesDashboard() {
                     <button
                       type="button"
                       onClick={() => setModalTarget(slide)}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-orange-50 hover:text-orange-600"
+                      className="rounded-xl p-2.5 text-slate-400 transition hover:bg-orange-50 hover:text-orange-600 sm:rounded-lg sm:p-2"
                       title="แก้ไข"
                     >
                       <Pencil className="h-4 w-4" />
@@ -1345,7 +1345,7 @@ export default function HeroSlidesDashboard() {
                     <button
                       type="button"
                       onClick={() => setDeleteId(slide.id)}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                      className="rounded-xl p-2.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 sm:rounded-lg sm:p-2"
                       title="ลบสไลด์"
                     >
                       <Trash2 className="h-4 w-4" />
