@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload, Loader2 } from "lucide-react";
 import { teacherWorksApi } from "@/frontend/api/teacherWorks";
 import { getAuthToken } from "@/frontend/api/http";
 import { TeacherWorkRow } from "@/lib/supabase/queries";
@@ -21,11 +22,24 @@ import { FormInput, FormTextarea, FormSelect, Label } from "@/components/ui/Form
 import CroppedImage from "@/components/ui/CroppedImage";
 import { cropToJson, getDefaultImageCrop, type ImageCropSettings } from "@/lib/imageCrop";
 
+const RichTextEditor = dynamic(
+  () => import("@/components/dashboard/RichTextEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+      </div>
+    ),
+  },
+);
+
 // ─── types ──────────────────────────────────────────────────────────────────
 
 type FormData = {
   title: string;
   description: string;
+  content_html: string;
   category: string;
   year: string;
   teacher_name: string;
@@ -45,6 +59,7 @@ type FormData = {
 const EMPTY_FORM: FormData = {
   title: "",
   description: "",
+  content_html: "",
   category: "research",
   year: "",
   teacher_name: "",
@@ -78,6 +93,7 @@ const categoryLabel = (value: string) => CATEGORY_LABELS[value] ?? value;
 const toForm = (w: TeacherWorkRow): FormData => ({
   title: w.title,
   description: w.description ?? "",
+  content_html: w.content_html ?? "",
   category: w.category ?? "research",
   year: w.year ?? "",
   teacher_name: w.teacher_name ?? "",
@@ -97,6 +113,7 @@ const toForm = (w: TeacherWorkRow): FormData => ({
 const toPayload = (f: FormData) => ({
   title: f.title.trim(),
   description: f.description.trim() || null,
+  content_html: f.content_html.trim() || null,
   category: f.category || null,
   year: f.year.trim() || null,
   teacher_name: f.teacher_name.trim() || null,
@@ -475,7 +492,7 @@ export default function TeacherWorksDashboard() {
       {/* ── Modal ─────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-2xl my-6 shadow-2xl">
+          <div className="bg-white rounded-3xl w-full max-w-4xl my-6 shadow-2xl">
             <div className="p-6 border-b border-slate-100">
               <h2 className="text-lg font-semibold text-slate-900">
                 {editingId ? "แก้ไขผลงาน" : "เพิ่มผลงานใหม่"}
@@ -524,7 +541,22 @@ export default function TeacherWorksDashboard() {
                 </div>
               </div>
 
-              <FormTextarea label="รายละเอียด" rows={3} {...FT("description")} />
+              <FormTextarea label="สรุปผลงาน" rows={3} {...FT("description")} />
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900">เนื้อหาผลงาน</h3>
+                  <p className="text-xs text-slate-500">
+                    ใช้สำหรับเนื้อหาแบบจัดรูปแบบในหน้ารายละเอียดผลงาน
+                  </p>
+                </div>
+                <RichTextEditor
+                  value={form.content_html}
+                  onChange={(html) => setForm((p) => ({ ...p, content_html: html }))}
+                  placeholder="เขียนเนื้อหาผลงานอาจารย์ที่นี่... รองรับหัวข้อ ตัวหนา ตัวเอียง รายการ ลิงก์ รูปภาพ และตาราง"
+                  minHeight={420}
+                />
+              </section>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <FormSelect

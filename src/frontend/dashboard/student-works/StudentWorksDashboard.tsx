@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Pencil, Trash2, CheckCircle2, AlertCircle, Star, Upload, Loader2 } from "lucide-react";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import ImageCropControls from "@/components/dashboard/ImageCropControls";
 import { studentWorksApi } from "@/frontend/api/studentWorks";
@@ -21,11 +22,24 @@ import { FormInput, FormTextarea, FormSelect, Label } from "@/components/ui/Form
 import CroppedImage from "@/components/ui/CroppedImage";
 import { cropToJson, getDefaultImageCrop, type ImageCropSettings } from "@/lib/imageCrop";
 
+const RichTextEditor = dynamic(
+  () => import("@/components/dashboard/RichTextEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+      </div>
+    ),
+  },
+);
+
 // ─── types ──────────────────────────────────────────────────────────────────
 
 type FormData = {
   title: string;
   description: string;
+  content_html: string;
   category: string;
   academic_year: string;
   work_type: "course" | "final_project";
@@ -50,9 +64,19 @@ type FormData = {
 
 type WorkTypeTab = "course" | "final_project";
 
+type CourseOptionRow = {
+  id: string;
+  course_id: string;
+  course_name: string;
+  sort_order: number;
+  is_active: boolean;
+  work_count?: number;
+};
+
 const EMPTY_FORM: FormData = {
   title: "",
   description: "",
+  content_html: "",
   category: "web",
   academic_year: "",
   work_type: "final_project",
@@ -85,8 +109,25 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const DEFAULT_CATEGORY_OPTIONS = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }));
+const NEW_COURSE_VALUE = "__new__";
 
 const categoryLabel = (value: string) => CATEGORY_LABELS[value] ?? value;
+
+async function fetchCourseOptions(): Promise<CourseOptionRow[]> {
+  const token = await getAuthToken();
+  const res = await fetch("/api/admin/courses", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "same-origin",
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    courses?: CourseOptionRow[];
+    setup_required?: boolean;
+    error?: string;
+  };
+  if (!res.ok) throw new Error(json.error || "โหลดรายวิชาไม่สำเร็จ");
+  if (json.setup_required) return [];
+  return json.courses ?? [];
+}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -114,6 +155,7 @@ const isSafePdfPath = (value: string) => {
 const toForm = (w: StudentWorkRow): FormData => ({
   title: w.title,
   description: w.description ?? "",
+  content_html: w.content_html ?? "",
   category: w.category ?? "web",
   academic_year: w.academic_year ?? "",
   work_type: w.work_type === "course" ? "course" : "final_project",
@@ -142,6 +184,7 @@ const toPayload = (f: FormData) => {
   return {
     title: f.title.trim(),
     description: f.description.trim() || null,
+    content_html: f.content_html.trim() || null,
     category: f.category || null,
     academic_year: f.academic_year.trim() || null,
     work_type: workType,
@@ -196,6 +239,10 @@ export default function StudentWorksDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
+  const [courses, setCourses] = useState<CourseOptionRow[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesLoadFailed, setCoursesLoadFailed] = useState(false);
+  const [addingNewCourse, setAddingNewCourse] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -219,6 +266,23 @@ export default function StudentWorksDashboard() {
   }, []);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+
+  const loadCourses = useCallback(async () => {
+    setCoursesLoading(true);
+    setCoursesLoadFailed(false);
+    try {
+      const data = await fetchCourseOptions();
+      setCourses(data);
+    } catch {
+      setCourses([]);
+      setCoursesLoadFailed(true);
+      showToast("โหลดรายวิชาไม่สำเร็จ", false);
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCourses(); }, [loadCourses]);
 
   const typeCounts = useMemo(() => {
     return items.reduce(
@@ -257,6 +321,55 @@ export default function StudentWorksDashboard() {
     for (const option of dataCategoryOptions) options.set(option.value, option.label);
     return [...options].map(([value, label]) => ({ value, label }));
   }, [dataCategoryOptions]);
+
+  const activeCourses = useMemo(
+    () =>
+      courses
+        .filter((course) => course.is_active !== false)
+        .sort((a, b) => {
+          const orderA = a.sort_order ?? 999;
+          const orderB = b.sort_order ?? 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.course_id.localeCompare(b.course_id, "th");
+        }),
+    [courses]
+  );
+
+  const selectedExistingCourse = useMemo(
+    () =>
+      addingNewCourse
+        ? null
+        : activeCourses.find((course) => course.course_id === form.course_id.trim()) ?? null,
+    [activeCourses, addingNewCourse, form.course_id]
+  );
+
+  const courseSelectValue =
+    form.work_type === "course" && selectedExistingCourse
+      ? selectedExistingCourse.course_id
+      : NEW_COURSE_VALUE;
+
+  const courseSelectHint = coursesLoading
+    ? "กำลังโหลดรายวิชา..."
+    : coursesLoadFailed || activeCourses.length === 0
+      ? "ไม่พบรายวิชาเดิม สามารถเลือกเพิ่มใหม่ได้"
+      : undefined;
+
+  const courseSelectOptions = useMemo(
+    () => [
+      { value: NEW_COURSE_VALUE, label: "เพิ่มใหม่" },
+      ...activeCourses.map((course) => ({
+        value: course.course_id,
+        label: `${course.course_id} — ${course.course_name}`,
+      })),
+    ],
+    [activeCourses]
+  );
+
+  useEffect(() => {
+    if (!selectedExistingCourse || addingNewCourse) return;
+    if (form.course_name === selectedExistingCourse.course_name) return;
+    setForm((p) => ({ ...p, course_name: selectedExistingCourse.course_name }));
+  }, [addingNewCourse, form.course_name, selectedExistingCourse]);
 
   const filtered = useMemo(() => {
     return items.filter((w) => {
@@ -309,25 +422,45 @@ export default function StudentWorksDashboard() {
   });
 
   const openAdd = () => {
+    const defaultCourse = workTypeTab === "course" ? activeCourses[0] : undefined;
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, work_type: workTypeTab === "course" ? "course" : "final_project" });
+    setAddingNewCourse(false);
+    setForm({
+      ...EMPTY_FORM,
+      work_type: workTypeTab === "course" ? "course" : "final_project",
+      course_id: defaultCourse?.course_id ?? "",
+      course_name: defaultCourse?.course_name ?? "",
+    });
     setErrors([]);
     setPdfFile(null);
     setPdfUploadMessage(null);
     setModalOpen(true);
   };
-
-  const isCourseTab = workTypeTab === "course";
-  const tableColSpan = isCourseTab ? 8 : 9;
 
   const openEdit = (w: StudentWorkRow) => {
     setEditingId(w.id);
     setForm(toForm(w));
+    setAddingNewCourse(false);
     setErrors([]);
     setPdfFile(null);
     setPdfUploadMessage(null);
     setModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!modalOpen || form.work_type !== "course" || addingNewCourse) return;
+    if (form.course_id.trim() || form.course_name.trim()) return;
+    const defaultCourse = activeCourses[0];
+    if (!defaultCourse) return;
+    setForm((p) => ({
+      ...p,
+      course_id: defaultCourse.course_id,
+      course_name: defaultCourse.course_name,
+    }));
+  }, [activeCourses, addingNewCourse, form.course_id, form.course_name, form.work_type, modalOpen]);
+
+  const isCourseTab = workTypeTab === "course";
+  const tableColSpan = isCourseTab ? 8 : 9;
 
   const handlePdfUpload = async () => {
     const uploadErrors: string[] = [];
@@ -605,7 +738,7 @@ export default function StudentWorksDashboard() {
       {/* ── Modal ─────────────────────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-2xl my-6 shadow-2xl">
+          <div className="bg-white rounded-3xl w-full max-w-4xl my-6 shadow-2xl">
             <div className="p-6 border-b border-slate-100">
               <h2 className="text-lg font-semibold text-slate-900">
                 {editingId ? "แก้ไขผลงาน" : "เพิ่มผลงานใหม่"}
@@ -654,19 +787,19 @@ export default function StudentWorksDashboard() {
                 </div>
               </div>
 
-              <FormTextarea label="รายละเอียด" rows={3} {...FT("description")} />
-
               <div className="grid sm:grid-cols-2 gap-4">
                 <FormSelect
                   label="ประเภทผลงาน *"
                   value={form.work_type}
                   onChange={(e) => {
                     const value = e.target.value === "course" ? "course" : "final_project";
+                    const defaultCourse = value === "course" ? activeCourses[0] : undefined;
+                    setAddingNewCourse(false);
                     setForm((p) => ({
                       ...p,
                       work_type: value,
-                      course_id: value === "course" ? p.course_id : "",
-                      course_name: value === "course" ? p.course_name : "",
+                      course_id: value === "course" ? p.course_id || defaultCourse?.course_id || "" : "",
+                      course_name: value === "course" ? p.course_name || defaultCourse?.course_name || "" : "",
                     }));
                   }}
                   options={[
@@ -687,11 +820,76 @@ export default function StudentWorksDashboard() {
               </div>
 
               {form.work_type === "course" && (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <FormInput label="รหัสวิชา *" placeholder="09-142-306" {...FI("course_id")} />
-                  <FormInput label="ชื่อวิชา *" placeholder="การพัฒนาเว็บยุคใหม่" {...FI("course_name")} />
+                <div className="space-y-4">
+                  <FormSelect
+                    label="รายวิชา *"
+                    value={courseSelectValue}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === NEW_COURSE_VALUE) {
+                        setAddingNewCourse(true);
+                        setForm((p) => ({
+                          ...p,
+                          course_id: "",
+                          course_name: "",
+                        }));
+                        return;
+                      }
+                      const selected = activeCourses.find((course) => course.course_id === value);
+                      setAddingNewCourse(false);
+                      setForm((p) => ({
+                        ...p,
+                        course_id: selected?.course_id ?? "",
+                        course_name: selected?.course_name ?? "",
+                      }));
+                    }}
+                    options={courseSelectOptions}
+                    hint={courseSelectHint}
+                  />
+
+                  {courseSelectValue === NEW_COURSE_VALUE ? (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <FormInput label="รหัสวิชา *" placeholder="09-142-306" {...FI("course_id")} />
+                      <FormInput label="ชื่อวิชา *" placeholder="การพัฒนาเว็บยุคใหม่" {...FI("course_name")} />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                      <div className="text-xs font-medium text-slate-500">ชื่อวิชาที่จับคู่ให้อัตโนมัติ</div>
+                      <div className="mt-1 font-medium text-slate-900">{form.course_name || "-"}</div>
+                    </div>
+                  )}
                 </div>
               )}
+
+              <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-slate-900">สรุปผลงาน</h3>
+                  <p className="text-xs text-slate-500">
+                    ข้อความสั้นสำหรับแสดงบนการ์ดและหน้ารายการผลงาน
+                  </p>
+                </div>
+                <FormTextarea
+                  label=""
+                  rows={3}
+                  placeholder="สรุปสั้น ๆ ของผลงานสำหรับแสดงในหน้ารายการ"
+                  {...FT("description")}
+                />
+              </section>
+
+              <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900">เนื้อหาผลงาน</h3>
+                  <p className="text-xs text-slate-500">
+                    Editor สำหรับเนื้อหาเต็มในหน้ารายละเอียด รองรับหัวข้อ ตัวหนา รายการ รูปภาพ และตาราง
+                  </p>
+                </div>
+                <RichTextEditor
+                  value={form.content_html}
+                  onChange={(html) => setForm((p) => ({ ...p, content_html: html }))}
+                  placeholder="เขียนเนื้อหาผลงานที่นี่... รองรับหัวข้อ ตัวหนา ตัวเอียง รายการ ลิงก์ รูปภาพ และตาราง"
+                  minHeight={520}
+                />
+              </section>
 
               <FormTextarea
                 label="รายชื่อนักศึกษา (คั่นด้วย , หรือขึ้นบรรทัดใหม่)"

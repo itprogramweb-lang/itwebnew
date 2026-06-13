@@ -11,6 +11,13 @@ type TeacherWorkAccessRow = {
   teacher_name: string | null;
 };
 
+type SupabaseMutationError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
 async function requireAuth(request: NextRequest) {
   const profile = await getAuthenticatedProfileWithPermissions(request);
   if (!profile) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -106,6 +113,11 @@ function isSafePdfPath(v: string) {
   return !v.split("/").some((part) => part === "." || part === "..");
 }
 
+function isMissingContentHtmlColumn(error: SupabaseMutationError | null | undefined) {
+  const text = `${error?.message ?? ""} ${error?.details ?? ""} ${error?.hint ?? ""}`;
+  return error?.code === "PGRST204" && text.includes("content_html");
+}
+
 function buildTeacherWorkPayload(body: Record<string, unknown>) {
   const title = cleanText(body.title);
   if (!title) return { error: "กรุณากรอกชื่อผลงาน" };
@@ -119,6 +131,7 @@ function buildTeacherWorkPayload(body: Record<string, unknown>) {
     payload: {
       title,
       description: cleanOptionalText(body.description),
+      content_html: cleanOptionalText(body.content_html),
       category: cleanOptionalText(body.category),
       year: cleanOptionalText(body.year),
       teacher_name: cleanOptionalText(body.teacher_name),
@@ -180,11 +193,20 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
+  let payload: Record<string, unknown> = sanitized.payload;
+  let { data, error } = await admin
     .from("teacher_works")
-    .insert(sanitized.payload)
+    .insert(payload)
     .select("*")
     .single();
+
+  if (error && isMissingContentHtmlColumn(error)) {
+    const { content_html: _contentHtml, ...fallbackPayload } = payload;
+    payload = fallbackPayload;
+    const retry = await admin.from("teacher_works").insert(payload).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) return NextResponse.json({ error: "เพิ่มผลงานไม่สำเร็จ: " + error.message }, { status: 500 });
   return NextResponse.json({ work: data }, { status: 201 });
@@ -209,12 +231,21 @@ export async function PATCH(request: NextRequest) {
     sanitized.payload.teacher_name = auth.profile.full_name?.trim() ?? null;
   }
 
-  const { data, error } = await admin
+  let payload: Record<string, unknown> = sanitized.payload;
+  let { data, error } = await admin
     .from("teacher_works")
-    .update(sanitized.payload)
+    .update(payload)
     .eq("id", id)
     .select("*")
     .single();
+
+  if (error && isMissingContentHtmlColumn(error)) {
+    const { content_html: _contentHtml, ...fallbackPayload } = payload;
+    payload = fallbackPayload;
+    const retry = await admin.from("teacher_works").update(payload).eq("id", id).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) return NextResponse.json({ error: "บันทึกไม่สำเร็จ: " + error.message }, { status: 500 });
   return NextResponse.json({ work: data });

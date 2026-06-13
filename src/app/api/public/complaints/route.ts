@@ -56,40 +56,68 @@ function logNotificationOutcome(
   if (result.email.status === "sent") {
     console.info("Complaint email notification sent", {
       ...metadata,
-      providerStatus: result.email.providerStatus,
+      recipientCount: result.email.recipientCount,
+      sentCount: result.email.sentCount,
+      providerStatuses: result.email.providerStatuses,
+    });
+  } else if (result.email.status === "partial") {
+    console.warn("Complaint email notification partially sent", {
+      ...metadata,
+      recipientCount: result.email.recipientCount,
+      sentCount: result.email.sentCount,
+      failedCount: result.email.failedCount,
+      skippedCount: result.email.skippedCount,
+      reason: result.email.reason,
+      providerStatuses: result.email.providerStatuses,
     });
   } else if (result.email.status === "skipped") {
     console.warn("Complaint email notification skipped", {
       ...metadata,
+      recipientCount: result.email.recipientCount,
       reason: result.email.reason,
     });
   } else {
     console.warn("Complaint email notification failed", {
       ...metadata,
+      recipientCount: result.email.recipientCount,
+      failedCount: result.email.failedCount,
+      skippedCount: result.email.skippedCount,
       reason: result.email.reason,
-      providerStatus: result.email.providerStatus,
+      providerStatuses: result.email.providerStatuses,
     });
   }
 
   if (result.line.status === "sent") {
     console.info("Complaint LINE notification sent", {
       ...metadata,
-      providerStatus: result.line.providerStatus,
-      staffId: result.line.staffId,
-      resolution: result.line.resolution,
+      recipientCount: result.line.recipientCount,
+      sentCount: result.line.sentCount,
+      providerStatuses: result.line.providerStatuses,
+    });
+  } else if (result.line.status === "partial") {
+    console.warn("Complaint LINE notification partially sent", {
+      ...metadata,
+      recipientCount: result.line.recipientCount,
+      sentCount: result.line.sentCount,
+      failedCount: result.line.failedCount,
+      skippedCount: result.line.skippedCount,
+      reason: result.line.reason,
+      providerStatuses: result.line.providerStatuses,
     });
   } else if (result.line.status === "skipped") {
     console.warn("Complaint LINE notification skipped", {
       ...metadata,
+      recipientCount: result.line.recipientCount,
       reason: result.line.reason,
-      staffId: result.line.staffId,
     });
   } else {
     console.warn("Complaint LINE notification failed", {
       ...metadata,
+      recipientCount: result.line.recipientCount,
+      failedCount: result.line.failedCount,
+      skippedCount: result.line.skippedCount,
       reason: result.line.reason,
-      providerStatus: result.line.providerStatus,
-      staffId: result.line.staffId,
+      providerStatuses: result.line.providerStatuses,
     });
   }
 }

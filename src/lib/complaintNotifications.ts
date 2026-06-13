@@ -21,6 +21,7 @@ type DepartmentHeadRecipient = {
   email: string;
   name: string | null;
   staffId: string;
+  profileId: string | null;
 };
 
 type DepartmentHeadStaffMember = {
@@ -30,6 +31,22 @@ type DepartmentHeadStaffMember = {
   user_id: string | null;
 };
 
+type SuperAdminProfile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  is_active: boolean | null;
+  status: string | null;
+};
+
+type ComplaintEmailRecipient = {
+  email: string;
+  name: string | null;
+  profileId: string | null;
+  source: "department_head" | "super_admin";
+  staffId?: string;
+};
+
 type DepartmentHeadLineRecipient = {
   lineUserId: string;
   userId: string;
@@ -37,36 +54,26 @@ type DepartmentHeadLineRecipient = {
   resolution: "staff_user_id" | "email_profile_match";
 };
 
-export type ComplaintEmailNotificationResult =
-  | { status: "sent"; recipient: string; providerStatus: number }
-  | { status: "skipped"; reason: "no_department_head_email" | "missing_env" }
-  | { status: "failed"; recipient?: string; providerStatus?: number; reason: string };
+type ComplaintLineRecipient = {
+  lineUserId: string;
+  userId: string;
+  source: "department_head" | "super_admin";
+  staffId?: string;
+  resolution?: DepartmentHeadLineRecipient["resolution"];
+};
 
-export type ComplaintLineNotificationResult =
-  | {
-      status: "sent";
-      recipient: string;
-      providerStatus: number;
-      staffId: string;
-      resolution: DepartmentHeadLineRecipient["resolution"];
-    }
-  | {
-      status: "skipped";
-      reason:
-        | "missing_env"
-        | "no_department_head"
-        | "department_head_profile_ambiguous"
-        | "department_head_profile_not_found"
-        | "no_department_head_line_connection";
-      staffId?: string;
-    }
-  | {
-      status: "failed";
-      recipient?: string;
-      providerStatus?: number;
-      reason: string;
-      staffId?: string;
-    };
+export type ComplaintChannelNotificationResult = {
+  status: "sent" | "partial" | "skipped" | "failed";
+  recipientCount: number;
+  sentCount: number;
+  skippedCount: number;
+  failedCount: number;
+  providerStatuses: number[];
+  reason?: string;
+};
+
+export type ComplaintEmailNotificationResult = ComplaintChannelNotificationResult;
+export type ComplaintLineNotificationResult = ComplaintChannelNotificationResult;
 
 export type ComplaintNotificationResult = {
   email: ComplaintEmailNotificationResult;
@@ -78,6 +85,10 @@ export function splitValidEmails(value: string | null | undefined) {
     .split(/[\s,;]+/)
     .map((email) => email.trim().toLowerCase())
     .filter((email) => emailPattern.test(email));
+}
+
+function isActiveProfile(profile: SuperAdminProfile) {
+  return profile.is_active !== false && profile.status !== "inactive";
 }
 
 async function getCurrentDepartmentHeadStaffMember(): Promise<DepartmentHeadStaffMember | null> {
@@ -102,7 +113,7 @@ export async function getCurrentDepartmentHeadRecipient(): Promise<DepartmentHea
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("staff_members")
-    .select("id,full_name,email,role_type,sort_order")
+    .select("id,full_name,email,user_id,role_type,sort_order")
     .eq("is_active", true)
     .in("role_type", departmentHeadRoleTypes)
     .order("sort_order", { ascending: true });
@@ -114,15 +125,39 @@ export async function getCurrentDepartmentHeadRecipient(): Promise<DepartmentHea
   for (const member of data ?? []) {
     const [email] = splitValidEmails(member.email);
     if (email) {
+      let profileId: string | null = null;
+      try {
+        const resolvedUser = await resolveDepartmentHeadUserId(member);
+        profileId = resolvedUser.status === "resolved" ? resolvedUser.userId : null;
+      } catch {
+        profileId = null;
+      }
       return {
         email,
         name: member.full_name ?? null,
         staffId: member.id,
+        profileId,
       };
     }
   }
 
   return null;
+}
+
+async function getActiveSuperAdminProfiles(): Promise<SuperAdminProfile[]> {
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id,email,full_name,is_active,status")
+    .eq("role", "super_admin")
+    .eq("is_active", true)
+    .returns<SuperAdminProfile[]>();
+
+  if (error) {
+    throw new Error("super_admin_lookup_failed");
+  }
+
+  return (data ?? []).filter(isActiveProfile);
 }
 
 async function resolveDepartmentHeadUserId(
@@ -175,39 +210,22 @@ async function resolveDepartmentHeadUserId(
 
 async function getCurrentDepartmentHeadLineRecipient(): Promise<
   | { status: "found"; recipient: DepartmentHeadLineRecipient }
-  | { status: "skipped"; result: ComplaintLineNotificationResult }
+  | { status: "skipped" }
 > {
   const member = await getCurrentDepartmentHeadStaffMember();
 
   if (!member) {
-    return {
-      status: "skipped",
-      result: { status: "skipped", reason: "no_department_head" },
-    };
+    return { status: "skipped" };
   }
 
   const resolvedUser = await resolveDepartmentHeadUserId(member);
 
   if (resolvedUser.status === "ambiguous") {
-    return {
-      status: "skipped",
-      result: {
-        status: "skipped",
-        reason: "department_head_profile_ambiguous",
-        staffId: member.id,
-      },
-    };
+    return { status: "skipped" };
   }
 
   if (resolvedUser.status === "not_found") {
-    return {
-      status: "skipped",
-      result: {
-        status: "skipped",
-        reason: "department_head_profile_not_found",
-        staffId: member.id,
-      },
-    };
+    return { status: "skipped" };
   }
 
   const admin = createSupabaseAdminClient();
@@ -225,14 +243,7 @@ async function getCurrentDepartmentHeadLineRecipient(): Promise<
   }
 
   if (!data?.line_user_id) {
-    return {
-      status: "skipped",
-      result: {
-        status: "skipped",
-        reason: "no_department_head_line_connection",
-        staffId: member.id,
-      },
-    };
+    return { status: "skipped" };
   }
 
   return {
@@ -244,6 +255,132 @@ async function getCurrentDepartmentHeadLineRecipient(): Promise<
       resolution: resolvedUser.resolution,
     },
   };
+}
+
+function dedupeEmailRecipients(recipients: ComplaintEmailRecipient[]) {
+  const seenProfileIds = new Set<string>();
+  const seenEmails = new Set<string>();
+  const unique: ComplaintEmailRecipient[] = [];
+
+  for (const recipient of recipients) {
+    if (recipient.profileId) {
+      if (seenProfileIds.has(recipient.profileId)) continue;
+      seenProfileIds.add(recipient.profileId);
+    }
+
+    if (seenEmails.has(recipient.email)) continue;
+    seenEmails.add(recipient.email);
+    unique.push(recipient);
+  }
+
+  return unique;
+}
+
+function dedupeLineRecipients(recipients: ComplaintLineRecipient[]) {
+  const seenUserIds = new Set<string>();
+  const seenLineUserIds = new Set<string>();
+  const unique: ComplaintLineRecipient[] = [];
+
+  for (const recipient of recipients) {
+    if (seenUserIds.has(recipient.userId)) continue;
+    if (seenLineUserIds.has(recipient.lineUserId)) continue;
+    seenUserIds.add(recipient.userId);
+    seenLineUserIds.add(recipient.lineUserId);
+    unique.push(recipient);
+  }
+
+  return unique;
+}
+
+async function getComplaintEmailRecipients(): Promise<ComplaintEmailRecipient[]> {
+  const [departmentHeadResult, superAdminsResult] = await Promise.allSettled([
+    getCurrentDepartmentHeadRecipient(),
+    getActiveSuperAdminProfiles(),
+  ]);
+  const departmentHead =
+    departmentHeadResult.status === "fulfilled" ? departmentHeadResult.value : null;
+  const superAdmins =
+    superAdminsResult.status === "fulfilled" ? superAdminsResult.value : [];
+
+  const recipients: ComplaintEmailRecipient[] = [];
+
+  if (departmentHead) {
+    recipients.push({
+      email: departmentHead.email,
+      name: departmentHead.name,
+      profileId: departmentHead.profileId,
+      source: "department_head",
+      staffId: departmentHead.staffId,
+    });
+  }
+
+  for (const profile of superAdmins) {
+    const [email] = splitValidEmails(profile.email);
+    if (!email) continue;
+    recipients.push({
+      email,
+      name: profile.full_name ?? null,
+      profileId: profile.id,
+      source: "super_admin",
+    });
+  }
+
+  return dedupeEmailRecipients(recipients);
+}
+
+async function getSuperAdminLineRecipients(): Promise<ComplaintLineRecipient[]> {
+  const superAdmins = await getActiveSuperAdminProfiles();
+  const userIds = superAdmins.map((profile) => profile.id);
+
+  if (userIds.length === 0) return [];
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("user_line_connections")
+    .select("user_id,line_user_id")
+    .in("user_id", userIds)
+    .eq("notify_enabled", true)
+    .is("revoked_at", null)
+    .not("line_user_id", "is", null)
+    .returns<{ user_id: string; line_user_id: string | null }[]>();
+
+  if (error) {
+    throw new Error("super_admin_line_connection_lookup_failed");
+  }
+
+  return (data ?? [])
+    .filter((row): row is { user_id: string; line_user_id: string } => Boolean(row.line_user_id))
+    .map((row) => ({
+      lineUserId: row.line_user_id,
+      userId: row.user_id,
+      source: "super_admin",
+    }));
+}
+
+async function getComplaintLineRecipients(): Promise<ComplaintLineRecipient[]> {
+  const [departmentHeadResult, superAdminRecipientsResult] = await Promise.allSettled([
+    getCurrentDepartmentHeadLineRecipient(),
+    getSuperAdminLineRecipients(),
+  ]);
+  const superAdminRecipients =
+    superAdminRecipientsResult.status === "fulfilled" ? superAdminRecipientsResult.value : [];
+
+  const recipients: ComplaintLineRecipient[] = [...superAdminRecipients];
+
+  if (
+    departmentHeadResult.status === "fulfilled" &&
+    departmentHeadResult.value.status === "found"
+  ) {
+    recipients.unshift({
+      lineUserId: departmentHeadResult.value.recipient.lineUserId,
+      userId: departmentHeadResult.value.recipient.userId,
+      source: "department_head",
+      staffId: departmentHeadResult.value.recipient.staffId,
+      resolution: departmentHeadResult.value.recipient.resolution,
+    });
+  }
+
+  return dedupeLineRecipients(recipients);
 }
 
 function escapeHtml(value: string | null | undefined) {
@@ -345,120 +482,153 @@ function buildComplaintLineText(complaint: ComplaintNotificationRow) {
   ].join("\n");
 }
 
-async function notifyDepartmentHeadByEmail(
+function summarizeChannelResults(
+  recipientCount: number,
+  results: PromiseSettledResult<
+    | { status: "sent"; providerStatus: number }
+    | { status: "skipped"; reason: string }
+    | { status: "failed"; providerStatus?: number; reason: string }
+  >[]
+): ComplaintChannelNotificationResult {
+  if (recipientCount === 0) {
+    return {
+      status: "skipped",
+      recipientCount: 0,
+      sentCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      providerStatuses: [],
+      reason: "no_recipients",
+    };
+  }
+
+  let sentCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  const reasons = new Set<string>();
+  const providerStatuses: number[] = [];
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      failedCount += 1;
+      reasons.add(result.reason instanceof Error ? result.reason.message : "unknown_error");
+      continue;
+    }
+
+    if (result.value.status === "sent") {
+      sentCount += 1;
+      providerStatuses.push(result.value.providerStatus);
+      continue;
+    }
+
+    if (result.value.status === "skipped") {
+      skippedCount += 1;
+      reasons.add(result.value.reason);
+      continue;
+    }
+
+    failedCount += 1;
+    if (result.value.providerStatus) providerStatuses.push(result.value.providerStatus);
+    reasons.add(result.value.reason);
+  }
+
+  const reason = Array.from(reasons).sort().join(",") || undefined;
+  const status =
+    sentCount === recipientCount
+      ? "sent"
+      : sentCount > 0
+        ? "partial"
+        : failedCount > 0
+          ? "failed"
+          : "skipped";
+
+  return {
+    status,
+    recipientCount,
+    sentCount,
+    skippedCount,
+    failedCount,
+    providerStatuses,
+    reason,
+  };
+}
+
+async function notifyComplaintRecipientsByEmail(
   complaint: ComplaintNotificationRow
 ): Promise<ComplaintEmailNotificationResult> {
-  const recipient = await getCurrentDepartmentHeadRecipient();
+  const recipients = await getComplaintEmailRecipients();
 
-  if (!recipient) {
-    return { status: "skipped", reason: "no_department_head_email" };
+  if (recipients.length === 0) {
+    return summarizeChannelResults(0, []);
   }
 
   const { htmlContent, textContent } = buildComplaintEmailContent(complaint);
-  const result = await sendBrevoTransactionalEmail({
-    to: {
-      email: recipient.email,
-      name: recipient.name,
-    },
-    subject: "แจ้งเตือนข้อร้องเรียนใหม่จากเว็บไซต์สาขา",
-    htmlContent,
-    textContent,
-  });
-
-  if (result.status === "sent") {
-    return {
-      status: "sent",
-      recipient: recipient.email,
-      providerStatus: result.providerStatus,
-    };
-  }
-
-  if (result.status === "skipped") {
-    return { status: "skipped", reason: result.reason };
-  }
-
-  return {
-    status: "failed",
-    recipient: recipient.email,
-    providerStatus: result.providerStatus,
-    reason: result.reason,
-  };
-}
-
-async function notifyDepartmentHeadByLine(
-  complaint: ComplaintNotificationRow
-): Promise<ComplaintLineNotificationResult> {
-  const recipientResult = await getCurrentDepartmentHeadLineRecipient();
-
-  if (recipientResult.status === "skipped") {
-    return recipientResult.result;
-  }
-
-  const { recipient } = recipientResult;
-  const result = await sendLinePushTextMessage(
-    recipient.lineUserId,
-    buildComplaintLineText(complaint)
+  const results = await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendBrevoTransactionalEmail({
+        to: {
+          email: recipient.email,
+          name: recipient.name,
+        },
+        subject: "แจ้งเตือนข้อร้องเรียนใหม่จากเว็บไซต์สาขา",
+        htmlContent,
+        textContent,
+      })
+    )
   );
 
-  if (result.status === "sent") {
-    return {
-      status: "sent",
-      recipient: recipient.lineUserId,
-      providerStatus: result.providerStatus,
-      staffId: recipient.staffId,
-      resolution: recipient.resolution,
-    };
-  }
-
-  if (result.status === "skipped") {
-    return {
-      status: "skipped",
-      reason: result.reason,
-      staffId: recipient.staffId,
-    };
-  }
-
-  return {
-    status: "failed",
-    recipient: recipient.lineUserId,
-    providerStatus: result.providerStatus,
-    reason: result.reason,
-    staffId: recipient.staffId,
-  };
+  return summarizeChannelResults(recipients.length, results);
 }
 
-function normalizeRejectedNotification(reason: unknown, channel: "email" | "line") {
-  const errorReason = reason instanceof Error ? reason.message : "unknown_error";
+async function notifyComplaintRecipientsByLine(
+  complaint: ComplaintNotificationRow
+): Promise<ComplaintLineNotificationResult> {
+  const recipients = await getComplaintLineRecipients();
 
-  if (channel === "email") {
-    return {
-      status: "failed",
-      reason: errorReason,
-    } satisfies ComplaintEmailNotificationResult;
+  if (recipients.length === 0) {
+    return summarizeChannelResults(0, []);
   }
+
+  const lineText = buildComplaintLineText(complaint);
+  const results = await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendLinePushTextMessage(recipient.lineUserId, lineText)
+    )
+  );
+
+  return summarizeChannelResults(recipients.length, results);
+}
+
+function normalizeRejectedNotification(reason: unknown) {
+  const errorReason = reason instanceof Error ? reason.message : "unknown_error";
 
   return {
     status: "failed",
+    recipientCount: 0,
+    sentCount: 0,
+    skippedCount: 0,
+    failedCount: 0,
+    providerStatuses: [],
     reason: errorReason,
-  } satisfies ComplaintLineNotificationResult;
+  } satisfies ComplaintChannelNotificationResult;
 }
 
 export async function notifyDepartmentHeadOfNewComplaint(
   complaint: ComplaintNotificationRow
 ): Promise<ComplaintNotificationResult> {
   const [emailResult, lineResult] = await Promise.allSettled([
-    notifyDepartmentHeadByEmail(complaint),
-    notifyDepartmentHeadByLine(complaint),
+    notifyComplaintRecipientsByEmail(complaint),
+    notifyComplaintRecipientsByLine(complaint),
   ]);
 
   return {
     email:
       emailResult.status === "fulfilled"
         ? emailResult.value
-        : normalizeRejectedNotification(emailResult.reason, "email"),
+        : normalizeRejectedNotification(emailResult.reason),
     line:
       lineResult.status === "fulfilled"
         ? lineResult.value
-        : normalizeRejectedNotification(lineResult.reason, "line"),
+        : normalizeRejectedNotification(lineResult.reason),
   };
 }

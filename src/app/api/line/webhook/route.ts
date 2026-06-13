@@ -56,34 +56,38 @@ const FORBIDDEN_REPLY = [
 ].join("\n");
 
 const NEWS_FORM_HELP_REPLY = [
-  " สร้างข่าวผ่าน LINE",
+  " สร้างข่าวผ่าน LINE OA",
   "",
-  "กรอกข้อมูลตามฟอร์มด้านล่าง แล้วส่งกลับมาได้เลยครับ",
+  "กรอกฟอร์มด้านล่าง แล้วส่งกลับมาได้เลยครับ ✨",
+  "✅ จำเป็นต้องกรอก: หัวข้อ, รายละเอียด",
   "",
-  "จำเป็น: หัวข้อ, รายละเอียด",
-  "ไม่บังคับ: สรุปสั้น, รูปปก, หมายเหตุสำหรับ AI",
+  "⚠️ กรุณาอย่าเปลี่ยนชื่อช่อง เช่น “หัวข้อ:”, “รายละเอียด:”, “สถานะ:”",
+  "หากเปลี่ยนชื่อช่องหรือกรอกค่าผิด ระบบอาจสร้างข่าวไม่สำเร็จครับ",
   "",
-  "หมวดหมู่ที่แนะนำ:",
-  "ประกาศ / รับสมัคร / กิจกรรม / ทุน / ความสำเร็จ",
-  "",
-  "สถานะ:",
-  "เผยแพร่ / ฉบับร่าง",
-  "",
-  "ข่าวเด่น:",
-  "ใช่ / ไม่",
+  " ตัวเลือกที่ใช้ได้",
+  "หมวดหมู่: ประกาศ / รับสมัคร / กิจกรรม / ทุน / ความสำเร็จ",
+  "สถานะ: เผยแพร่ / ฉบับร่าง",
+  "ข่าวเด่น: ใช่ / ไม่",
+  "รูปปก: ไม่มีรูป / ใช้รูปที่แนบ",
   "",
   "━━━━━━━━━━━━━━",
   "สร้างข่าว",
   "หัวข้อ:",
-  "หมวดหมู่:",
+  "หมวดหมู่: ประกาศ",
   "วันที่เผยแพร่: ตอนนี้",
   "สรุปสั้น:",
   "รายละเอียด:",
-  "รูปปก: ใช้รูปที่แนบ / ไม่มีรูป",
-  "สถานะ: เผยแพร่",
+  "รูปปก: ไม่มีรูป",
+  "สถานะ: ฉบับร่าง",
   "ข่าวเด่น: ไม่",
   "หมายเหตุสำหรับ AI:",
   "━━━━━━━━━━━━━━",
+  "",
+  "️ วิธีแนบรูปปก:",
+  "ถ้ามีรูป ให้ส่งรูปมาพร้อมฟอร์มนี้ แล้วเปลี่ยนเป็น",
+  "รูปปก: ใช้รูปที่แนบ",
+  "",
+  " AI จะช่วยเรียบเรียงจากข้อมูลที่กรอกเท่านั้น และจะไม่แต่งข้อมูลใหม่เอง",
 ].join("\n");
 
 const READY_REPLY = [
@@ -150,6 +154,10 @@ function buildMissingFieldsReply(missingFields: string[]) {
     "หัวข้อ:",
     "รายละเอียด:",
   ].join("\n");
+}
+
+function logLineNewsAi(details: Record<string, unknown>) {
+  console.warn("[line-news-ai] usage", details);
 }
 
 async function handleConfirmCommand(
@@ -510,14 +518,28 @@ async function handleTextMessageEvent(event: LineWebhookEvent) {
   const coverImageAlt = coverDraft?.cover_image_alt ?? null;
 
   const aiLimit = await checkLineNewsAiDailyLimit(permission.profile.id);
+  logLineNewsAi({
+    aiUsageAllowed: aiLimit.status !== "limited",
+    aiUsageStatus: aiLimit.status,
+  });
   const aiOutput =
     aiLimit.status === "limited"
       ? generateLineNewsFallbackDraft(
           parsed.draft,
           "วันนี้ใช้ AI ครบโควต้าแล้ว ระบบจะแสดงตัวอย่างจากข้อมูลที่กรอกโดยตรง",
-          "daily_limit"
+          "daily_limit_exceeded"
         )
       : await generateLineNewsAiDraft(parsed.draft);
+
+  logLineNewsAi({
+    source: aiOutput.source,
+    fallbackReason: aiOutput.fallbackReason,
+    aiCalled: aiOutput.aiCalled === true,
+    jsonParseOk: aiOutput.jsonParseOk,
+    parseStage: aiOutput.parseStage,
+    usedAiOutput: aiOutput.source === "gemini" || aiOutput.source === "gemini_text",
+    showedFallbackWarning: aiOutput.source === "fallback",
+  });
 
   if (aiOutput.aiCalled) {
     await logLineNewsAiUsage({
