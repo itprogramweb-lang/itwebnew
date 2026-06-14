@@ -425,6 +425,8 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
     complaint.status ??
     "new";
   const submittedAt = formatSubmittedAt(complaint.created_at);
+  const detail = truncateLineText(complaint.detail ?? "", 420);
+  const wantContact = complaint.want_contact === true ? "ใช่" : "ไม่";
   const attachmentCount = getComplaintAttachmentUrls(complaint).length;
 
   const htmlContent = `
@@ -436,11 +438,16 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">วันที่ส่ง</td><td>${escapeHtml(submittedAt)}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">ประเภท</td><td>${escapeHtml(complaintType)}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">หัวข้อ</td><td>${escapeHtml(complaint.title)}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">ต้องการให้ติดต่อกลับ</td><td>${escapeHtml(wantContact)}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">รูปภาพแนบ</td><td>${attachmentCount > 0 ? `${attachmentCount} รูป` : "-"}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">สถานะ</td><td>${escapeHtml(status)}</td></tr>
       </table>
+      <div style="margin: 16px 0;">
+        <div style="font-weight: bold; margin-bottom: 6px;">รายละเอียดข้อร้องเรียน</div>
+        <div style="white-space: pre-line; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">${escapeHtml(detail || "-")}</div>
+      </div>
       <p><a href="${escapeHtml(dashboardUrl)}">เปิดหน้าจัดการข้อร้องเรียน</a></p>
-      <p style="font-size: 13px; color: #6b7280;">อีเมลนี้ไม่แสดงรายละเอียดข้อร้องเรียนฉบับเต็มเพื่อคุ้มครองข้อมูลส่วนบุคคล</p>
+      <p style="font-size: 13px; color: #6b7280;">กรุณาเข้าสู่ระบบหลังบ้านเพื่อตรวจสอบรายละเอียดเพิ่มเติม</p>
     </div>
   `;
 
@@ -452,11 +459,13 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
     `วันที่ส่ง: ${submittedAt}`,
     `ประเภท: ${complaintType}`,
     `หัวข้อ: ${complaint.title}`,
+    `รายละเอียด: ${detail || "-"}`,
+    `ต้องการให้ติดต่อกลับ: ${wantContact}`,
     `รูปภาพแนบ: ${attachmentCount > 0 ? `${attachmentCount} รูป` : "-"}`,
     `สถานะ: ${status}`,
-    `ลิงก์หลังบ้าน: ${dashboardUrl}`,
     "",
-    "อีเมลนี้ไม่แสดงรายละเอียดข้อร้องเรียนฉบับเต็มเพื่อคุ้มครองข้อมูลส่วนบุคคล",
+    "กรุณาเข้าสู่ระบบหลังบ้านเพื่อตรวจสอบรายละเอียดเพิ่มเติม",
+    `ลิงก์หลังบ้าน: ${dashboardUrl}`,
   ].join("\n");
 
   return { htmlContent, textContent };
