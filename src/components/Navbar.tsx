@@ -9,29 +9,49 @@ import { cn } from "@/lib/utils";
 import { buildNavbarLogoStyle } from "@/lib/logoPresets";
 import type { BrandingData } from "@/lib/brandingTypes";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
-import {
-  buildStaticMenuItems,
-  getFallbackMenuItems,
-  type MenuItem,
-} from "@/lib/navigationMenu";
+import { fetchNavigationItems } from "@/frontend/api/navigation"; // 🛠️ นำเข้า API ดึงข้อมูลเมนู
+import type { NavigationItem } from "@/types"; // 🛠️ นำเข้า Type ของข้อมูลระบบเมนู
 import MobileMenu from "./MobileMenu";
 import PublicLanguageToggle, { getPublicNavLabel, usePublicLanguage } from "./PublicLanguageToggle";
 
-export type { MenuItem };
+// แปลงข้อมูลรูปแบบจาก Supabase DB ให้เข้ากับ UI โครงสร้างเดิมของ Navbar ชนิด Dropdown
+function transformToMenuItems(dbItems: NavigationItem[]): any[] {
+  // 1. กรองเอาเฉพาะเมนูที่เปิดใช้งานจริง (is_active !== false) และดึงส่วนที่เป็น Navbar หรือ Both
+  const activeItems = dbItems.filter(
+    (item) => item.is_active !== false && (item.location === "navbar" || item.location === "both")
+  );
 
-// static export for backward compatibility
-export const menuItems: MenuItem[] = buildStaticMenuItems(
-  DEFAULT_BRANDING.loanExternalUrl,
-  DEFAULT_BRANDING.welfareExternalUrl
-);
+  // 2. แยกเมนูระดับบนสุด (ไม่มี parent_id) ออกมาจัดลำดับตาม sort_order
+  const rootMenus = activeItems
+    .filter((item) => !item.parent_id)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-export default function Navbar({
-  branding,
-  menuItems: dynamicMenuItems,
-}: {
-  branding?: BrandingData;
-  menuItems?: MenuItem[];
-}) {
+  // 3. ประกอบเมนูย่อย (Submenu) เข้าไปใต้เมนูหลักแต่ละตัว และเรียงลำดับ sort_order ด้านใน
+  return rootMenus.map((root) => {
+    const subItems = activeItems
+      .filter((item) => item.parent_id === root.id)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((sub) => ({
+        href: sub.href || "#",
+        label: sub.label,
+        labelEn: sub.label_en || undefined,
+        external: sub.is_external === true,
+        description: sub.description || undefined,
+        descriptionEn: sub.description_en || undefined,
+      }));
+
+    return {
+      type: root.type, // "link" | "dropdown" | "heading"
+      href: root.href || "#",
+      label: root.label,
+      labelEn: root.label_en || undefined,
+      external: root.is_external === true,
+      items: subItems, // ใส่รายการเมนูย่อยลงไป
+    };
+  });
+}
+
+export default function Navbar({ branding }: { branding?: BrandingData }) {
   const b = branding ?? DEFAULT_BRANDING;
   const pathname = usePathname();
 
@@ -40,9 +60,25 @@ export default function Navbar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const language = usePublicLanguage();
 
-const items = dynamicMenuItems && dynamicMenuItems.length > 0
-  ? dynamicMenuItems
-  : getFallbackMenuItems(b);
+  // 🛠️ เปลี่ยนการจัดการ State มารองรับข้อมูลไดนามิกจากหลังบ้าน
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 🛠️ โหลดข้อมูลเมนูจากระบบฐานข้อมูลสดๆ ตอนเปิดหน้าเว็บ
+  useEffect(() => {
+    async function loadNavbarData() {
+      try {
+        const data = await fetchNavigationItems();
+        const formattedMenus = transformToMenuItems(data);
+        setItems(formattedMenus);
+      } catch (error) {
+        console.error("ไม่สามารถโหลดเมนูหน้าบ้านจากฐานข้อมูลได้: ", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadNavbarData();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -104,6 +140,11 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
   const logoLayerStyle: CSSProperties | undefined = isFreeLogo
     ? desktopLogo.layerStyle
     : undefined;
+
+  // ช่วงที่กำลังดึงข้อมูลจาก DB ให้แสดงเป็นแถบ Navbar ว่างๆ เพื่อลดอาการ Layout Shift
+  if (loading) {
+    return <div className="h-16 w-full sticky top-0 z-[80] bg-[#020617] border-b border-white/5" />;
+  }
 
   return (
     <>
@@ -223,7 +264,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
               }
 
               const isDropdownActive = item.items.some(
-                (sub) => !sub.external && isActive(sub.href)
+                (sub: any) => !sub.external && isActive(sub.href)
               );
 
               const isOpen = openDropdown === item.label;
@@ -263,7 +304,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                     )}
                   >
                     <div className="notranslate rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-950/10" translate="no">
-                      {item.items.map((sub) => {
+                      {item.items.map((sub: any) => {
                         const subLabel = getPublicNavLabel({
                           href: sub.href,
                           label: sub.label,
@@ -306,7 +347,7 @@ const items = dynamicMenuItems && dynamicMenuItems.length > 0
                               isActive(sub.href)
                                 ? "bg-site-primary-soft"
                                 : "text-slate-700 hover-site-primary-soft"
-                              )}
+                            )}
                           >
                             <div className="font-medium">{subLabel}</div>
                             {subDescription && (

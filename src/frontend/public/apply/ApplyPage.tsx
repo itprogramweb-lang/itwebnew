@@ -9,102 +9,87 @@ import {
   ArrowRight,
   Phone,
   HelpCircle,
+  ExternalLink,
 } from "lucide-react";
-import { SectionTitle, FeatureCard } from "@/components/ui/primitives";
-import Button from "@/components/ui/Button";
+import { SectionTitle } from "@/components/ui/primitives";
 import { applyFaqs } from "@/data/faqs";
 import { getSiteSettings, getPageSetting } from "@/lib/supabase/queries";
 import ApplyHero from "@/frontend/public/apply/ApplyHero";
 
+// 1. คง 6 ขั้นตอนเดิมไว้
 const steps = [
   {
     icon: <ClipboardCheck className="w-6 h-6" />,
     title: "ตรวจสอบคุณสมบัติ",
-    description:
-      "ตรวจสอบคุณสมบัติของผู้สมัครให้ตรงตามที่หลักสูตรกำหนด เช่น วุฒิการศึกษา สายการเรียน และเกรดเฉลี่ย",
+    description: "ตรวจสอบคุณสมบัติของผู้สมัครให้ตรงตามที่หลักสูตรกำหนด เช่น วุฒิการศึกษา และเกรดเฉลี่ย",
   },
   {
     icon: <FileText className="w-6 h-6" />,
     title: "เตรียมเอกสาร",
-    description:
-      "เตรียมเอกสารทั้งหมดให้พร้อม เช่น ใบ ปพ.1 บัตรประชาชน รูปถ่าย และพอร์ตโฟลิโอ (ถ้ามี)",
+    description: "เตรียมเอกสารส่วนตัวและเอกสารการศึกษาให้พร้อมตามที่ระบบของแต่ละรอบระบุไว้",
   },
   {
     icon: <Send className="w-6 h-6" />,
     title: "สมัครผ่านระบบ",
-    description:
-      "เข้าระบบรับสมัครออนไลน์ของมหาวิทยาลัย กรอกข้อมูลและอัปโหลดเอกสารตามที่กำหนด",
+    description: "เข้าระบบรับสมัครออนไลน์ กรอกข้อมูลและอัปโหลดเอกสารตามขั้นตอนของรอบนั้น ๆ",
   },
   {
     icon: <CreditCard className="w-6 h-6" />,
     title: "ชำระค่าสมัคร",
-    description:
-      "ชำระค่าธรรมเนียมการสมัครผ่านช่องทางที่ระบบกำหนด พร้อมเก็บหลักฐานไว้",
+    description: "ชำระค่าธรรมเนียมการสมัครผ่านช่องทางที่ระบบกำหนด พร้อมเก็บหลักฐานไว้",
   },
   {
     icon: <Megaphone className="w-6 h-6" />,
     title: "ตรวจสอบประกาศผล",
-    description:
-      "ติดตามประกาศผลการคัดเลือกผ่านเว็บไซต์มหาวิทยาลัยและเว็บไซต์สาขา",
+    description: "ติดตามประกาศผลการคัดเลือกผ่านเว็บไซต์มหาวิทยาลัยหรือระบบกลางตามกำหนดการ",
   },
   {
     icon: <UserCheck className="w-6 h-6" />,
     title: "รายงานตัว",
-    description:
-      "รายงานตัวเป็นนักศึกษาใหม่ตามวันและช่องทางที่มหาวิทยาลัยกำหนด",
+    description: "รายงานตัวยืนยันสิทธิ์เป็นนักศึกษาใหม่ตามวันและช่องทางที่มหาวิทยาลัยกำหนด",
   },
 ];
 
+// 2. ปรับคุณสมบัติกว้างๆ ไม่เจาะจงสายการเรียน และระบุพื้นฐานวิทย์-คณิต / การเขียนโปรแกรม
 const qualifications = [
-  "สำเร็จการศึกษาระดับมัธยมศึกษาตอนปลาย (ม.6) หรือ ปวช./ปวส. ทุกสาขา",
-  "เกรดเฉลี่ยสะสมไม่ต่ำกว่า 2.00 (อาจมีการเปลี่ยนแปลงตามรอบ)",
-  "มีความสนใจทางด้านเทคโนโลยี การเขียนโปรแกรม หรือการแก้ปัญหาเชิงระบบ",
-  "มีพื้นฐานคณิตศาสตร์ และภาษาอังกฤษพอใช้",
-  "สำหรับนักศึกษาต่างชาติ จำเป็นต้องมีผลคะแนนภาษาตามที่กำหนด",
+  "สำเร็จการศึกษาระดับมัธยมศึกษาตอนปลาย (ม.6) หรือ ปวช. / ปวส.",
+  "รับนักเรียนที่มีพื้นฐานทักษะคณิตศาสตร์และวิทยาศาสตร์ (จำนวนหน่วยกิตและเกรดเฉลี่ยเป็นไปตามเงื่อนไขของแต่ละรอบ)",
+  "ควรมีพื้นฐานการเขียนโปรแกรม หรือมีความสนใจอย่างแรงกล้าทางด้านเทคโนโลยีและการแก้ปัญหาเชิงระบบ",
+  "มีเกรดเฉลี่ยสะสม (GPAX) เป็นไปตามเกณฑ์ขั้นต่ำที่กำหนดในรอบนั้น ๆ",
 ];
 
-const documents = [
-  "สำเนาใบ ปพ.1 หรือใบรับรองผลการเรียน",
-  "สำเนาบัตรประชาชน",
-  "สำเนาทะเบียนบ้าน",
-  "รูปถ่ายขนาด 1 นิ้ว (ตามจำนวนที่ระบบกำหนด)",
-  "ใบรับรองความสามารถพิเศษ (ถ้ามี)",
-  "แฟ้มสะสมผลงาน Portfolio (เฉพาะรอบที่ใช้)",
-  "หลักฐานการเปลี่ยนชื่อ-นามสกุล (ถ้ามี)",
-];
-
-const rounds = [
+// 3. ปรับรอบการสมัครเป็นลำดับ Timeline (MOU -> TCAS 1 -> TCAS 2 -> TCAS 3 -> Direct)
+const timelineRounds = [
   {
-    label: "TCAS รอบ 1",
-    name: "Portfolio",
+    step: "01",
+    label: "รอบโควตาพิเศษ (MOU)",
+    period: "ตุลาคม - พฤศจิกายน",
+    desc: "สำหรับโรงเรียนหรือวิทยาลัยที่มีข้อตกลงความร่วมมือทางวิชาการกับมหาวิทยาลัย พิจารณาคัดเลือกก่อนรอบทั่วไป",
+  },
+  {
+    step: "02",
+    label: "TCAS รอบ 1 (Portfolio)",
     period: "ธันวาคม - มกราคม",
-    desc: "ใช้แฟ้มสะสมผลงาน เน้นผู้มีความสามารถพิเศษหรือกิจกรรมโดดเด่น",
+    desc: "พิจารณาจากแฟ้มสะสมผลงาน เน้นผู้มีความสามารถพิเศษ กิจกรรมโดดเด่น หรือมีโปรเจกต์ด้านไอที",
   },
   {
-    label: "TCAS รอบ 2",
-    name: "Quota",
+    step: "03",
+    label: "TCAS รอบ 2 (Quota)",
     period: "กุมภาพันธ์ - มีนาคม",
-    desc: "โควตาภูมิภาค โควตาความสามารถพิเศษ และโควตาเครือข่าย",
+    desc: "โควตาพื้นที่ ภูมิภาค โควตาความสามารถพิเศษ และโควตาเครือข่ายสถานศึกษา",
   },
   {
-    label: "TCAS รอบ 3",
-    name: "Admission",
+    step: "04",
+    label: "TCAS รอบ 3 (Admission)",
     period: "เมษายน - พฤษภาคม",
-    desc: "รับสมัครผ่านระบบกลาง ใช้คะแนน TGAT/TPAT/A-Level",
+    desc: "ระบบรับสมัครส่วนกลาง (myTCAS) พิจารณาโดยใช้คะแนนสอบระดับชาติ TGAT / TPAT / A-Level",
   },
   {
-    label: "TCAS รอบ 4",
-    name: "Direct Admission",
+    step: "05",
+    label: "รอบ Direct Admission",
     period: "พฤษภาคม - มิถุนายน",
-    desc: "รับตรงโดยมหาวิทยาลัย พิจารณาตามเกณฑ์ของสาขา",
+    desc: "รับสมัครตรงโดยมหาวิทยาลัย (เปิดรับกรณีที่ยังมีที่นั่งว่างจากรอบก่อนหน้า) พิจารณาตามเกณฑ์ของสาขาวิชา",
   },
-];
-
-const fees = [
-  { label: "ค่าสมัคร", value: "500 บาท" },
-  { label: "ค่าเทอม (ภาคปกติ)", value: "14,000 - 16,000 บาท/ภาคการศึกษา" },
-  { label: "ค่ายืนยันสิทธิ์", value: "ตามประกาศของมหาวิทยาลัย" },
-  { label: "ทุน กยศ. / กรอ.", value: "รองรับ" },
 ];
 
 export default async function ApplyPage() {
@@ -113,34 +98,30 @@ export default async function ApplyPage() {
     getPageSetting("apply").catch(() => null),
   ]);
 
-  // page_settings takes priority over site_settings (round 37 compat)
- const heroImageUrl = ps?.hero_image_url ?? settings?.apply_hero_image_url ?? null;
+  const heroImageUrl = ps?.hero_image_url ?? settings?.apply_hero_image_url ?? null;
 
-const rawHeroTemplate =
-  ps?.hero_layout && ps.hero_layout !== "default"
-    ? ps.hero_layout
-    : settings?.apply_hero_template ?? null;
+  const rawHeroTemplate =
+    ps?.hero_layout && ps.hero_layout !== "default"
+      ? ps.hero_layout
+      : settings?.apply_hero_template ?? null;
 
-const heroTemplate =
-  rawHeroTemplate && rawHeroTemplate !== "default" && rawHeroTemplate !== "no-image-clean"
-    ? rawHeroTemplate
-    : heroImageUrl
-      ? "background-overlay"
-      : "no-image-clean";
+  const heroTemplate =
+    rawHeroTemplate && rawHeroTemplate !== "default" && rawHeroTemplate !== "no-image-clean"
+      ? rawHeroTemplate
+      : heroImageUrl
+        ? "background-overlay"
+        : "no-image-clean";
 
-const heroImageCrop =
-  ps?.hero_image_crop_settings ?? settings?.apply_image_crop_settings ?? null;
+  const heroImageCrop =
+    ps?.hero_image_crop_settings ?? settings?.apply_image_crop_settings ?? null;
 
-const heroTitle =
-  ps?.title ?? settings?.apply_title ?? "สมัครเรียนกับเรา ก้าวเข้าสู่โลก IT";
+  const heroTitle = ps?.title ?? settings?.apply_title ?? "สมัครเรียนกับเรา ก้าวเข้าสู่โลก IT";
+  const heroEyebrow = ps?.subtitle ?? settings?.apply_eyebrow ?? "ปีการศึกษา 2568";
+  const heroDescription =
+    ps?.description ??
+    settings?.apply_description ??
+    "ตรวจสอบขั้นตอน คุณสมบัติ และกำหนดการรอบรับสมัครเพื่อเตรียมความพร้อมเข้าสู่รั้วมหาวิทยาลัย";
 
-const heroEyebrow =
-  ps?.subtitle ?? settings?.apply_eyebrow ?? "ปีการศึกษา 2568";
-
-const heroDescription =
-  ps?.description ??
-  settings?.apply_description ??
-  "ครบทุกขั้นตอน คุณสมบัติ เอกสาร และรอบรับสมัคร พร้อมคำตอบสำหรับคำถามที่พบบ่อย เพื่อให้คุณสมัครได้อย่างราบรื่น";
   return (
     <>
       <ApplyHero
@@ -152,7 +133,7 @@ const heroDescription =
         description={heroDescription}
       />
 
-      {/* Steps */}
+      {/* 1. Steps Section */}
       <section className="section">
         <div className="container-wide">
           <SectionTitle
@@ -161,125 +142,157 @@ const heroDescription =
             description="ทำตามขั้นตอนเหล่านี้แล้วคุณจะพร้อมเข้าสู่กระบวนการสมัครเรียนได้ทันที"
             align="center"
           />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-  {steps.map((s, i) => (
-    <div
-      key={s.title}
-      className="rounded-3xl border border-slate-200 bg-white p-6 card-hover"
-    >
-      <div className="mb-4 flex items-center justify-between">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand-50 text-sm font-bold text-brand-600">
-          {i + 1}
-        </span>
-
-        <div className="w-11 h-11 rounded-2xl bg-brand-gradient grid place-items-center text-white shadow-brand shrink-0">
-          {s.icon}
-        </div>
-      </div>
-
-      <h3 className="font-semibold text-slate-900 mb-2">{s.title}</h3>
-
-      <p className="text-sm text-slate-600 leading-relaxed">
-        {s.description}
-      </p>
-    </div>
-  ))}
-</div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            {steps.map((s, i) => (
+              <div
+                key={s.title}
+                className="rounded-3xl border border-slate-200 bg-white p-6 card-hover"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-brand-50 text-sm font-bold text-brand-600">
+                    {i + 1}
+                  </span>
+                  <div className="w-11 h-11 rounded-2xl bg-brand-gradient grid place-items-center text-white shadow-brand shrink-0">
+                    {s.icon}
+                  </div>
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">{s.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{s.description}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Qualifications & Documents */}
+      {/* 2. Qualifications Section & Split Links (ลบส่วนเอกสารออกแล้ว) */}
       <section className="section bg-white border-y border-slate-100">
-        <div className="container-wide grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div>
+        <div className="container-wide grid md:grid-cols-5 gap-8 lg:gap-12 items-start">
+          <div className="md:col-span-3">
             <SectionTitle
               eyebrow="คุณสมบัติผู้สมัคร"
               title="ใครสมัครได้บ้าง?"
+              description="เปิดรับสมัครผู้จบการศึกษาทุกแผนการเรียนที่มีความสนใจและพร้อมพัฒนาทักษะด้านเทคโนโลยีสารสนเทศ"
             />
-            <ul className="space-y-3">
-              {qualifications.map((q) => (
-                <li key={q} className="flex gap-3 items-start">
+            <ul className="space-y-3.5">
+              {qualifications.map((q, idx) => (
+                <li key={idx} className="flex gap-3 items-start">
                   <CheckCircle2 className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
-                  <span className="text-sm text-slate-700 leading-relaxed">
-                    {q}
-                  </span>
+                  <span className="text-sm text-slate-700 leading-relaxed">{q}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div>
-            <SectionTitle
-              eyebrow="เอกสารที่ต้องเตรียม"
-              title="เตรียมเอกสารให้พร้อม"
-            />
-            <ul className="space-y-3">
-              {documents.map((d) => (
-                <li key={d} className="flex gap-3 items-start">
-                  <FileText className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
-                  <span className="text-sm text-slate-700 leading-relaxed">
-                    {d}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-3xl p-6 lg:p-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">ตรวจสอบเกณฑ์และสมัครเรียน</h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              * โปรดเลือกช่องทางเชื่อมต่อไปยังระบบหลักตามวุฒิการศึกษาของคุณ เพื่อตรวจสอบรายละเอียดและเงื่อนไขของแต่ละรอบ
+            </p>
+            <div className="space-y-4">
+              <a
+                href="https://course.mytcas.com/programs/31910109220101A"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-brand-500 hover:shadow-md transition text-left group"
+              >
+                <div>
+                  <span className="block text-xs font-semibold text-brand-600 mb-0.5">ผู้สมัครวุฒิ ม.6</span>
+                  <span className="text-sm font-medium text-slate-800">ระบบกลาง MyTCAS</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition" />
+              </a>
+
+              <a
+                href="https://oreg.rmutt.ac.th/Apply/?page_id=20"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-brand-500 hover:shadow-md transition text-left group"
+              >
+                <div>
+                  <span className="block text-xs font-semibold text-brand-600 mb-0.5">ผู้สมัครวุฒิ ปวช. / ปวส. (รอบ MOU)</span>
+                  <span className="text-sm font-medium text-slate-800">ระบบรับสมัครมหาวิทยาลัย (MOU)</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition" />
+              </a>
+
+              <a
+                href="https://oreg.rmutt.ac.th/Apply/?page_id=3243"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-brand-500 hover:shadow-md transition text-left group"
+              >
+                <div>
+                  <span className="block text-xs font-semibold text-brand-600 mb-0.5">ผู้สมัครวุฒิ ปวช. / ปวส. (รอบทั่วไป)</span>
+                  <span className="text-sm font-medium text-slate-800">ระบบรับสมัครมหาวิทยาลัย</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition" />
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Rounds */}
-      <section className="section">
+      {/* 3. Timeline Rounds Section */}
+      <section className="section overflow-hidden">
         <div className="container-wide">
           <SectionTitle
-            eyebrow="รอบรับสมัคร TCAS"
-            title="เลือกรอบที่เหมาะกับคุณ"
-            description="รับสมัครผ่านระบบ TCAS ของมหาวิทยาลัย ครอบคลุมทุกรอบเพื่อโอกาสที่หลากหลาย"
+            eyebrow="รอบรับสมัคร"
+            title="เส้นทางการรับสมัครเรียน"
+            description="ลำดับการเปิดรับสมัครในแต่ละรอบการศึกษา โปรดวางแผนและติดตามกำหนดการอย่างใกล้ชิด"
           />
-         <div className="grid gap-6 sm:grid-cols-2 lg:gap-8">
-            {rounds.map((r) => (
+
+          {/* Timeline Wrapper */}
+          <div className="relative mt-8 after:absolute after:inset-y-0 after:left-4 md:after:left-1/2 after:w-0.5 after:bg-slate-200">
+            {timelineRounds.map((r, idx) => (
               <div
-                key={r.label}
-                className="rounded-3xl border border-slate-200 bg-white p-6 card-hover"
+                key={r.step}
+                className={`relative flex flex-col md:flex-row mb-12 last:mb-0 ${
+                  idx % 2 === 0 ? "md:flex-row-reverse" : ""
+                }`}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-semibold text-brand-700">
-                    {r.label}
-                  </span>
-                  <span className="text-xs text-slate-500">{r.period}</span>
+                {/* Timeline Dot */}
+                <div className="absolute left-4 md:left-1/2 top-0 -translate-x-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-xs font-bold text-white shadow-brand">
+                  {r.step}
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  {r.name}
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {r.desc}
-                </p>
+
+                {/* Content Block */}
+                <div className="w-full md:w-1/2 pl-12 md:pl-0 md:px-8">
+                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <span className="text-sm font-semibold text-brand-600 bg-brand-50/60 px-3 py-1 rounded-full">
+                        {r.label}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500">{r.period}</span>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">{r.desc}</p>
+                  </div>
+                </div>
+
+                {/* Empty block for layout balancing on desktop */}
+                <div className="hidden md:block w-1/2" />
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Fees */}
+      {/* 4. Fees Section (ระบุเฉพาะค่าเทอมคงที่ ตลอดหลักสูตร) */}
       <section className="section bg-white border-y border-slate-100">
         <div className="container-wide">
           <SectionTitle
-            eyebrow="ค่าใช้จ่าย & ทุนการศึกษา"
-            title="ค่าเทอมเข้าถึงได้ ทุนหลากหลาย"
-            description="ค่าใช้จ่ายเบื้องต้นและทุนการศึกษาที่นักศึกษาสาขาเข้าถึงได้"
+            eyebrow="ค่าธรรมเนียมการศึกษา"
+            title="ค่าเทอมเข้าถึงได้ แบ่งชำระตามเทอม"
+            description="อัตราค่าเล่าเรียนแบบเหมาจ่ายคงที่ เพื่อการวางแผนค่าใช้จ่ายทางการศึกษาตลอดหลักสูตร"
           />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {fees.map((f) => (
-              <div
-                key={f.label}
-                className="bg-brand-50/40 border border-brand-100 rounded-2xl p-5"
-              >
-                <div className="text-xs text-slate-500 mb-1">{f.label}</div>
-                <div className="font-semibold text-slate-900">{f.value}</div>
-              </div>
-            ))}
+          <div className="max-w-2xl mx-auto bg-gradient-to-br from-brand-50/30 to-orange-50/30 border border-brand-100 rounded-3xl p-6 lg:p-8 text-center shadow-sm">
+            <div className="text-sm text-slate-500 mb-2 font-medium">ค่าธรรมเนียมการศึกษา (ภาคปกติ)</div>
+            <div className="text-3xl lg:text-4xl font-bold text-slate-900 mb-2">16,000 บาท</div>
+            <div className="text-sm font-semibold text-brand-600 bg-white inline-block px-4 py-1.5 rounded-full border border-brand-100 shadow-2xs">
+              ต่อภาคการศึกษา ตลอดหลักสูตร
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-4">
-            * อัตราข้างต้นเป็นข้อมูลเบื้องต้น โปรดตรวจสอบประกาศปีการศึกษาล่าสุดจากมหาวิทยาลัยอีกครั้ง
+          <p className="text-xs text-center text-slate-400 mt-5">
+            * อัตราค่าธรรมเนียมอาจมีการเปลี่ยนแปลงตามประกาศและนโยบายล่าสุดของมหาวิทยาลัย
           </p>
         </div>
       </section>
@@ -317,33 +330,32 @@ const heroDescription =
       {/* CTA */}
       <section className="section">
         <div className="container-wide">
-          <div className="relative overflow-hidden rounded-3xl bg-brand-gradient p-8 lg:p-14 text-white text-center">
+          <div className="relative overflow-hidden rounded-3xl bg-brand-gradient p-8 text-center text-white lg:p-14">
             <div className="absolute inset-0 bg-brand-mesh opacity-30" />
             <div className="relative">
               <h2 className="text-3xl font-semibold leading-tight lg:text-4xl">
                 พร้อมก้าวสู่อนาคต IT แล้วหรือยัง?
               </h2>
-              <p className="mt-3 text-white/90 max-w-xl mx-auto">
+              <p className="mx-auto mt-3 max-w-xl text-white/90">
                 สมัครเรียนวันนี้เพื่อเริ่มต้นการเรียนรู้ในโลกดิจิทัลกับเรา
               </p>
-              <div className="mt-7 flex flex-wrap gap-3 justify-center">
-                <button
-                  type="button"
-                  disabled
-                  title="จะประกาศลิงก์รับสมัครเร็ว ๆ นี้"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium h-12 px-6 text-base rounded-2xl bg-white text-brand-600 opacity-60 cursor-not-allowed"
+              <div className="mt-7 flex flex-wrap justify-center gap-3">
+                <a
+                  href="https://oreg.rmutt.ac.th/Apply/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-white px-6 text-base font-medium text-brand-600 shadow-sm transition hover:bg-orange-50"
                 >
                   สมัครเรียนตอนนี้
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <Button
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+                <a
                   href="/about/contact"
-                  variant="outline"
-                  size="lg"
-                  className="!border-white/70 !text-white hover:!bg-white/10"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/10 px-6 text-base font-medium text-white transition hover:bg-white/20"
                 >
                   ติดต่อสอบถาม
-                </Button>
+                  <Phone className="h-4 w-4" />
+                </a>
               </div>
             </div>
           </div>

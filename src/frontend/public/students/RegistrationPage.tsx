@@ -104,7 +104,7 @@ export default async function RegistrationPage() {
       {/* Services grid */}
       <section className="section">
         <div className="container-wide">
-          <SectionTitle eyebrow="บริการนักศึกษา" title="เรื่องที่ทำได้บ่อย" />
+         
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {services.map((s) => (

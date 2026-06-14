@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  Eye, // เพิ่ม Eye เข้ามาสำหรับเมนูที่กำลังแสดงผล
   EyeOff,
   Pencil,
   RotateCcw,
@@ -14,9 +15,8 @@ import {
   createNavigationItem,
   deleteNavigationItem,
   fetchNavigationItems,
-  hideNavigationItem,
-  resetNavigationItems,
   updateNavigationItem,
+  resetNavigationItems,
   type NavigationItemPayload,
 } from "@/frontend/api/navigation";
 import type { NavigationItem } from "@/types";
@@ -113,7 +113,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
   const [form, setForm] = useState<NavigationForm>(emptyNavigationForm());
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [hideId, setHideId] = useState<string | null>(null);
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -245,20 +244,17 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
     }
   }
 
-  async function handleSortOrderChange(item: NavigationItem, value: string) {
-    const sortOrder = Number(value);
-    if (!Number.isFinite(sortOrder) || sortOrder < 0) {
-      showToast("ลำดับต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป", false);
-      return;
-    }
+  // ฟังก์ชันสลับสถานะ ซ่อน / แสดง เมนู (Toggle Active สถานะสดๆ)
+  async function handleToggleActive(item: NavigationItem) {
+    const nextState = item.is_active === false; // ถ้าปัจจุบันซ่อน (false) -> ให้เปิด (true)
     try {
       const updated = await updateNavigationItem(item.id, {
         label: item.label,
         href: item.href,
         type: item.type,
         parent_id: item.parent_id,
-        sort_order: sortOrder,
-        is_active: item.is_active,
+        sort_order: item.sort_order,
+        is_active: nextState,
         is_external: item.is_external,
         location: item.location,
         target: item.target,
@@ -266,13 +262,15 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
         label_en: item.label_en,
         description_en: item.description_en,
       });
+
       setItems((prev) => prev.map((current) => (current.id === item.id ? updated : current)));
-      showToast("อัปเดตลำดับเรียบร้อยแล้ว");
+      showToast(nextState ? "เปิดการแสดงผลเมนูแล้ว" : "ซ่อนเมนูจากหน้าเว็บไซต์แล้ว");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "อัปเดตลำดับไม่สำเร็จ", false);
+      showToast(error instanceof Error ? error.message : "เปลี่ยนสถานะไม่สำเร็จ", false);
     }
   }
 
+  // ฟังก์ชันเลื่อน ขึ้น / ลง แบบสลับตำแหน่ง sort_order ของคู่ที่เลื่อน
   async function handleMove(item: NavigationItem, direction: "up" | "down") {
     const group = sortNavigationGroup(
       items.filter((current) => getNavigationGroupKey(current) === getNavigationGroupKey(item))
@@ -282,38 +280,31 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
 
     if (currentIndex < 0 || targetIndex < 0 || targetIndex >= group.length) return;
 
-    const reordered = [...group];
-    const [moved] = reordered.splice(currentIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
+    const targetItem = group[targetIndex];
 
     try {
-      const updatedGroup = await Promise.all(
-        reordered.map((current, index) =>
-          updateNavigationItem(current.id, { sort_order: index + 1 })
-        )
-      );
+      const currentOrder = item.sort_order;
+      const targetOrder = targetItem.sort_order;
 
-      const updates = new Map(updatedGroup.map((current) => [current.id, current]));
-      setItems((prev) => prev.map((current) => updates.get(current.id) ?? current));
+      // ป้องกันกรณีเลขลำดับซ้ำกัน ให้ใช้สลับอิงจาก index แทน
+      const finalCurrentOrder = currentOrder === targetOrder ? targetIndex : targetOrder;
+      const finalTargetOrder = currentOrder === targetOrder ? currentIndex : currentOrder;
+
+      const [updatedCurrent, updatedTarget] = await Promise.all([
+        updateNavigationItem(item.id, { sort_order: finalCurrentOrder }),
+        updateNavigationItem(targetItem.id, { sort_order: finalTargetOrder }),
+      ]);
+
+      setItems((prev) =>
+        prev.map((curr) => {
+          if (curr.id === item.id) return updatedCurrent;
+          if (curr.id === targetItem.id) return updatedTarget;
+          return curr;
+        })
+      );
       showToast("อัปเดตลำดับเมนูเรียบร้อยแล้ว");
-      await loadItems();
     } catch (error) {
       showToast(error instanceof Error ? error.message : "อัปเดตลำดับเมนูไม่สำเร็จ", false);
-    }
-  }
-
-  async function handleHide() {
-    if (!hideId) return;
-    try {
-      await hideNavigationItem(hideId);
-      setItems((prev) =>
-        prev.map((item) => (item.id === hideId ? { ...item, is_active: false } : item))
-      );
-      showToast("ซ่อนเมนูจากหน้าเว็บไซต์แล้ว");
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "ซ่อนเมนูไม่สำเร็จ", false);
-    } finally {
-      setHideId(null);
     }
   }
 
@@ -404,8 +395,8 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
-            { value: "active", label: "แสดงอยู่" },
             { value: "all", label: "ทั้งหมด" },
+            { value: "active", label: "แสดงอยู่" },
             { value: "inactive", label: "ซ่อนอยู่" },
           ]}
         />
@@ -436,7 +427,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
             ) : (
               filtered.map((item) => {
                 const childCount = childCounts.get(item.id) ?? 0;
-                const hideDisabled = item.is_core || childCount > 0;
                 const hardDeleteDisabled = item.is_core || childCount > 0;
                 const group = sortNavigationGroup(
                   items.filter((current) => getNavigationGroupKey(current) === getNavigationGroupKey(item))
@@ -507,21 +497,32 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
+                        
+                        {/* ปุ่มเปิด/ปิดซ่อนเมนู กดแล้วทำงานได้จริง */}
                         <button
                           type="button"
-                          onClick={() => !hideDisabled && setHideId(item.id)}
-                          disabled={hideDisabled}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                          onClick={() => handleToggleActive(item)}
+                          disabled={childCount > 0}
+                          className={`rounded-lg p-2 transition ${
+                            item.is_active !== false
+                              ? "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-amber-600 hover:bg-amber-50"
+                          } disabled:cursor-not-allowed disabled:opacity-35`}
                           title={
-                            item.is_core
-                              ? "เมนูหลักของระบบไม่สามารถซ่อนด้วยปุ่มนี้ได้"
-                              : childCount > 0
-                                ? "รายการนี้มีเมนูย่อย ต้องจัดการเมนูย่อยก่อน"
-                                : "ซ่อนเมนู"
+                            childCount > 0
+                              ? "รายการนี้มีเมนูย่อย ต้องจัดการเมนูย่อยก่อน"
+                              : item.is_active !== false
+                              ? "ซ่อนเมนู"
+                              : "แสดงเมนู"
                           }
                         >
-                          <EyeOff className="h-4 w-4" />
+                          {item.is_active !== false ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
                         </button>
+                        
                         <button
                           type="button"
                           onClick={() => !hardDeleteDisabled && setHardDeleteId(item.id)}
@@ -531,8 +532,8 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                             item.is_core
                               ? "เมนูหลักของระบบไม่สามารถลบถาวรได้"
                               : childCount > 0
-                                ? "ต้องจัดการเมนูย่อยก่อน"
-                                : "ลบถาวร"
+                              ? "ต้องจัดการเมนูย่อยก่อน"
+                              : "ลบถาวร"
                           }
                         >
                           <Trash2 className="h-4 w-4" />
@@ -716,16 +717,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
           </div>
         </>
       )}
-
-      <ConfirmModal
-        open={!!hideId}
-        title="ซ่อนเมนูนี้?"
-        description="การซ่อนจะไม่ลบข้อมูลถาวร เมนูนี้จะถูกซ่อนจากหน้าเว็บไซต์และสามารถเปิดกลับมาได้จากรายการซ่อนอยู่"
-        variant="warning"
-        confirmLabel="ซ่อนเมนู"
-        onClose={() => setHideId(null)}
-        onConfirm={handleHide}
-      />
 
       <ConfirmModal
         open={!!hardDeleteId}
