@@ -5,6 +5,8 @@ import { getAuthenticatedProfileWithPermissions } from "@/lib/serverAuth";
 import type { ComplaintStatus } from "@/types";
 
 const COMPLAINT_COLUMNS =
+  "id,tracking_code,complaint_type,title,detail,sender_name,student_id,email,phone,want_contact,attachment_url,attachment_urls,status,assigned_to,internal_note,created_at,updated_at";
+const LEGACY_COMPLAINT_COLUMNS =
   "id,tracking_code,complaint_type,title,detail,sender_name,student_id,email,phone,want_contact,attachment_url,status,assigned_to,internal_note,created_at,updated_at";
 
 const allowedStatuses: ComplaintStatus[] = ["new", "in_progress", "resolved", "rejected"];
@@ -36,6 +38,16 @@ function cleanOptionalText(value: unknown) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isMissingAttachmentUrlsColumn(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    error?.code === "42703" ||
+    error?.code === "PGRST204" ||
+    message.includes("attachment_urls") ||
+    message.includes("schema cache")
+  );
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireComplaintViewer(request);
   if (auth.error) return auth.error;
@@ -52,10 +64,22 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
+  const result = await admin
     .from("complaints")
     .select(COMPLAINT_COLUMNS)
     .order("created_at", { ascending: false });
+  let data: unknown[] | null = result.data;
+  let error = result.error;
+
+  if (error && isMissingAttachmentUrlsColumn(error)) {
+    const legacyResult = await admin
+      .from("complaints")
+      .select(LEGACY_COMPLAINT_COLUMNS)
+      .order("created_at", { ascending: false });
+
+    data = legacyResult.data;
+    error = legacyResult.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: "ไม่สามารถโหลดข้อร้องเรียนได้" }, { status: 500 });
@@ -88,17 +112,37 @@ export async function PATCH(request: NextRequest) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
+  const updatedAt = new Date().toISOString();
+  const result = await admin
     .from("complaints")
     .update({
       status,
       assigned_to: cleanOptionalText(body.assigned_to),
       internal_note: cleanOptionalText(body.internal_note),
-      updated_at: new Date().toISOString(),
+      updated_at: updatedAt,
     })
     .eq("id", id)
     .select(COMPLAINT_COLUMNS)
     .single();
+  let data: unknown | null = result.data;
+  let error = result.error;
+
+  if (error && isMissingAttachmentUrlsColumn(error)) {
+    const legacyResult = await admin
+      .from("complaints")
+      .update({
+        status,
+        assigned_to: cleanOptionalText(body.assigned_to),
+        internal_note: cleanOptionalText(body.internal_note),
+        updated_at: updatedAt,
+      })
+      .eq("id", id)
+      .select(LEGACY_COMPLAINT_COLUMNS)
+      .single();
+
+    data = legacyResult.data;
+    error = legacyResult.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: "ไม่สามารถอัปเดตข้อร้องเรียนได้" }, { status: 500 });

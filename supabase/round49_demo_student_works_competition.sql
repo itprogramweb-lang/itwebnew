@@ -1,0 +1,81 @@
+-- Optional demo data only.
+-- Run manually only when you want 3 sample competition / presentation student works.
+-- This file does not delete or update existing data.
+
+insert into student_works (
+  title,
+  description,
+  category,
+  academic_year,
+  work_type,
+  students,
+  advisor_name,
+  technologies,
+  image_url,
+  image_alt,
+  sort_order,
+  is_featured,
+  is_active,
+  source_type,
+  source_system,
+  project_url,
+  external_url
+) values
+(
+  'ระบบคัดแยกขยะอัจฉริยะด้วย AI Vision',
+  'ผลงานต้นแบบระบบคัดแยกขยะด้วยกล้องและ AI เพื่อช่วยแยกประเภทขยะเบื้องต้น เหมาะสำหรับใช้ในกิจกรรมประกวดนวัตกรรมด้านสิ่งแวดล้อม',
+  'นวัตกรรมเพื่อสิ่งแวดล้อม',
+  '2569',
+  'competition',
+  array['นักศึกษาตัวอย่าง 1', 'นักศึกษาตัวอย่าง 2'],
+  'อาจารย์ที่ปรึกษาตัวอย่าง',
+  array['AI Vision', 'Computer Vision', 'Python'],
+  '/placeholders/student-work-placeholder.svg',
+  'ระบบคัดแยกขยะอัจฉริยะด้วย AI Vision',
+  201,
+  false,
+  true,
+  'demo',
+  'manual-demo',
+  '#',
+  '#'
+),
+(
+  'แอปพลิเคชันแจ้งเตือนความเสี่ยงสุขภาพสำหรับนักศึกษา',
+  'ผลงานออกแบบแอปพลิเคชันสำหรับบันทึกข้อมูลสุขภาพเบื้องต้นและแจ้งเตือนความเสี่ยง เพื่อใช้ประกวดด้านเทคโนโลยีเพื่อสุขภาพ',
+  'เทคโนโลยีเพื่อสุขภาพ',
+  '2569',
+  'competition',
+  array['นักศึกษาตัวอย่าง 3', 'นักศึกษาตัวอย่าง 4'],
+  'อาจารย์ที่ปรึกษาตัวอย่าง',
+  array['Mobile App', 'Health Tech', 'Flutter'],
+  '/placeholders/student-work-placeholder.svg',
+  'แอปพลิเคชันแจ้งเตือนความเสี่ยงสุขภาพสำหรับนักศึกษา',
+  202,
+  false,
+  true,
+  'demo',
+  'manual-demo',
+  '#',
+  '#'
+),
+(
+  'เว็บไซต์ประชาสัมพันธ์เส้นทางท่องเที่ยวชุมชนด้วยแผนที่อินเทอร์แอคทีฟ',
+  'ผลงานเว็บไซต์ต้นแบบสำหรับนำเสนอแหล่งท่องเที่ยวชุมชนผ่านแผนที่อินเทอร์แอคทีฟ เหมาะสำหรับการนำเสนอผลงานด้านเทคโนโลยีเพื่อชุมชน',
+  'เทคโนโลยีเพื่อชุมชน',
+  '2569',
+  'competition',
+  array['นักศึกษาตัวอย่าง 5', 'นักศึกษาตัวอย่าง 6'],
+  'อาจารย์ที่ปรึกษาตัวอย่าง',
+  array['Web App', 'Maps', 'Interactive UI'],
+  '/placeholders/student-work-placeholder.svg',
+  'เว็บไซต์ประชาสัมพันธ์เส้นทางท่องเที่ยวชุมชนด้วยแผนที่อินเทอร์แอคทีฟ',
+  203,
+  false,
+  true,
+  'demo',
+  'manual-demo',
+  '#',
+  '#'
+);
+

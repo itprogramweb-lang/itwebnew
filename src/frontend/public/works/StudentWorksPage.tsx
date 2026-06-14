@@ -3,6 +3,7 @@ import { ArrowRight, FolderSearch, GraduationCap, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/primitives";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { getStudentWorks } from "@/lib/supabase/queries";
+import { getStudentWorkTypeLabel } from "@/lib/studentWorkTypes";
 
 const workFallback = "/placeholders/student-work-placeholder.svg";
 
@@ -15,7 +16,7 @@ export default async function StudentWorksPage() {
         dark
         eyebrow="โปรเจกต์นักศึกษา"
         title="ผลงานนักศึกษา"
-        description="รวมปริญญานิพนธ์ (Thesis) และผลงานเด่นจากนักศึกษา ตั้งแต่เว็บแอป โมบาย AI ไปจนถึง IoT"
+        description="รวมผลงานรายวิชา ปริญญานิพนธ์ (Thesis) และผลงานประกวด แข่งขัน หรือนำเสนอผลงานของนักศึกษา"
       />
 
       <section className="section">
@@ -46,8 +47,13 @@ export default async function StudentWorksPage() {
                     <div className="p-5 flex flex-col flex-1">
                       <div className="flex items-center justify-between gap-3 text-xs">
                         <span className="rounded-full bg-brand-50 px-2.5 py-1 font-medium text-brand-700">
-                          {work.category || "ผลงานนักศึกษา"}
+                          {getStudentWorkTypeLabel(work.work_type)}
                         </span>
+                        {work.category && (
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+                            {work.category}
+                          </span>
+                        )}
                         {work.academic_year && (
                           <span className="text-slate-500">{work.academic_year}</span>
                         )}

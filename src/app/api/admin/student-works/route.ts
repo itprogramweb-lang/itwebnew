@@ -5,6 +5,7 @@ import {
   getAuthenticatedProfileWithPermissions,
   type AdminProfileWithPermissions,
 } from "@/lib/serverAuth";
+import { isCourseStudentWork, isStudentWorkType } from "@/lib/studentWorkTypes";
 
 type StudentWorkAccessRow = {
   id: string;
@@ -151,7 +152,7 @@ function logStudentWorkMutationError(action: string, error: SupabaseMutationErro
 
 function sanitizeStudentWorkPayload(body: Record<string, unknown>): SanitizedStudentWorkPayload {
   const workType = body.work_type ?? "final_project";
-  if (workType !== "course" && workType !== "final_project") {
+  if (!isStudentWorkType(workType)) {
     return { error: "ประเภทผลงานไม่ถูกต้อง" };
   }
 
@@ -164,7 +165,7 @@ function sanitizeStudentWorkPayload(body: Record<string, unknown>): SanitizedStu
   const courseId = cleanOptionalText(body.course_id);
   const courseName = cleanOptionalText(body.course_name);
 
-  if (workType === "course") {
+  if (isCourseStudentWork(workType)) {
     if (!courseId) return { error: "กรุณากรอกรหัสวิชา" };
     if (!courseName) return { error: "กรุณากรอกชื่อวิชา" };
   }
@@ -181,9 +182,9 @@ function sanitizeStudentWorkPayload(body: Record<string, unknown>): SanitizedStu
     category: cleanOptionalText(body.category),
     academic_year: academicYear,
     work_type: workType,
-    // ถ้าเป็นโปรเจกต์จบ ไม่ต้องเก็บข้อมูลรายวิชา
-    course_id: workType === "course" ? courseId : null,
-    course_name: workType === "course" ? courseName : null,
+    // เก็บข้อมูลรายวิชาเฉพาะผลงานรายวิชาเท่านั้น
+    course_id: isCourseStudentWork(workType) ? courseId : null,
+    course_name: isCourseStudentWork(workType) ? courseName : null,
     students: cleanStringArray(body.students),
     advisor_name: cleanOptionalText(body.advisor_name),
     technologies: cleanStringArray(body.technologies),

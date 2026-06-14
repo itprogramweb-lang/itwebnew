@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "ผลงานนักศึกษา",
-  description: "ผลงานรายวิชาและปริญญานิพนธ์ (Thesis) ของนักศึกษา",
+  description: "ผลงานรายวิชา ปริญญานิพนธ์ (Thesis) และผลงานประกวด แข่งขัน หรือนำเสนอผลงานของนักศึกษา",
 };
 
 export default StudentWorksLandingPage;

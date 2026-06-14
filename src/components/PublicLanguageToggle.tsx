@@ -87,6 +87,7 @@ export function getPublicNavLabel({
     "ผลงานนักศึกษา": "Student Works",
     "ปริญญานิพนธ์": "Thesis",
     "ผลงานรายวิชา": "Course Works",
+    "ประกวด / แข่งขัน / นำเสนอผลงาน": "Competitions and Presentations",
     "ผลงานอาจารย์": "Faculty Works",
     "ทะเบียน": "Registration",
     "ลงทะเบียนเรียน": "Registration",

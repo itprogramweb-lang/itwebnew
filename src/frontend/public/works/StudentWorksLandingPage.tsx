@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, GraduationCap } from "lucide-react";
+import { ArrowRight, Award, BookOpen, GraduationCap } from "lucide-react";
 import { getPageSetting } from "@/lib/supabase/queries";
 // 🛠️ เปลี่ยนมาดึง PageHero ชิ้นงานกลางเข้ามาคุมระบบแบนเนอร์ แสงสีส้ม และ Breadcrumb แทน PageHeader ตัวเก่า
 import PageHero from "@/components/ui/PageHero";
@@ -17,6 +17,12 @@ const items = [
     href: "/works/students/final-projects",
     icon: GraduationCap,
   },
+  {
+    title: "ประกวด / แข่งขัน / นำเสนอผลงาน",
+    description: "ดูรายละเอียดผลงานจากเวทีประกวด การแข่งขัน และการนำเสนอผลงาน",
+    href: "/works/students/competition",
+    icon: Award,
+  },
 ];
 
 export default async function StudentWorksLandingPage() {
@@ -26,7 +32,7 @@ export default async function StudentWorksLandingPage() {
   const pageTitle = ps?.title ?? "ผลงานนักศึกษา";
   const pageDescription =
     ps?.description ??
-    "เลือกดูผลงานรายวิชาและปริญญานิพนธ์ (Thesis) ของนักศึกษาตามหมวดหมู่";
+    "เลือกดูผลงานรายวิชา ปริญญานิพนธ์ (Thesis) และผลงานประกวด แข่งขัน หรือนำเสนอผลงานของนักศึกษา";
   const eyebrow = ps?.subtitle ?? "ผลงานนักศึกษา";
 
   // ตรวจจับเทมเพลต Layout แบนเนอร์ให้แสดงตามระบบหลังบ้านที่เลือกไว้ใน Dashboard
@@ -55,7 +61,7 @@ export default async function StudentWorksLandingPage() {
 
       <section className="section">
         <div className="container-wide">
-          <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
             {items.map((item) => {
               const Icon = item.icon;
               return (

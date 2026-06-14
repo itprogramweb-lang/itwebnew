@@ -2,14 +2,20 @@ import Link from "next/link";
 import { ArrowRight, Download, FileText, GraduationCap, Users } from "lucide-react";
 import CroppedImage from "@/components/ui/CroppedImage";
 import type { StudentWorkRow } from "@/lib/supabase/queries";
+import {
+  getStudentWorkTypeLabel,
+  isCourseStudentWork,
+  isFinalProjectStudentWork,
+} from "@/lib/studentWorkTypes";
 import { buildPdfViewerHref, resolveStudentWorkPdfUrl } from "./pdfLinks";
 
 const workFallback = "/placeholders/student-work-placeholder.svg";
 
 export default function StudentWorkCard({ work }: { work: StudentWorkRow }) {
   const detailHref = work.slug ? `/works/students/${work.slug}` : null;
-  const isCourseWork = work.work_type === "course";
-  const isFinalProject = work.work_type === "final_project" || work.work_type === null;
+  const isCourseWork = isCourseStudentWork(work.work_type);
+  const isFinalProject = isFinalProjectStudentWork(work.work_type);
+  const workTypeLabel = getStudentWorkTypeLabel(work.work_type);
   const pdfReturnTo =
     isCourseWork && work.course_id && work.academic_year
       ? `/works/students/course/${encodeURIComponent(work.course_id)}/${encodeURIComponent(work.academic_year)}`
@@ -25,7 +31,7 @@ export default function StudentWorkCard({ work }: { work: StudentWorkRow }) {
     ? "กลับไปผลงานรายวิชา"
     : isFinalProject
     ? "กลับไปปริญญานิพนธ์ (Thesis)"
-    : "กลับไปผลงานนักศึกษา";
+    : "กลับไปประกวด / แข่งขัน / นำเสนอผลงาน";
   const pdfHref = buildPdfViewerHref({
     file: work.pdf_url,
     title: work.title,
@@ -48,8 +54,13 @@ export default function StudentWorkCard({ work }: { work: StudentWorkRow }) {
       <div className="p-5 flex flex-col flex-1">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-brand-50 px-2.5 py-1 font-medium text-brand-700">
-            {work.category || "ผลงานนักศึกษา"}
+            {workTypeLabel}
           </span>
+          {work.category && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
+              {work.category}
+            </span>
+          )}
           {work.academic_year && (
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
               ปีการศึกษา {work.academic_year}

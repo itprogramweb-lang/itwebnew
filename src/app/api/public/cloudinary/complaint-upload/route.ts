@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE = 3 * 1024 * 1024; // 3MB (stricter for public)
+const MAX_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   let formData: FormData;
@@ -22,13 +22,13 @@ export async function POST(request: NextRequest) {
   }
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
-      { error: "รองรับเฉพาะ JPG, PNG, WebP" },
+      { error: "กรุณาแนบไฟล์รูปภาพเท่านั้น" },
       { status: 400 }
     );
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json(
-      { error: "ขนาดไฟล์ต้องไม่เกิน 3MB" },
+      { error: "รูปภาพแต่ละไฟล์ต้องมีขนาดไม่เกิน 10 MB" },
       { status: 400 }
     );
   }

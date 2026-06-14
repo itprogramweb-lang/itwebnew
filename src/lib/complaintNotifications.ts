@@ -1,6 +1,7 @@
 import "server-only";
 
 import { complaintStatusLabels, getComplaintTypeLabel } from "@/data/complaints";
+import { getComplaintAttachmentUrls } from "@/lib/complaintAttachments";
 import { sendBrevoTransactionalEmail } from "@/lib/email/brevo";
 import { sendLinePushTextMessage } from "@/lib/line/messaging";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -13,6 +14,10 @@ export type ComplaintNotificationRow = {
   tracking_code: string | null;
   complaint_type: string | null;
   title: string;
+  detail: string | null;
+  want_contact: boolean | null;
+  attachment_url?: string | null;
+  attachment_urls?: string[] | null;
   status: string | null;
   created_at: string | null;
 };
@@ -420,6 +425,7 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
     complaint.status ??
     "new";
   const submittedAt = formatSubmittedAt(complaint.created_at);
+  const attachmentCount = getComplaintAttachmentUrls(complaint).length;
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
@@ -430,6 +436,7 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">วันที่ส่ง</td><td>${escapeHtml(submittedAt)}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">ประเภท</td><td>${escapeHtml(complaintType)}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">หัวข้อ</td><td>${escapeHtml(complaint.title)}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">รูปภาพแนบ</td><td>${attachmentCount > 0 ? `${attachmentCount} รูป` : "-"}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; font-weight: bold;">สถานะ</td><td>${escapeHtml(status)}</td></tr>
       </table>
       <p><a href="${escapeHtml(dashboardUrl)}">เปิดหน้าจัดการข้อร้องเรียน</a></p>
@@ -445,6 +452,7 @@ function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {
     `วันที่ส่ง: ${submittedAt}`,
     `ประเภท: ${complaintType}`,
     `หัวข้อ: ${complaint.title}`,
+    `รูปภาพแนบ: ${attachmentCount > 0 ? `${attachmentCount} รูป` : "-"}`,
     `สถานะ: ${status}`,
     `ลิงก์หลังบ้าน: ${dashboardUrl}`,
     "",
@@ -468,6 +476,9 @@ function buildComplaintLineText(complaint: ComplaintNotificationRow) {
     complaintStatusLabels[complaint.status as keyof typeof complaintStatusLabels] ??
     complaint.status ??
     "new";
+  const detail = truncateLineText(complaint.detail ?? "", 420);
+  const wantContact = complaint.want_contact === true ? "ใช่" : "ไม่";
+  const attachmentCount = getComplaintAttachmentUrls(complaint).length;
 
   return [
     "แจ้งเตือนข้อร้องเรียนใหม่จากเว็บไซต์สาขา",
@@ -475,6 +486,9 @@ function buildComplaintLineText(complaint: ComplaintNotificationRow) {
     `รหัสติดตาม: ${trackingCode}`,
     `ประเภท: ${complaintType}`,
     `หัวข้อ: ${truncateLineText(complaint.title)}`,
+    `รายละเอียด: ${detail || "-"}`,
+    `ต้องการให้ติดต่อกลับ: ${wantContact}`,
+    `รูปภาพแนบ: ${attachmentCount > 0 ? `${attachmentCount} รูป` : "-"}`,
     `สถานะ: ${status}`,
     "",
     "กรุณาเข้าสู่ระบบหลังบ้านเพื่อตรวจสอบรายละเอียด",

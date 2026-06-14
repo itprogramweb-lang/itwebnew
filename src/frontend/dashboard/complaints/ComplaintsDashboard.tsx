@@ -33,6 +33,7 @@ import {
 import { StatusBadge } from "@/components/ui/badges";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { getComplaintAttachmentUrls } from "@/lib/complaintAttachments";
 import Button from "@/components/ui/Button";
 import { FormInput, FormSelect, FormTextarea } from "@/components/ui/Form";
 
@@ -48,6 +49,7 @@ type ComplaintRow = {
   phone: string | null;
   want_contact: boolean | null;
   attachment_url: string | null;
+  attachment_urls?: string[] | null;
   status: string | null;
   assigned_to: string | null;
   internal_note: string | null;
@@ -166,6 +168,11 @@ const counts = useMemo(
     rejected: items.filter((item) => normalizeStatus(item.status) === "rejected").length,
   }),
   [items]
+);
+
+const selectedAttachmentUrls = useMemo(
+  () => (selected ? getComplaintAttachmentUrls(selected) : []),
+  [selected]
 );
 
   const openDetail = (item: ComplaintRow) => {
@@ -340,15 +347,33 @@ const counts = useMemo(
                 <p className="text-sm text-slate-600 mt-3 leading-relaxed whitespace-pre-wrap">
                   {selected.detail}
                 </p>
-                {selected.attachment_url && (
-                  <a
-                    href={selected.attachment_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    เปิดลิงก์ไฟล์แนบ <ExternalLink className="w-4 h-4" />
-                  </a>
+                {selectedAttachmentUrls.length > 0 && (
+                  <div className="mt-4">
+                    <div className="mb-2 text-xs font-medium text-slate-500">
+                      รูปภาพแนบ {selectedAttachmentUrls.length} รูป
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedAttachmentUrls.map((url, index) => (
+                        <a
+                          key={`${url}-${index}`}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:border-brand-200"
+                        >
+                          <img
+                            src={url}
+                            alt={`รูปภาพแนบ ${index + 1}`}
+                            className="h-28 w-full object-cover"
+                          />
+                          <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-brand-600 group-hover:text-brand-700">
+                            <span>เปิดรูปที่ {index + 1}</span>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 

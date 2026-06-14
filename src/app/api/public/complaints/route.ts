@@ -3,10 +3,13 @@ import {
   notifyDepartmentHeadOfNewComplaint,
   type ComplaintNotificationRow,
 } from "@/lib/complaintNotifications";
+import { MAX_COMPLAINT_ATTACHMENT_COUNT } from "@/lib/complaintAttachments";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const COMPLAINT_COLUMNS =
-  "id,tracking_code,complaint_type,title,status,created_at";
+  "id,tracking_code,complaint_type,title,detail,want_contact,attachment_url,attachment_urls,status,created_at";
+const LEGACY_COMPLAINT_COLUMNS =
+  "id,tracking_code,complaint_type,title,detail,want_contact,attachment_url,status,created_at";
 
 type ComplaintCreatePayload = {
   complaint_type?: unknown;
@@ -17,7 +20,9 @@ type ComplaintCreatePayload = {
   email?: unknown;
   phone?: unknown;
   want_contact?: unknown;
+  truth_confirmed?: unknown;
   attachment_url?: unknown;
+  attachment_urls?: unknown;
 };
 
 function cleanRequiredText(value: unknown) {
@@ -28,6 +33,45 @@ function cleanOptionalText(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function cleanAttachmentUrls(value: unknown) {
+  if (value === undefined || value === null) return { status: "ok" as const, urls: [] };
+
+  if (!Array.isArray(value)) {
+    return { status: "invalid" as const, error: "ข้อมูลไฟล์แนบไม่ถูกต้อง" };
+  }
+
+  if (value.length > MAX_COMPLAINT_ATTACHMENT_COUNT) {
+    return { status: "invalid" as const, error: "แนบรูปภาพได้สูงสุด 5 รูป" };
+  }
+
+  const urls: string[] = [];
+
+  for (const item of value) {
+    if (typeof item !== "string") {
+      return { status: "invalid" as const, error: "ข้อมูลไฟล์แนบไม่ถูกต้อง" };
+    }
+
+    const trimmed = item.trim();
+    if (!trimmed) {
+      return { status: "invalid" as const, error: "ข้อมูลไฟล์แนบไม่ถูกต้อง" };
+    }
+
+    urls.push(trimmed);
+  }
+
+  return { status: "ok" as const, urls };
+}
+
+function isMissingAttachmentUrlsColumn(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    error?.code === "42703" ||
+    error?.code === "PGRST204" ||
+    message.includes("attachment_urls") ||
+    message.includes("schema cache")
+  );
 }
 
 function generateTrackingCode() {
@@ -140,6 +184,8 @@ export async function POST(request: NextRequest) {
   const email = cleanOptionalText(body.email);
   const phone = cleanOptionalText(body.phone);
   const wantContact = body.want_contact === true;
+  const truthConfirmed = body.truth_confirmed === true;
+  const attachmentUrlsResult = cleanAttachmentUrls(body.attachment_urls);
 
   if (!complaintType || !title || !detail) {
     return NextResponse.json(
@@ -158,6 +204,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!truthConfirmed) {
+    return NextResponse.json(
+      { error: "กรุณายืนยันว่าข้อมูลที่แจ้งเป็นความจริงก่อนส่งข้อร้องเรียน" },
+      { status: 400 }
+    );
+  }
+
+  if (attachmentUrlsResult.status === "invalid") {
+    return NextResponse.json(
+      { error: attachmentUrlsResult.error },
+      { status: 400 }
+    );
+  }
+
+  const legacyAttachmentUrl = cleanOptionalText(body.attachment_url);
+  const attachmentUrls =
+    attachmentUrlsResult.urls.length > 0
+      ? attachmentUrlsResult.urls
+      : legacyAttachmentUrl
+        ? [legacyAttachmentUrl]
+        : [];
+
   const payload = {
     tracking_code: generateTrackingCode(),
     complaint_type: complaintType,
@@ -168,17 +236,42 @@ export async function POST(request: NextRequest) {
     email,
     phone,
     want_contact: wantContact,
-    attachment_url: cleanOptionalText(body.attachment_url),
+    attachment_url: attachmentUrls[0] ?? null,
+    attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
     status: "new",
   };
 
   try {
     const admin = createSupabaseAdminClient();
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("complaints")
       .insert(payload)
       .select(COMPLAINT_COLUMNS)
       .single<ComplaintNotificationRow>();
+
+    if (error && isMissingAttachmentUrlsColumn(error)) {
+      const legacyPayload = {
+        tracking_code: payload.tracking_code,
+        complaint_type: payload.complaint_type,
+        title: payload.title,
+        detail: payload.detail,
+        sender_name: payload.sender_name,
+        student_id: payload.student_id,
+        email: payload.email,
+        phone: payload.phone,
+        want_contact: payload.want_contact,
+        attachment_url: payload.attachment_url,
+        status: payload.status,
+      };
+      const legacyResult = await admin
+        .from("complaints")
+        .insert(legacyPayload)
+        .select(LEGACY_COMPLAINT_COLUMNS)
+        .single<ComplaintNotificationRow>();
+
+      data = legacyResult.data;
+      error = legacyResult.error;
+    }
 
     if (error || !data) {
       console.error("Public complaint insert failed", {

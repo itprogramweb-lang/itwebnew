@@ -21,6 +21,13 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { FormInput, FormTextarea, FormSelect, Label } from "@/components/ui/Form";
 import CroppedImage from "@/components/ui/CroppedImage";
 import { cropToJson, getDefaultImageCrop, type ImageCropSettings } from "@/lib/imageCrop";
+import {
+  getStudentWorkTypeLabel,
+  isCourseStudentWork,
+  normalizeStudentWorkType,
+  STUDENT_WORK_TYPE_OPTIONS,
+  type StudentWorkType,
+} from "@/lib/studentWorkTypes";
 
 const RichTextEditor = dynamic(
   () => import("@/components/dashboard/RichTextEditor"),
@@ -42,7 +49,7 @@ type FormData = {
   content_html: string;
   category: string;
   academic_year: string;
-  work_type: "course" | "final_project";
+  work_type: StudentWorkType;
   course_id: string;
   course_name: string;
   students_raw: string;
@@ -62,7 +69,7 @@ type FormData = {
   is_active: boolean;
 };
 
-type WorkTypeTab = "course" | "final_project";
+type WorkTypeTab = StudentWorkType;
 
 type CourseOptionRow = {
   id: string;
@@ -158,7 +165,7 @@ const toForm = (w: StudentWorkRow): FormData => ({
   content_html: w.content_html ?? "",
   category: w.category ?? "web",
   academic_year: w.academic_year ?? "",
-  work_type: w.work_type === "course" ? "course" : "final_project",
+  work_type: normalizeStudentWorkType(w.work_type),
   course_id: w.course_id ?? "",
   course_name: w.course_name ?? "",
   students_raw: (w.students ?? []).join(", "),
@@ -179,7 +186,7 @@ const toForm = (w: StudentWorkRow): FormData => ({
 });
 
 const toPayload = (f: FormData) => {
-  const workType = f.work_type === "course" ? "course" : "final_project";
+  const workType = normalizeStudentWorkType(f.work_type);
 
   return {
     title: f.title.trim(),
@@ -188,8 +195,8 @@ const toPayload = (f: FormData) => {
     category: f.category || null,
     academic_year: f.academic_year.trim() || null,
     work_type: workType,
-    course_id: workType === "course" ? f.course_id.trim() : null,
-    course_name: workType === "course" ? f.course_name.trim() : null,
+    course_id: isCourseStudentWork(workType) ? f.course_id.trim() : null,
+    course_name: isCourseStudentWork(workType) ? f.course_name.trim() : null,
     students: splitArr(f.students_raw),
     advisor_name: f.advisor_name.trim() || null,
     technologies: splitArr(f.technologies_raw),
@@ -212,8 +219,10 @@ const validate = (f: FormData): string[] => {
   const errs: string[] = [];
   if (!f.title.trim()) errs.push("กรุณากรอกชื่อผลงาน");
   if (!f.academic_year.trim()) errs.push("กรุณากรอกปีการศึกษา");
-  if (!["course", "final_project"].includes(f.work_type)) errs.push("กรุณาเลือกประเภทผลงาน");
-  if (f.work_type === "course") {
+  if (!STUDENT_WORK_TYPE_OPTIONS.some((option) => option.value === f.work_type)) {
+    errs.push("กรุณาเลือกประเภทผลงาน");
+  }
+  if (isCourseStudentWork(f.work_type)) {
     if (!f.course_id.trim()) errs.push("กรุณากรอกรหัสวิชา");
     if (!f.course_name.trim()) errs.push("กรุณากรอกชื่อวิชา");
   }
@@ -287,18 +296,18 @@ export default function StudentWorksDashboard() {
   const typeCounts = useMemo(() => {
     return items.reduce(
       (acc, item) => {
-        const type = item.work_type === "course" ? "course" : "final_project";
+        const type = normalizeStudentWorkType(item.work_type);
         acc[type] += 1;
         return acc;
       },
-      { course: 0, final_project: 0 }
+      { course: 0, final_project: 0, competition: 0 } satisfies Record<StudentWorkType, number>
     );
   }, [items]);
 
   const dataCategoryOptions = useMemo(() => {
     const seen = new Set<string>();
     for (const item of items) {
-      const type = item.work_type === "course" ? "course" : "final_project";
+      const type = normalizeStudentWorkType(item.work_type);
       if (type !== workTypeTab) continue;
       const value = item.category?.trim();
       if (value) seen.add(value);
@@ -344,7 +353,7 @@ export default function StudentWorksDashboard() {
   );
 
   const courseSelectValue =
-    form.work_type === "course" && selectedExistingCourse
+    isCourseStudentWork(form.work_type) && selectedExistingCourse
       ? selectedExistingCourse.course_id
       : NEW_COURSE_VALUE;
 
@@ -374,7 +383,7 @@ export default function StudentWorksDashboard() {
   const filtered = useMemo(() => {
     return items.filter((w) => {
       const needle = q.trim().toLowerCase();
-      const workType = w.work_type === "course" ? "course" : "final_project";
+      const workType = normalizeStudentWorkType(w.work_type);
       const haystack = [
         w.title,
         w.slug,
@@ -422,12 +431,12 @@ export default function StudentWorksDashboard() {
   });
 
   const openAdd = () => {
-    const defaultCourse = workTypeTab === "course" ? activeCourses[0] : undefined;
+    const defaultCourse = isCourseStudentWork(workTypeTab) ? activeCourses[0] : undefined;
     setEditingId(null);
     setAddingNewCourse(false);
     setForm({
       ...EMPTY_FORM,
-      work_type: workTypeTab === "course" ? "course" : "final_project",
+      work_type: workTypeTab,
       course_id: defaultCourse?.course_id ?? "",
       course_name: defaultCourse?.course_name ?? "",
     });
@@ -448,7 +457,7 @@ export default function StudentWorksDashboard() {
   };
 
   useEffect(() => {
-    if (!modalOpen || form.work_type !== "course" || addingNewCourse) return;
+    if (!modalOpen || !isCourseStudentWork(form.work_type) || addingNewCourse) return;
     if (form.course_id.trim() || form.course_name.trim()) return;
     const defaultCourse = activeCourses[0];
     if (!defaultCourse) return;
@@ -459,7 +468,7 @@ export default function StudentWorksDashboard() {
     }));
   }, [activeCourses, addingNewCourse, form.course_id, form.course_name, form.work_type, modalOpen]);
 
-  const isCourseTab = workTypeTab === "course";
+  const isCourseTab = isCourseStudentWork(workTypeTab);
   const tableColSpan = isCourseTab ? 8 : 9;
 
   const handlePdfUpload = async () => {
@@ -470,7 +479,7 @@ export default function StudentWorksDashboard() {
       uploadErrors.push("รองรับเฉพาะไฟล์ PDF เท่านั้น");
     }
     if (!form.academic_year.trim()) uploadErrors.push("กรุณากรอกปีการศึกษา");
-    if (form.work_type === "course" && !form.course_id.trim()) uploadErrors.push("กรุณากรอกรหัสวิชา");
+    if (isCourseStudentWork(form.work_type) && !form.course_id.trim()) uploadErrors.push("กรุณากรอกรหัสวิชา");
 
     if (uploadErrors.length > 0) {
       setPdfUploadMessage({ msg: uploadErrors[0], ok: false });
@@ -567,15 +576,20 @@ export default function StudentWorksDashboard() {
     <div className="max-w-7xl mx-auto">
       <DashboardPageHeader
         title="ผลงานนักศึกษา"
-        description={`ปริญญานิพนธ์ (Thesis) ${typeCounts.final_project} รายการ / ผลงานรายวิชา ${typeCounts.course} รายการ`}
+        description={`ผลงานรายวิชา ${typeCounts.course} รายการ / ปริญญานิพนธ์ (Thesis) ${typeCounts.final_project} รายการ / ประกวด / แข่งขัน / นำเสนอผลงาน ${typeCounts.competition} รายการ`}
         action={<AddButton label="เพิ่มผลงาน" onClick={openAdd} />}
       />
 
       <div className="mb-4 max-w-full overflow-x-auto">
         <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
           {[
-            { value: "final_project" as const, label: "ปริญญานิพนธ์ (Thesis)", count: typeCounts.final_project },
             { value: "course" as const, label: "ผลงานรายวิชา", count: typeCounts.course },
+            { value: "final_project" as const, label: "ปริญญานิพนธ์ (Thesis)", count: typeCounts.final_project },
+            {
+              value: "competition" as const,
+              label: "ประกวด / แข่งขัน / นำเสนอผลงาน",
+              count: typeCounts.competition,
+            },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -659,7 +673,7 @@ export default function StudentWorksDashboard() {
                           {(w.technologies ?? []).join(", ")}
                         </div>
                       )}
-                      {w.work_type === "course" && (
+                      {isCourseStudentWork(w.work_type) && (
                         <div className="text-xs text-slate-500 line-clamp-1 max-w-xs">
                           {w.course_id ?? "-"} {w.course_name ?? ""}
                         </div>
@@ -667,7 +681,7 @@ export default function StudentWorksDashboard() {
                     </div>
                   </div>
                 </Td>
-                {isCourseTab || w.work_type === "course" ? (
+                {isCourseTab || isCourseStudentWork(w.work_type) ? (
                   <Td className="text-slate-600 text-xs">
                     <div className="font-medium text-slate-800">{w.course_name ?? "-"}</div>
                     <div className="mt-0.5 text-[11px] text-slate-500">{w.course_id ?? "-"}</div>
@@ -675,7 +689,7 @@ export default function StudentWorksDashboard() {
                 ) : (
                   <Td>
                     <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 border border-violet-100">
-                      ปริญญานิพนธ์ (Thesis)
+                      {getStudentWorkTypeLabel(w.work_type)}
                     </span>
                   </Td>
                 )}
@@ -792,20 +806,17 @@ export default function StudentWorksDashboard() {
                   label="ประเภทผลงาน *"
                   value={form.work_type}
                   onChange={(e) => {
-                    const value = e.target.value === "course" ? "course" : "final_project";
-                    const defaultCourse = value === "course" ? activeCourses[0] : undefined;
+                    const value = normalizeStudentWorkType(e.target.value);
+                    const defaultCourse = isCourseStudentWork(value) ? activeCourses[0] : undefined;
                     setAddingNewCourse(false);
                     setForm((p) => ({
                       ...p,
                       work_type: value,
-                      course_id: value === "course" ? p.course_id || defaultCourse?.course_id || "" : "",
-                      course_name: value === "course" ? p.course_name || defaultCourse?.course_name || "" : "",
+                      course_id: isCourseStudentWork(value) ? p.course_id || defaultCourse?.course_id || "" : "",
+                      course_name: isCourseStudentWork(value) ? p.course_name || defaultCourse?.course_name || "" : "",
                     }));
                   }}
-                  options={[
-                    { value: "final_project", label: "ปริญญานิพนธ์ (Thesis)" },
-                    { value: "course", label: "ผลงานรายวิชา" },
-                  ]}
+                  options={STUDENT_WORK_TYPE_OPTIONS}
                 />
                 <FormSelect
                   label="หมวดหมู่"
@@ -814,12 +825,12 @@ export default function StudentWorksDashboard() {
                   options={formCategoryOptions}
                 />
                 <FormInput
-                  label={form.work_type === "course" ? "ปีการศึกษา (ใช้สำหรับจัดหน้า public)" : "ปีการศึกษา * (เช่น 2566)"}
+                  label={isCourseStudentWork(form.work_type) ? "ปีการศึกษา (ใช้สำหรับจัดหน้า public)" : "ปีการศึกษา * (เช่น 2566)"}
                   {...FI("academic_year")}
                 />
               </div>
 
-              {form.work_type === "course" && (
+              {isCourseStudentWork(form.work_type) && (
                 <div className="space-y-4">
                   <FormSelect
                     label="รายวิชา *"

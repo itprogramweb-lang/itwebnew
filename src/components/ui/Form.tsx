@@ -159,11 +159,13 @@ export function FormCheckbox({
   name,
   checked,
   onChange,
+  required,
 }: {
   label: string;
   name?: string;
   checked?: boolean;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
 }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
@@ -172,9 +174,13 @@ export function FormCheckbox({
         name={name}
         checked={checked}
         onChange={onChange}
+        aria-required={required}
         className="w-4 h-4 rounded text-brand-500 border-slate-300 focus:ring-brand-300"
       />
-      {label}
+      <span>
+        {label}
+        {required && <span className="ml-0.5 text-rose-500">*</span>}
+      </span>
     </label>
   );
 }

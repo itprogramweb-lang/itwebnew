@@ -5,6 +5,11 @@ import { getStudentWorkBySlug } from "@/lib/supabase/queries";
 import CroppedImage from "@/components/ui/CroppedImage";
 import BreadcrumbTrail from "@/components/ui/BreadcrumbTrail";
 import NewsContentRenderer from "@/components/news/NewsContentRenderer";
+import {
+  getStudentWorkTypeLabel,
+  isCourseStudentWork,
+  isFinalProjectStudentWork,
+} from "@/lib/studentWorkTypes";
 import { buildPdfViewerHref, resolveStudentWorkPdfUrl } from "./pdfLinks";
 
 function hasRenderableHtml(html: string | null | undefined) {
@@ -25,13 +30,14 @@ export default async function StudentWorkDetailPage({
   if (!work) notFound();
 
   const hasExternal = !!work.external_url && work.external_url !== "#";
-  const isCourseWork = work.work_type === "course";
-  const workTypeLabel = isCourseWork ? "ผลงานรายวิชา" : "ปริญญานิพนธ์ (Thesis)";
+  const isCourseWork = isCourseStudentWork(work.work_type);
+  const isFinalProject = isFinalProjectStudentWork(work.work_type);
+  const workTypeLabel = getStudentWorkTypeLabel(work.work_type);
   const detailHref = work.slug ? `/works/students/${encodeURIComponent(work.slug)}` : null;
   const backHref =
     isCourseWork && work.course_id && work.academic_year
       ? `/works/students/course/${encodeURIComponent(work.course_id)}/${encodeURIComponent(work.academic_year)}`
-      : !isCourseWork && work.academic_year
+      : isFinalProject && work.academic_year
       ? `/works/students/final-projects/${encodeURIComponent(work.academic_year)}`
       : "/works/students";
   const pdfHref = buildPdfViewerHref({
@@ -40,10 +46,10 @@ export default async function StudentWorkDetailPage({
     filename: work.pdf_filename,
     returnTo: detailHref ?? backHref,
     returnLabel: "กลับไปหน้าสรุปผลงาน",
-    source: isCourseWork ? "course" : "final_project",
+    source: isCourseWork ? "course" : isFinalProject ? "final_project" : "student",
   });
   const pdfUrl = resolveStudentWorkPdfUrl(work.pdf_url);
-  if (!isCourseWork && !pdfUrl) notFound();
+  if (isFinalProject && !pdfUrl) notFound();
   const hasRichContent = hasRenderableHtml(work.content_html);
   const advisorLabel = isCourseWork ? "อาจารย์ผู้สอน" : "อาจารย์ที่ปรึกษา";
   const courseHref =
@@ -53,7 +59,7 @@ export default async function StudentWorkDetailPage({
       ? `/works/students/course/${encodeURIComponent(work.course_id)}/${encodeURIComponent(work.academic_year)}`
       : null;
   const finalProjectYearHref =
-    !isCourseWork && work.academic_year
+    isFinalProject && work.academic_year
       ? `/works/students/final-projects/${encodeURIComponent(work.academic_year)}`
       : null;
   const breadcrumbItems = isCourseWork
@@ -76,7 +82,8 @@ export default async function StudentWorkDetailPage({
           : []),
         { label: work.title },
       ]
-    : [
+    : isFinalProject
+    ? [
         { label: "หน้าแรก", href: "/" },
         { label: "ผลงาน" },
         { label: "ผลงานนักศึกษา", href: "/works/students" },
@@ -89,6 +96,13 @@ export default async function StudentWorkDetailPage({
               },
             ]
           : []),
+        { label: work.title },
+      ]
+    : [
+        { label: "หน้าแรก", href: "/" },
+        { label: "ผลงาน" },
+        { label: "ผลงานนักศึกษา", href: "/works/students" },
+        { label: workTypeLabel, href: "/works/students/competition" },
         { label: work.title },
       ];
 

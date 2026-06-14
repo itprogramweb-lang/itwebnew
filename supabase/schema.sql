@@ -132,7 +132,7 @@ create table if not exists student_works (
   description text,
   category text,
   academic_year text,
-  work_type text not null default 'final_project' check (work_type in ('course', 'final_project')),
+  work_type text not null default 'final_project' check (work_type in ('course', 'final_project', 'competition')),
   course_id text,
   course_name text,
   students text[],

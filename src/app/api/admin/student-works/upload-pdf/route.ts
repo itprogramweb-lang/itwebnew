@@ -6,6 +6,11 @@ import {
 } from "@/lib/serverAuth";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { R2ConfigError, R2UploadError, uploadStudentWorkPdf } from "@/lib/r2";
+import {
+  isCourseStudentWork,
+  isStudentWorkType,
+  STUDENT_WORK_TYPE_COMPETITION,
+} from "@/lib/studentWorkTypes";
 
 export const runtime = "nodejs";
 
@@ -136,13 +141,13 @@ export async function POST(request: NextRequest) {
     const courseId = cleanText(formData.get("course_id"));
     const academicYear = cleanText(formData.get("academic_year"));
 
-    if (workType !== "course" && workType !== "final_project") {
+    if (!isStudentWorkType(workType)) {
       return NextResponse.json({ error: "ประเภทผลงานไม่ถูกต้อง" }, { status: 400 });
     }
     if (!academicYear) {
       return NextResponse.json({ error: "กรุณากรอกปีการศึกษา" }, { status: 400 });
     }
-    if (workType === "course" && !courseId) {
+    if (isCourseStudentWork(workType) && !courseId) {
       return NextResponse.json({ error: "กรุณากรอกรหัสวิชา" }, { status: 400 });
     }
 
@@ -150,17 +155,19 @@ export async function POST(request: NextRequest) {
     const safeYear = sanitizeSegment(academicYear);
     const safeCourseId = sanitizeSegment(courseId);
 
-    if (!safeYear || (workType === "course" && !safeCourseId)) {
+    if (!safeYear || (isCourseStudentWork(workType) && !safeCourseId)) {
       return NextResponse.json(
-        { error: workType === "course" ? "กรุณากรอกรหัสวิชา" : "กรุณากรอกปีการศึกษา" },
+        { error: isCourseStudentWork(workType) ? "กรุณากรอกรหัสวิชา" : "กรุณากรอกปีการศึกษา" },
         { status: 400 }
       );
     }
 
     const key =
-      workType === "course"
+      isCourseStudentWork(workType)
         ? `course/${safeCourseId}/${safeYear}/${safeFilename}`
-        : `final-projects/${safeYear}/${safeFilename}`;
+        : workType === STUDENT_WORK_TYPE_COMPETITION
+          ? `competition/${safeYear}/${safeFilename}`
+          : `final-projects/${safeYear}/${safeFilename}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const pdfUrl = await uploadStudentWorkPdf({

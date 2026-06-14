@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import type { ComplaintType } from "@/types";
 
+const MAX_ATTACHMENT_COUNT = 5;
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const complaintCategoryOptions = [
   {
     value: "suggestion",
@@ -55,7 +59,9 @@ const initialState = {
   email: "",
   phone: "",
   want_contact: false,
+  truth_confirmed: false,
   attachment_url: "",
+  attachment_urls: [] as string[],
 };
 
 type ComplaintCreateResponse = {
@@ -75,16 +81,23 @@ export default function ComplaintForm() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  async function uploadComplaintFile(file: File) {
-    const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+  async function uploadComplaintFiles(files: File[]) {
+    if (files.length === 0) return;
 
-    if (!ALLOWED.includes(file.type)) {
-      setUploadError("รองรับเฉพาะ JPG, PNG, WebP เท่านั้น");
+    const nextCount = form.attachment_urls.length + files.length;
+
+    if (nextCount > MAX_ATTACHMENT_COUNT) {
+      setUploadError("แนบรูปภาพได้สูงสุด 5 รูป");
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      setUploadError("ขนาดไฟล์ต้องไม่เกิน 3MB");
+    if (files.some((file) => !ALLOWED_ATTACHMENT_TYPES.includes(file.type))) {
+      setUploadError("กรุณาแนบไฟล์รูปภาพเท่านั้น");
+      return;
+    }
+
+    if (files.some((file) => file.size > MAX_ATTACHMENT_SIZE)) {
+      setUploadError("รูปภาพแต่ละไฟล์ต้องมีขนาดไม่เกิน 10 MB");
       return;
     }
 
@@ -92,30 +105,56 @@ export default function ComplaintForm() {
     setUploadError(null);
 
     try {
-      const fd = new FormData();
-      fd.append("file", file);
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
 
-      const res = await fetch("/api/public/cloudinary/complaint-upload", {
-        method: "POST",
-        body: fd,
-      });
+        const res = await fetch("/api/public/cloudinary/complaint-upload", {
+          method: "POST",
+          body: fd,
+        });
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || `Upload failed: ${res.status}`);
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || `Upload failed: ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (typeof json.secure_url !== "string" || !json.secure_url.trim()) {
+          throw new Error("อัปโหลดไม่สำเร็จ");
+        }
+
+        const uploadedUrl = json.secure_url.trim();
+        setForm((prev) => ({
+          ...prev,
+          attachment_url: "",
+          attachment_urls: [...prev.attachment_urls, uploadedUrl].slice(
+            0,
+            MAX_ATTACHMENT_COUNT
+          ),
+        }));
       }
-
-      const json = await res.json();
-
-      setForm((prev) => ({
-        ...prev,
-        attachment_url: json.secure_url,
-      }));
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "อัปโหลดไม่สำเร็จ");
     } finally {
       setUploadingFile(false);
     }
+  }
+
+  function removeUploadedAttachment(url: string) {
+    setForm((prev) => ({
+      ...prev,
+      attachment_urls: prev.attachment_urls.filter((item) => item !== url),
+    }));
+  }
+
+  function getSubmitAttachmentUrls() {
+    if (form.attachment_urls.length > 0) {
+      return form.attachment_urls.slice(0, MAX_ATTACHMENT_COUNT);
+    }
+
+    const legacyUrl = form.attachment_url.trim();
+    return legacyUrl ? [legacyUrl] : [];
   }
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -133,8 +172,15 @@ export default function ComplaintForm() {
       return;
     }
 
+    if (!form.truth_confirmed) {
+      setError("กรุณายืนยันว่าข้อมูลที่แจ้งเป็นความจริงก่อนส่งข้อร้องเรียน");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
+    const attachmentUrls = getSubmitAttachmentUrls();
 
     const payload = {
       complaint_type: form.complaint_type,
@@ -145,7 +191,9 @@ export default function ComplaintForm() {
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       want_contact: form.want_contact,
-      attachment_url: form.attachment_url.trim() || null,
+      truth_confirmed: form.truth_confirmed,
+      attachment_url: attachmentUrls[0] ?? null,
+      attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
       status: "new",
     };
 
@@ -260,8 +308,8 @@ if (submittedCode) {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
 
           <p className="text-sm leading-relaxed text-amber-900">
-            ข้อมูลที่แจ้งต้องเป็นความจริง หากแจ้งข้อมูลเท็จเพื่อกลั่นแกล้งผู้อื่น
-            อาจถูกดำเนินคดีตามระเบียบ
+            ข้อมูลที่แจ้งต้องเป็นความจริง หากแจ้งข้อมูลเท็จและทำให้บุคคลหรือหน่วยงานเสียหาย
+            จะถูกดำเนินคดีตามกฎหมาย
           </p>
         </div>
       </div>
@@ -328,70 +376,79 @@ if (submittedCode) {
 
       <div className="notranslate space-y-2" translate="no">
         <label className="block text-sm font-medium text-slate-700">
-          ไฟล์แนบ{" "}
+          รูปภาพแนบ{" "}
           <span className="font-normal text-slate-400">
             (ไม่บังคับ)
           </span>
         </label>
 
-        {form.attachment_url ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+        <p className="text-xs leading-relaxed text-slate-500">
+          แนบรูปภาพประกอบได้สูงสุด 5 รูป รูปละไม่เกิน 10 MB
+        </p>
 
-            <span className="flex-1 truncate">
-              อัปโหลดแล้ว
-            </span>
+        <label
+          className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition ${
+            uploadingFile || form.attachment_urls.length >= MAX_ATTACHMENT_COUNT
+              ? "cursor-not-allowed border-slate-200 opacity-50"
+              : "border-slate-300 hover:border-brand-400 hover:bg-brand-50"
+          }`}
+        >
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            disabled={uploadingFile || form.attachment_urls.length >= MAX_ATTACHMENT_COUNT}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
 
-            <button
-              type="button"
-              onClick={() =>
-                setForm((prev) => ({
-                  ...prev,
-                  attachment_url: "",
-                }))
+              if (files.length > 0) {
+                uploadComplaintFiles(files);
               }
-              className="p-1 transition hover:text-rose-600"
-              aria-label="ลบไฟล์แนบ"
-            >
-              <X className="h-4 w-4" />
-            </button>
+
+              e.target.value = "";
+            }}
+          />
+
+          {uploadingFile ? (
+            <Loader2 className="h-4 w-4 animate-spin text-brand-500" />
+          ) : (
+            <Upload className="h-4 w-4 text-slate-500" />
+          )}
+
+          <span className="text-sm text-slate-500">
+            {uploadingFile
+              ? "กำลังอัปโหลดรูปภาพ..."
+              : `เลือกรูปภาพ JPG, PNG, WebP (${form.attachment_urls.length}/${MAX_ATTACHMENT_COUNT})`}
+          </span>
+        </label>
+
+        {form.attachment_urls.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {form.attachment_urls.map((url, index) => (
+              <div
+                key={`${url}-${index}`}
+                className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+              >
+                <img
+                  src={url}
+                  alt={`รูปภาพแนบ ${index + 1}`}
+                  className="h-28 w-full object-cover"
+                />
+                <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs text-slate-600">
+                  <span className="truncate">รูปที่ {index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedAttachment(url)}
+                    className="rounded-full p-1 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                    aria-label={`ลบรูปภาพแนบ ${index + 1}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        ) : (
-          <label
-            className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition ${
-              uploadingFile
-                ? "cursor-not-allowed border-slate-200 opacity-50"
-                : "border-slate-300 hover:border-brand-400 hover:bg-brand-50"
-            }`}
-          >
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              disabled={uploadingFile}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-
-                if (f) {
-                  uploadComplaintFile(f);
-                }
-
-                e.target.value = "";
-              }}
-            />
-
-            {uploadingFile ? (
-              <Loader2 className="h-4 w-4 animate-spin text-brand-500" />
-            ) : (
-              <Upload className="h-4 w-4 text-slate-500" />
-            )}
-
-            <span className="text-sm text-slate-500">
-              {uploadingFile
-                ? "กำลังอัปโหลด..."
-                : "แนบรูปภาพ JPG, PNG, WebP สูงสุด 3MB"}
-            </span>
-          </label>
         )}
 
         {uploadError && (
@@ -429,6 +486,20 @@ if (submittedCode) {
           หากเลือกข้อนี้ กรุณาระบุอีเมลหรือเบอร์โทรอย่างน้อย 1 ช่อง
           เพื่อให้เจ้าหน้าที่สามารถติดต่อกลับได้
         </p>
+      </div>
+
+      <div className="rounded-2xl bg-slate-50 p-4">
+        <FormCheckbox
+          required
+          label="ข้าพเจ้าขอรับรองว่าข้อมูลที่แจ้งเป็นความจริงทุกประการ"
+          checked={form.truth_confirmed}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              truth_confirmed: e.target.checked,
+            })
+          }
+        />
       </div>
 
       {error && (
