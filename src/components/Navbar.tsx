@@ -9,49 +9,18 @@ import { cn } from "@/lib/utils";
 import { buildNavbarLogoStyle } from "@/lib/logoPresets";
 import type { BrandingData } from "@/lib/brandingTypes";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
+import { navigationItemsToMenuItems, type MenuItem } from "@/lib/navigationMenu";
 import { fetchNavigationItems } from "@/frontend/api/navigation"; // 🛠️ นำเข้า API ดึงข้อมูลเมนู
-import type { NavigationItem } from "@/types"; // 🛠️ นำเข้า Type ของข้อมูลระบบเมนู
 import MobileMenu from "./MobileMenu";
 import PublicLanguageToggle, { getPublicNavLabel, usePublicLanguage } from "./PublicLanguageToggle";
 
-// แปลงข้อมูลรูปแบบจาก Supabase DB ให้เข้ากับ UI โครงสร้างเดิมของ Navbar ชนิด Dropdown
-function transformToMenuItems(dbItems: NavigationItem[]): any[] {
-  // 1. กรองเอาเฉพาะเมนูที่เปิดใช้งานจริง (is_active !== false) และดึงส่วนที่เป็น Navbar หรือ Both
-  const activeItems = dbItems.filter(
-    (item) => item.is_active !== false && (item.location === "navbar" || item.location === "both")
-  );
-
-  // 2. แยกเมนูระดับบนสุด (ไม่มี parent_id) ออกมาจัดลำดับตาม sort_order
-  const rootMenus = activeItems
-    .filter((item) => !item.parent_id)
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-
-  // 3. ประกอบเมนูย่อย (Submenu) เข้าไปใต้เมนูหลักแต่ละตัว และเรียงลำดับ sort_order ด้านใน
-  return rootMenus.map((root) => {
-    const subItems = activeItems
-      .filter((item) => item.parent_id === root.id)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((sub) => ({
-        href: sub.href || "#",
-        label: sub.label,
-        labelEn: sub.label_en || undefined,
-        external: sub.is_external === true,
-        description: sub.description || undefined,
-        descriptionEn: sub.description_en || undefined,
-      }));
-
-    return {
-      type: root.type, // "link" | "dropdown" | "heading"
-      href: root.href || "#",
-      label: root.label,
-      labelEn: root.label_en || undefined,
-      external: root.is_external === true,
-      items: subItems, // ใส่รายการเมนูย่อยลงไป
-    };
-  });
-}
-
-export default function Navbar({ branding }: { branding?: BrandingData }) {
+export default function Navbar({
+  branding,
+  menuItems,
+}: {
+  branding?: BrandingData;
+  menuItems?: MenuItem[];
+}) {
   const b = branding ?? DEFAULT_BRANDING;
   const pathname = usePathname();
 
@@ -61,15 +30,21 @@ export default function Navbar({ branding }: { branding?: BrandingData }) {
   const language = usePublicLanguage();
 
   // 🛠️ เปลี่ยนการจัดการ State มารองรับข้อมูลไดนามิกจากหลังบ้าน
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<MenuItem[]>(menuItems ?? []);
+  const [loading, setLoading] = useState(!menuItems || menuItems.length === 0);
 
   // 🛠️ โหลดข้อมูลเมนูจากระบบฐานข้อมูลสดๆ ตอนเปิดหน้าเว็บ
   useEffect(() => {
+    if (menuItems && menuItems.length > 0) {
+      setItems(menuItems);
+      setLoading(false);
+      return;
+    }
+
     async function loadNavbarData() {
       try {
         const data = await fetchNavigationItems();
-        const formattedMenus = transformToMenuItems(data);
+        const formattedMenus = navigationItemsToMenuItems(data);
         setItems(formattedMenus);
       } catch (error) {
         console.error("ไม่สามารถโหลดเมนูหน้าบ้านจากฐานข้อมูลได้: ", error);
@@ -78,7 +53,7 @@ export default function Navbar({ branding }: { branding?: BrandingData }) {
       }
     }
     loadNavbarData();
-  }, []);
+  }, [menuItems]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
