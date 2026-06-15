@@ -18,10 +18,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setResetSuccess(params.get("reset") === "success");
+
     const supabase = createBrowserSupabaseClient();
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
@@ -114,6 +118,12 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500 mt-1">
             สำหรับผู้ดูแลเว็บไซต์ กรุณาใช้อีเมลและรหัสผ่านที่ได้รับอนุญาต
           </p>
+
+          {resetSuccess && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              <span>ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>

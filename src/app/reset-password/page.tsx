@@ -2,8 +2,8 @@
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { AlertCircle, CheckCircle2, GraduationCap, KeyRound, Save } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, GraduationCap, KeyRound, Save } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/Form";
 import { siteData } from "@/data/site";
@@ -30,11 +30,11 @@ function getRecoveryTokensFromHash() {
 }
 
 function ResetPasswordForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState(false);
@@ -114,8 +114,8 @@ function ResetPasswordForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError(null);
-    setSuccess(false);
 
     if (!hasRecoverySession) {
       setError("ลิงก์นี้ไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอลิงก์ใหม่อีกครั้ง");
@@ -135,16 +135,16 @@ function ResetPasswordForm() {
     setLoading(true);
     const supabase = createBrowserSupabaseClient();
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    setLoading(false);
 
     if (updateError) {
+      setLoading(false);
       setError("ไม่สามารถตั้งรหัสผ่านใหม่ได้ กรุณาขอลิงก์ใหม่อีกครั้ง");
       return;
     }
 
-    setPassword("");
-    setConfirmPassword("");
-    setSuccess(true);
+    setLoading(false);
+    await supabase.auth.signOut().catch(() => {});
+    router.replace("/login?reset=success");
   };
 
   return (
@@ -186,13 +186,6 @@ function ResetPasswordForm() {
             required
           />
 
-          {success && (
-            <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700">
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>ตั้งรหัสผ่านใหม่สำเร็จ กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่</span>
-            </div>
-          )}
-
           {error && (
             <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-700">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -200,7 +193,7 @@ function ResetPasswordForm() {
             </div>
           )}
 
-          <Button type="submit" size="lg" fullWidth disabled={loading || success || !hasRecoverySession}>
+          <Button type="submit" size="lg" fullWidth disabled={loading || !hasRecoverySession}>
             {loading ? <KeyRound className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {loading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
           </Button>
