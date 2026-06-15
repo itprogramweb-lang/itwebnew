@@ -4,6 +4,7 @@ import { complaintStatusLabels, getComplaintTypeLabel } from "@/data/complaints"
 import { getComplaintAttachmentUrls } from "@/lib/complaintAttachments";
 import { sendBrevoTransactionalEmail } from "@/lib/email/brevo";
 import { sendLinePushTextMessage } from "@/lib/line/messaging";
+import { buildCanonicalUrl } from "@/lib/siteUrl";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const departmentHeadRoleTypes = ["executive", "หัวหน้าสาขา", "หัวหน้าสาขาวิชา"];
@@ -412,8 +413,7 @@ function formatSubmittedAt(value: string | null) {
 }
 
 function getDashboardComplaintsUrl() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ?? "";
-  return `${siteUrl}/dashboard/complaints`;
+  return buildCanonicalUrl("/dashboard/complaints");
 }
 
 function buildComplaintEmailContent(complaint: ComplaintNotificationRow) {

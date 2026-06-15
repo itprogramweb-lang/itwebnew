@@ -135,6 +135,14 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <div className="mt-2 text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-brand-600 hover:text-brand-700 transition"
+                >
+                  ลืมรหัสผ่าน?
+                </Link>
+              </div>
             </div>
 
             {error && (
