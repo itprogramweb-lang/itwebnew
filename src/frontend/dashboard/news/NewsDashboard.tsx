@@ -81,10 +81,10 @@ type NewsRow = {
   image_url: string | null;
   image_alt: string | null;
   image_crop_settings:
-    | Record<string, unknown>
-    | string
-    | ImageCropSettings
-    | null;
+  | Record<string, unknown>
+  | string
+  | ImageCropSettings
+  | null;
   author_name: string | null;
   status: string | null;
   published_at: string | null;
@@ -583,8 +583,8 @@ export default function NewsDashboard() {
     );
   };
 
+
   // เปลี่ยนอันดับโดยใช้ Dropdown Select บนการ์ดโดยตรง
-// เปลี่ยนอันดับโดยใช้ Dropdown Select บนการ์ดโดยตรง
   const handleFeaturedOrderChange = async (item: NewsRow, newOrder: number) => {
     if (!item.is_featured) return;
 
@@ -738,9 +738,8 @@ export default function NewsDashboard() {
     <div className="mx-auto max-w-7xl">
       <DashboardPageHeader
         title="ข่าว/ประกาศ"
-        description={`ทั้งหมด ${items.length} รายการ · เผยแพร่ ${
-          items.filter((i) => i.status === "published").length
-        } รายการ · ข่าวเด่น ${featuredCount}/${FEATURED_LIMIT}`}
+        description={`ทั้งหมด ${items.length} รายการ · เผยแพร่ ${items.filter((i) => i.status === "published").length
+          } รายการ · ข่าวเด่น ${featuredCount}/${FEATURED_LIMIT}`}
         action={<AddButton label="เพิ่มข่าว" onClick={openAdd} />}
       />
 
@@ -939,8 +938,10 @@ export default function NewsDashboard() {
                       ]}
                     />
                     <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-500">
-                      <li>เลือก "ฉบับร่าง" หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์</li>
-                      <li>เลือก "เผยแพร่แล้ว" หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด</li>
+                      {/* <li>เลือก "ฉบับร่าง" หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์</li>
+                      <li>เลือก "เผยแพร่แล้ว" หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด</li> */}
+                      <li>เลือก &ldquo;ฉบับร่าง&rdquo; หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์</li>
+                      <li>เลือก &ldquo;เผยแพร่แล้ว&rdquo; หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด</li>
                     </ul>
                   </div>
 
@@ -1126,8 +1127,8 @@ export default function NewsDashboard() {
                         <span
                           className={
                             form.status === "published" &&
-                            form.published_at &&
-                            new Date(form.published_at).getTime() > Date.now()
+                              form.published_at &&
+                              new Date(form.published_at).getTime() > Date.now()
                               ? "rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
                               : form.status === "published"
                                 ? "rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700"
@@ -1137,8 +1138,8 @@ export default function NewsDashboard() {
                           }
                         >
                           {form.status === "published" &&
-                          form.published_at &&
-                          new Date(form.published_at).getTime() > Date.now()
+                            form.published_at &&
+                            new Date(form.published_at).getTime() > Date.now()
                             ? "ตั้งเวลาไว้"
                             : form.status === "published"
                               ? "เผยแพร่แล้ว"
@@ -1150,11 +1151,11 @@ export default function NewsDashboard() {
                           <span>
                             ·{" "}
                             {form.status === "published" &&
-                            new Date(form.published_at).getTime() > Date.now()
+                              new Date(form.published_at).getTime() > Date.now()
                               ? `ตั้งเวลาเผยแพร่: ${new Date(form.published_at).toLocaleString(
-                                  "th-TH",
-                                  { dateStyle: "medium", timeStyle: "short" },
-                                )}`
+                                "th-TH",
+                                { dateStyle: "medium", timeStyle: "short" },
+                              )}`
                               : formatDate(form.published_at)}
                           </span>
                         )}
