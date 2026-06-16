@@ -451,23 +451,166 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                 const canMoveDown = groupIndex >= 0 && groupIndex < group.length - 1;
                 const moving = movingId === item.id;
                 const isChild = Boolean(item.parent_id);
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50/50">
+return (
+                  <tr 
+                    key={item.id} 
+                    className={`transition-colors border-b border-slate-100 ${
+                      isChild 
+                        ? "bg-slate-50/50 hover:bg-slate-100/80" // เมนูย่อย: ใช้พื้นหลังเทาจางคั่นกลุ่มสายตา
+                        : "bg-white hover:bg-slate-50/80 font-semibold" // เมนูหลัก: ใช้สีขาวสว่างปกติ
+                    }`}
+                  >
                     <Td>
-                      <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-slate-100 px-2 text-sm font-semibold text-slate-700">
+                      <span className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold ${
+                        isChild ? "bg-slate-200/60 text-slate-500" : "bg-brand-50 text-brand-700"
+                      }`}>
                         {friendlyOrderMap.get(item.id) ?? "-"}
                       </span>
                     </Td>
                     <Td>
-                      <div className={`space-y-1 ${isChild ? "border-l-2 border-slate-200 pl-3" : ""}`}>
-                        <div className={isChild ? "text-sm font-medium text-slate-700" : "font-semibold text-slate-900"}>
-                          {isChild ? "↳ " : ""}
+                      {/* จัดการระยะเยื้อง (ml-6) และเพิ่มเส้นแบ่งระนาบแนวตั้งสีเทาให้กับกลุ่มเมนูย่อย */}
+                      <div className={`space-y-1 ${isChild ? "ml-6 border-l-2 border-slate-300 pl-4 py-0.5" : "pl-0 py-1"}`}>
+                        <div className={`flex items-center gap-1.5 ${
+                          isChild ? "text-sm font-medium text-slate-600" : "text-base font-bold text-slate-900"
+                        }`}>
+                          {/* เปลี่ยนสัญลักษณ์ให้เป็นรูปแบบ Tree Structure เพื่อระบุลำดับชั้น */}
+                          {isChild && (
+                            <span className="text-slate-400 font-mono text-xs select-none">└──</span>
+                          )}
                           {item.label}
                         </div>
                         {item.label_en && (
-                          <div className="text-xs text-slate-500">{item.label_en}</div>
+                          <div className={`text-xs ${isChild ? "text-slate-400 pl-5" : "text-slate-500"}`}>
+            {item.label_en}
+          </div>
+        )}
+        <div className={`flex flex-wrap gap-1 ${isChild ? "pl-5" : ""}`}>
+          {item.is_core && (
+            <Badge tone={isChild ? "slate" : "brand"}>
+              {isChild ? "เมนูย่อย" : "เมนูหลัก"}
+            </Badge>
+          )}
+          {item.is_external && <Badge tone="amber">external</Badge>}
+          {childCount > 0 && <Badge>{childCount} เมนูย่อย</Badge>}
+        </div>
+      </div>
+                    </Td>
+                    <Td className="max-w-[240px] truncate text-xs text-slate-600">{item.href || "-"}</Td>
+                    <Td><Badge>{locationLabels[item.location]}</Badge></Td>
+                    <Td><Badge tone={item.type === "link" ? "green" : "slate"}>{item.type}</Badge></Td>
+                    <Td className="text-xs text-slate-600">{getParentLabel(items, item.parent_id)}</Td>
+                    <Td>
+                      <div className="inline-flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMove(item, "up")}
+                          disabled={!canMoveUp}
+                          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600"
+                        >
+                          ขึ้น
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMove(item, "down")}
+                          disabled={!canMoveDown}
+                          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600"
+                        >
+                          ลง
+                        </button>
+                      </div>
+                    </Td>
+                    <Td>
+                      <Badge tone={item.is_active !== false ? "green" : "slate"}>
+                        {item.is_active !== false ? "แสดง" : "ซ่อน"}
+                      </Badge>
+                    </Td>
+                    <Td className="text-right">
+                      <div className="inline-flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(item)}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600"
+                          title="แก้ไข"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(item)}
+                          disabled={childCount > 0}
+                          className={`rounded-lg p-2 transition ${
+                            item.is_active !== false
+                              ? "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                              : "text-amber-600 hover:bg-amber-50"
+                          } disabled:cursor-not-allowed disabled:opacity-35`}
+                          title={
+                            childCount > 0
+                              ? "รายการนี้มีเมนูย่อย ต้องจัดการเมนูย่อยก่อน"
+                              : item.is_active !== false
+                              ? "ซ่อนเมนู"
+                              : "แสดงเมนู"
+                          }
+                        >
+                          {item.is_active !== false ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => !hardDeleteDisabled && setHardDeleteId(item.id)}
+                          disabled={hardDeleteDisabled}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                          title={
+                            item.is_core
+                              ? "เมนูหลักของระบบไม่สามารถลบถาวรได้"
+                              : childCount > 0
+                              ? "ต้องจัดการเมนูย่อยก่อน"
+                              : "ลบถาวร"
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </Td>
+                  </tr>
+                );return (
+                  <tr 
+                    key={item.id} 
+                    className={`transition-colors border-b border-slate-100 ${
+                      isChild 
+                        ? "bg-slate-50/50 hover:bg-slate-100/80" // เมนูย่อย: ใช้พื้นหลังเทาจางคั่นกลุ่มสายตา
+                        : "bg-white hover:bg-slate-50/80 font-semibold" // เมนูหลัก: ใช้สีขาวสว่างปกติ
+                    }`}
+                  >
+                    <Td>
+                      <span className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold ${
+                        isChild ? "bg-slate-200/60 text-slate-500" : "bg-brand-50 text-brand-700"
+                      }`}>
+                        {friendlyOrderMap.get(item.id) ?? "-"}
+                      </span>
+                    </Td>
+                    <Td>
+                      {/* จัดการระยะเยื้อง (ml-6) และเพิ่มเส้นแบ่งระนาบแนวตั้งสีเทาให้กับกลุ่มเมนูย่อย */}
+                      <div className={`space-y-1 ${isChild ? "ml-6 border-l-2 border-slate-300 pl-4 py-0.5" : "pl-0 py-1"}`}>
+                        <div className={`flex items-center gap-1.5 ${
+                          isChild ? "text-sm font-medium text-slate-600" : "text-base font-bold text-slate-900"
+                        }`}>
+                          {/* เปลี่ยนสัญลักษณ์ให้เป็นรูปแบบ Tree Structure เพื่อระบุลำดับชั้น */}
+                          {isChild && (
+                            <span className="text-slate-400 font-mono text-xs select-none">└──</span>
+                          )}
+                          {item.label}
+                        </div>
+                        {item.label_en && (
+                          <div className={`text-xs ${isChild ? "text-slate-400 pl-5" : "text-slate-500"}`}>
+                            {item.label_en}
+                          </div>
                         )}
-                        <div className="flex flex-wrap gap-1">
+                        <div className={`flex flex-wrap gap-1 ${isChild ? "pl-5" : ""}`}>
                           {item.is_core && <Badge tone="brand">เมนูหลัก</Badge>}
                           {item.is_external && <Badge tone="amber">external</Badge>}
                           {childCount > 0 && <Badge>{childCount} เมนูย่อย</Badge>}
@@ -514,7 +657,6 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                           <Pencil className="h-4 w-4" />
                         </button>
                         
-                        {/* ปุ่มเปิด/ปิดซ่อนเมนู กดแล้วทำงานได้จริง */}
                         <button
                           type="button"
                           onClick={() => handleToggleActive(item)}

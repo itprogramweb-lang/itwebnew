@@ -31,10 +31,6 @@ import {
   useSensors,
   type Modifier,
 } from "@dnd-kit/core";
-import {
-  restrictToFirstScrollableAncestor,
-  restrictToWindowEdges,
-} from "@dnd-kit/modifiers";
 
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import ImageCropControls from "@/components/dashboard/ImageCropControls";
@@ -114,6 +110,12 @@ type NewsForm = {
   sort_order: number;
 };
 
+type Toast = {
+  id: number;
+  type: "success" | "error";
+  message: string;
+};
+
 const DEFAULT_COVER_CROP = getDefaultImageCrop({
   frameShape: "rounded",
   aspectPreset: "16:9",
@@ -158,11 +160,11 @@ function toSlug(text: string): string {
       .replace(/^-|-$/g, "") || "news"
   );
 }
+
 function getCurrentDateTimeLocal() {
   const now = new Date();
   const offset = now.getTimezoneOffset();
   const local = new Date(now.getTime() - offset * 60 * 1000);
-
   return local.toISOString().slice(0, 16);
 }
 
@@ -177,7 +179,6 @@ function escapeHtml(value: string) {
 
 function contentTextToHtml(content: string | null): string {
   if (!content) return "";
-
   return content
     .split(/\n\n+/)
     .map((p) => p.trim())
@@ -192,17 +193,11 @@ function normalizeImageCropSettings(
   if (!value) {
     return getDefaultImageCrop({ frameShape: "rounded", aspectPreset: "16:9" });
   }
-
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
-
     if (!parsed || typeof parsed !== "object") {
-      return getDefaultImageCrop({
-        frameShape: "rounded",
-        aspectPreset: "16:9",
-      });
+      return getDefaultImageCrop({ frameShape: "rounded", aspectPreset: "16:9" });
     }
-
     return cropToJson(parsed as Record<string, unknown>);
   } catch {
     return getDefaultImageCrop({ frameShape: "rounded", aspectPreset: "16:9" });
@@ -229,7 +224,6 @@ function toForm(item: NewsRow): NewsForm {
 
 function toPayload(form: NewsForm) {
   const now = new Date().toISOString();
-
   return {
     title: form.title,
     slug: form.slug || null,
@@ -239,19 +233,13 @@ function toPayload(form: NewsForm) {
     image_url: form.image_url || null,
     image_alt: form.image_alt || null,
     image_crop_settings: cropToJson(form.image_crop_settings),
-
-    // บังคับผู้เขียนเป็น Admin เสมอ
     author_name: "Admin",
-
     status: form.status,
-
-    // ถ้า publish แล้วไม่ได้เลือกเวลา ให้ใช้เวลาปัจจุบัน
     published_at: form.published_at
       ? new Date(form.published_at).toISOString()
       : form.status === "published"
         ? now
         : null,
-
     is_featured: form.is_featured,
     sort_order: form.sort_order,
   };
@@ -260,7 +248,6 @@ function toPayload(form: NewsForm) {
 function getNewsTimestamp(item: NewsRow): number {
   const source = item.published_at || item.created_at || item.updated_at || "";
   const time = new Date(source).getTime();
-
   return Number.isFinite(time) ? time : 0;
 }
 
@@ -270,9 +257,8 @@ function sortNewsNewestFirst(news: NewsRow[]): NewsRow[] {
 
 function sortFeatured(news: NewsRow[]): NewsRow[] {
   return [...news].sort((a, b) => {
-    const orderA = a.sort_order ?? 999;
-    const orderB = b.sort_order ?? 999;
-
+    const orderA = a.sort_order === null || a.sort_order === 0 ? 999 : a.sort_order;
+    const orderB = b.sort_order === null || b.sort_order === 0 ? 999 : b.sort_order;
     if (orderA !== orderB) return orderA - orderB;
     return getNewsTimestamp(b) - getNewsTimestamp(a);
   });
@@ -288,9 +274,7 @@ async function getAuthHeaders() {
   const supabase = createBrowserSupabaseClient();
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-
   if (!token) throw new Error("กรุณาเข้าสู่ระบบใหม่");
-
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -302,18 +286,12 @@ function createRestrictToElementModifier(
 ): Modifier {
   return ({ transform, draggingNodeRect }) => {
     const element = elementRef.current;
-
-    if (!element || !draggingNodeRect) {
-      return transform;
-    }
-
+    if (!element || !draggingNodeRect) return transform;
     const bounds = element.getBoundingClientRect();
-
     const minX = bounds.left - draggingNodeRect.left;
     const maxX = bounds.right - draggingNodeRect.right;
     const minY = bounds.top - draggingNodeRect.top;
     const maxY = bounds.bottom - draggingNodeRect.bottom;
-
     return {
       ...transform,
       x: Math.min(Math.max(transform.x, minX), maxX),
@@ -335,13 +313,22 @@ export default function NewsDashboard() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<NewsForm>(createEmptyForm);
 
-  const [selectedSnapshot, setSelectedSnapshot] = useState<NewsRow | null>(
-    null,
-  );
+  const [selectedSnapshot, setSelectedSnapshot] = useState<NewsRow | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = useCallback((type: "success" | "error", message: string) => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3500);
+  }, []);
+
+  const dismissToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
@@ -352,17 +339,8 @@ export default function NewsDashboard() {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 180,
-        tolerance: 8,
-      },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
   );
 
   const activeDragItem = useMemo(() => {
@@ -372,22 +350,18 @@ export default function NewsDashboard() {
 
   const loadNews = useCallback(async () => {
     setLoading(true);
-    setError(null);
-
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/admin/news", { headers });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || "ไม่สามารถโหลดข่าวได้");
-
       setItems(sortNewsNewestFirst(data.news ?? []));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถโหลดข่าวได้");
+      showToast("error", err instanceof Error ? err.message : "ไม่สามารถโหลดข่าวได้");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     loadNews();
@@ -395,27 +369,26 @@ export default function NewsDashboard() {
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-
     return items.filter((item) => {
       const text = [item.title, item.excerpt, item.category, item.slug]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-
       const matchQ = !query || text.includes(query);
       const matchS = status === "all" || (item.status || "draft") === status;
-
       return matchQ && matchS;
     });
   }, [items, q, status]);
 
-  const featuredItems = useMemo(() => {
-    return sortFeatured(filtered.filter((item) => item.is_featured));
-  }, [filtered]);
+  const featuredItems = useMemo(
+    () => sortFeatured(filtered.filter((item) => item.is_featured)),
+    [filtered],
+  );
 
-  const normalItems = useMemo(() => {
-    return sortNewsNewestFirst(filtered.filter((item) => !item.is_featured));
-  }, [filtered]);
+  const normalItems = useMemo(
+    () => sortNewsNewestFirst(filtered.filter((item) => !item.is_featured)),
+    [filtered],
+  );
 
   const featuredCount = items.filter((item) => item.is_featured).length;
 
@@ -424,8 +397,6 @@ export default function NewsDashboard() {
     setSelectedSnapshot(null);
     setForm(createEmptyForm());
     setPreviewOpen(false);
-    setNotice(null);
-    setError(null);
     setModalOpen(true);
   };
 
@@ -434,8 +405,6 @@ export default function NewsDashboard() {
     setSelectedSnapshot(item);
     setForm(toForm(item));
     setPreviewOpen(false);
-    setNotice(null);
-    setError(null);
     setModalOpen(true);
   };
 
@@ -445,18 +414,13 @@ export default function NewsDashboard() {
 
   const handleSave = async () => {
     if (!form.title.trim()) {
-      setError("กรุณากรอกหัวข้อข่าว");
+      showToast("error", "กรุณากรอกหัวข้อข่าว");
       return;
     }
-
     setSaving(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const headers = await getAuthHeaders();
       const isEdit = !!editingId;
-
       const res = await fetch("/api/admin/news", {
         method: isEdit ? "PATCH" : "POST",
         headers,
@@ -464,31 +428,23 @@ export default function NewsDashboard() {
           isEdit ? { id: editingId, ...toPayload(form) } : toPayload(form),
         ),
       });
-
       const data = await res.json();
-
-      if (!res.ok || !data.newsItem) {
-        throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
-      }
-
+      if (!res.ok || !data.newsItem) throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
       setItems((prev) =>
         sortNewsNewestFirst(
           isEdit
-            ? prev.map((item) =>
-              item.id === data.newsItem.id ? data.newsItem : item,
-            )
+            ? prev.map((item) => (item.id === data.newsItem.id ? data.newsItem : item))
             : [data.newsItem, ...prev],
         ),
       );
-
       setEditingId(data.newsItem.id);
       setSelectedSnapshot(data.newsItem);
       setForm(toForm(data.newsItem));
       setPreviewOpen(false);
       setModalOpen(false);
-      setNotice(isEdit ? "บันทึกข่าวเรียบร้อยแล้ว" : "เพิ่มข่าวเรียบร้อยแล้ว");
+      showToast("success", isEdit ? "บันทึกข่าวเรียบร้อยแล้ว" : "เพิ่มข่าวเรียบร้อยแล้ว");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
+      showToast("error", err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
     } finally {
       setSaving(false);
     }
@@ -496,59 +452,43 @@ export default function NewsDashboard() {
 
   const handleSaveWithOverride = async (patch: Partial<NewsForm>) => {
     const nextForm = { ...form, ...patch, author_name: "Admin" };
-
     if (!nextForm.title.trim()) {
-      setError("กรุณากรอกหัวข้อข่าว");
+      showToast("error", "กรุณากรอกหัวข้อข่าว");
       return;
     }
-
     setSaving(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const headers = await getAuthHeaders();
       const isEdit = !!editingId;
       const payload = toPayload(nextForm);
-
       const res = await fetch("/api/admin/news", {
         method: isEdit ? "PATCH" : "POST",
         headers,
         body: JSON.stringify(isEdit ? { id: editingId, ...payload } : payload),
       });
-
       const data = await res.json();
-
-      if (!res.ok || !data.newsItem) {
-        throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
-      }
-
+      if (!res.ok || !data.newsItem) throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
       setItems((prev) =>
         sortNewsNewestFirst(
           isEdit
-            ? prev.map((item) =>
-              item.id === data.newsItem.id ? data.newsItem : item,
-            )
+            ? prev.map((item) => (item.id === data.newsItem.id ? data.newsItem : item))
             : [data.newsItem, ...prev],
         ),
       );
-
       setEditingId(data.newsItem.id);
       setSelectedSnapshot(data.newsItem);
       setForm(toForm(data.newsItem));
       setPreviewOpen(false);
       setModalOpen(false);
-      setNotice(nextStatusLabel(data.newsItem.status));
+      showToast("success", nextStatusLabel(data.newsItem.status));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
+      showToast("error", err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
     } finally {
       setSaving(false);
     }
   };
 
-  const saveWithStatus = async (
-    nextStatus: "draft" | "published" | "archived",
-  ) => {
+  const saveWithStatus = async (nextStatus: "draft" | "published" | "archived") => {
     set("status", nextStatus);
     await handleSaveWithOverride({ status: nextStatus });
   };
@@ -559,12 +499,8 @@ export default function NewsDashboard() {
     successMessage: string,
   ) => {
     setSaving(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const headers = await getAuthHeaders();
-
       const res = await fetch("/api/admin/news", {
         method: "PATCH",
         headers,
@@ -588,58 +524,123 @@ export default function NewsDashboard() {
           ...patch,
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok || !data.newsItem) {
-        throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
-      }
-
+      if (!res.ok || !data.newsItem) throw new Error(data.error || "ไม่สามารถบันทึกข่าวได้");
       setItems((prev) =>
         sortNewsNewestFirst(
-          prev.map((news) =>
-            news.id === data.newsItem.id ? data.newsItem : news,
-          ),
+          prev.map((news) => (news.id === data.newsItem.id ? data.newsItem : news)),
         ),
       );
-
-      setNotice(successMessage);
+      if (successMessage) showToast("success", successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
+      showToast("error", err instanceof Error ? err.message : "ไม่สามารถบันทึกข่าวได้");
     } finally {
       setSaving(false);
     }
   };
 
+  // เลื่อนข่าวเด่นตัวเดิมลงไป เพื่อให้ตัวใหม่เป็นอันดับที่ 1 เสมอ
   const handleMoveToFeatured = async (item: NewsRow) => {
     if (item.is_featured) return;
-
     if (featuredCount >= FEATURED_LIMIT) {
-      setError(`ข่าวเด่นกำหนดได้สูงสุด ${FEATURED_LIMIT} ข่าว`);
+      showToast("error", `ข่าวเด่นกำหนดได้สูงสุด ${FEATURED_LIMIT} ข่าว`);
       return;
     }
 
+    const currentlyFeatured = items
+      .filter((n) => n.is_featured)
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+
     await patchNewsItem(
       item,
-      {
-        is_featured: true,
-        sort_order: featuredCount + 1,
-      },
-      "ย้ายไปข่าวเด่นแล้ว",
+      { is_featured: true, sort_order: 1 },
+      "ย้ายไปข่าวเด่นเป็นอันดับแรกแล้ว",
+    );
+
+    await Promise.all(
+      currentlyFeatured.map((n, i) => {
+        const nextOrder = Math.min(i + 2, FEATURED_LIMIT);
+        return patchNewsItem(n, { sort_order: nextOrder }, "");
+      }),
     );
   };
 
   const handleMoveToNormal = async (item: NewsRow) => {
     if (!item.is_featured) return;
 
+    const remaining = items
+      .filter((n) => n.is_featured && n.id !== item.id)
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+
     await patchNewsItem(
       item,
-      {
-        is_featured: false,
-        sort_order: 0,
-      },
+      { is_featured: false, sort_order: 0 },
       "ย้ายกลับไปข่าวทั่วไปแล้ว",
     );
+
+    await Promise.all(
+      remaining.map((n, i) => patchNewsItem(n, { sort_order: i + 1 }, "")),
+    );
+  };
+
+
+  // เปลี่ยนอันดับโดยใช้ Dropdown Select บนการ์ดโดยตรง
+  const handleFeaturedOrderChange = async (item: NewsRow, newOrder: number) => {
+    if (!item.is_featured) return;
+
+    // 1. ดึงรายการข่าวเด่นทั้งหมดมาจัดเรียงลำดับใน State ก่อน (ไม่รวมตัวที่กำลังเปลี่ยน)
+    const currentlyFeatured = items
+      .filter((n) => n.is_featured && n.id !== item.id)
+      .sort((a, b) => {
+        const orderA = a.sort_order === null || a.sort_order === 0 ? 999 : a.sort_order;
+        const orderB = b.sort_order === null || b.sort_order === 0 ? 999 : b.sort_order;
+        return orderA - orderB;
+      });
+
+    // 2. จัดตำแหน่งของ Item ตัวใหม่เข้าไปใน Array
+    let reordered = [...currentlyFeatured];
+    if (newOrder === 0) {
+      // ถ้าเลือก "ไม่มีลำดับ" ให้เอาไปไว้ท้ายสุด
+      reordered.push({ ...item, sort_order: 0 });
+    } else {
+      // ถ้ามีลำดับ ให้แทรกเข้าไปตามตำแหน่งที่เลือก (index = newOrder - 1)
+      reordered.splice(newOrder - 1, 0, { ...item, sort_order: newOrder });
+    }
+
+    // 3. คำนวณรันเลขลำดับ 1, 2, 3... ใหม่ให้ถูกต้อง เพื่อไม่ให้ลำดับชนกัน
+    const updatedFeatured = reordered.map((n, i) => {
+      // ถ้าตัวมันเองตั้งใจเลือกเป็น 0 (ไม่มีลำดับ) หรือตัวอื่นที่หลุดไปอยู่ท้ายและเคยเป็น 0 ให้คงค่า 0 ไว้
+      if (newOrder === 0 && n.id === item.id) {
+        return { ...n, sort_order: 0 };
+      }
+      // สำหรับตัวอื่นๆ ให้รันลำดับต่อกันไปตามจริง
+      return { ...n, sort_order: i + 1 };
+    });
+
+    // 4. 🔥 [จุดสำคัญที่ขาดไป] อัปเดต State ฝั่ง Frontend ทันทีเพื่อให้ Card เปลี่ยนแปลงตามจริง
+    setItems((prev) =>
+      sortNewsNewestFirst(
+        prev.map((n) => updatedFeatured.find((u) => u.id === n.id) || n)
+      )
+    );
+
+    // 5. ส่งค่าไปบันทึกบน Database ผ่าน API
+    setSaving(true);
+    try {
+      await Promise.all(
+        updatedFeatured.map((n) =>
+          patchNewsItem(
+            n,
+            { sort_order: n.sort_order },
+            n.id === item.id ? (newOrder === 0 ? "ปรับเป็นแบบไม่มีลำดับเรียบร้อยแล้ว" : "เปลี่ยนลำดับข่าวเด่นเรียบร้อยแล้ว") : ""
+          )
+        )
+      );
+    } catch (err) {
+      showToast("error", "เกิดข้อผิดพลาดในการบันทึกลำดับลงฐานข้อมูล");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -651,20 +652,45 @@ export default function NewsDashboard() {
     const overId = event.over?.id ? String(event.over.id) : null;
 
     setActiveDragId(null);
+    if (!overId || overId === activeId) return;
 
-    if (!overId) return;
-
-    const item = items.find((news) => news.id === activeId);
+    const item = items.find((n) => n.id === activeId);
     if (!item) return;
 
-    if (overId === "featured-zone" && !item.is_featured) {
+    const overIsFeaturedCard = featuredItems.some((f) => f.id === overId);
+    const overIsNormalCard = normalItems.some((n) => n.id === overId);
+
+    if (!item.is_featured && (overId === "featured-zone" || overIsFeaturedCard)) {
       await handleMoveToFeatured(item);
       return;
     }
 
-    if (overId === "normal-zone" && item.is_featured) {
+    if (item.is_featured && (overId === "normal-zone" || overIsNormalCard)) {
       await handleMoveToNormal(item);
       return;
+    }
+
+    if (item.is_featured && overIsFeaturedCard) {
+      const oldIndex = featuredItems.findIndex((f) => f.id === activeId);
+      const newIndex = featuredItems.findIndex((f) => f.id === overId);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+      const reordered = [...featuredItems];
+      const [moved] = reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, moved);
+
+      const patches = reordered.map((f, i) => ({ ...f, sort_order: f.sort_order === 0 ? 0 : i + 1 }));
+      setItems((prev) =>
+        sortNewsNewestFirst(
+          prev.map((n) => patches.find((p) => p.id === n.id) ?? n),
+        ),
+      );
+
+      await Promise.all(
+        patches
+          .filter((p, i) => p.sort_order !== featuredItems[i]?.sort_order)
+          .map((p) => patchNewsItem(p, { sort_order: p.sort_order }, "")),
+      );
     }
   };
 
@@ -674,7 +700,6 @@ export default function NewsDashboard() {
 
   const handleToggleStatus = async (item: NewsRow) => {
     const nextStatus = item.status === "archived" ? "published" : "archived";
-
     await patchNewsItem(
       item,
       {
@@ -684,50 +709,30 @@ export default function NewsDashboard() {
             ? item.published_at || new Date().toISOString()
             : item.published_at,
       },
-      nextStatus === "published"
-        ? "เปิดแสดงข่าวเรียบร้อยแล้ว"
-        : "ซ่อนข่าวเรียบร้อยแล้ว",
+      nextStatus === "published" ? "เปิดแสดงข่าวเรียบร้อยแล้ว" : "ซ่อนข่าวเรียบร้อยแล้ว",
     );
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
-
     setSaving(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const headers = await getAuthHeaders();
-
       const res = await fetch(
         `/api/admin/news?id=${encodeURIComponent(deleteId)}&mode=delete`,
-        {
-          method: "DELETE",
-          headers,
-        },
+        { method: "DELETE", headers },
       );
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "ไม่สามารถลบข่าวได้");
-      }
-
+      if (!res.ok) throw new Error(data.error || "ไม่สามารถลบข่าวได้");
       setItems((prev) => prev.filter((item) => item.id !== deleteId));
-      setNotice("ลบข่าวเรียบร้อยแล้ว");
+      showToast("success", "ลบข่าวเรียบร้อยแล้ว");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ไม่สามารถลบข่าวได้");
+      showToast("error", err instanceof Error ? err.message : "ไม่สามารถลบข่าวได้");
     } finally {
       setSaving(false);
       setDeleteId(null);
     }
   };
-
-  const isScheduledNews = (publishedAt?: string | null) => {
-  if (!publishedAt) return false;
-  return new Date(publishedAt).getTime() > Date.now();
-};
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -737,9 +742,6 @@ export default function NewsDashboard() {
           } รายการ · ข่าวเด่น ${featuredCount}/${FEATURED_LIMIT}`}
         action={<AddButton label="เพิ่มข่าว" onClick={openAdd} />}
       />
-
-      {notice && <StatusBox type="success" message={notice} />}
-      {error && <StatusBox type="error" message={error} />}
 
       <SearchFilter
         value={q}
@@ -757,6 +759,7 @@ export default function NewsDashboard() {
           ]}
         />
       </SearchFilter>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -773,13 +776,14 @@ export default function NewsDashboard() {
           <NewsDropColumn
             id="featured-zone"
             title={`ข่าวเด่น ${featuredItems.length}/${FEATURED_LIMIT}`}
-            description="ลากข่าวเด่นกลับไปฝั่งข่าวทั่วไปได้"
+            description="ลากข้าวเด่นกลับไปฝั่งข่าวทั่วไปได้ · ปรับเปลี่ยนอันดับผ่านเมนูดรอปดาวน์ได้"
             items={featuredItems}
             loading={loading}
             emptyLabel="ลากข่าวทั่วไปมาวางที่นี่เพื่อตั้งเป็นข่าวเด่น"
             onEdit={openEdit}
             onDelete={setDeleteId}
             onToggleStatus={handleToggleStatus}
+            onOrderChange={handleFeaturedOrderChange}
             featured
             scrollable={false}
           />
@@ -787,7 +791,7 @@ export default function NewsDashboard() {
           <NewsDropColumn
             id="normal-zone"
             title={`ข่าวทั่วไป ${normalItems.length} รายการ`}
-            description="ลากข่าวจากฝั่งนี้ไปวางที่ช่องข่าวเด่น"
+            description="ลากข่าวจากฝั่งนี้ไปวางที่ช่องข่าวเด่น (จะขึ้นเป็นอันดับที่ 1 ล่าสุด)"
             items={normalItems}
             loading={loading}
             emptyLabel="ยังไม่มีข่าวทั่วไป"
@@ -804,7 +808,6 @@ export default function NewsDashboard() {
               <div className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900">
                 {activeDragItem.title}
               </div>
-
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span>{activeDragItem.category || "ไม่ระบุหมวดหมู่"}</span>
                 {activeDragItem.is_featured && (
@@ -819,6 +822,7 @@ export default function NewsDashboard() {
         </DragOverlay>
       </DndContext>
 
+      {/* ── Modal เพิ่ม/แก้ไขข่าว ─────────────────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 p-2 sm:p-4 lg:p-6">
           <div className="mx-auto my-2 flex min-h-[calc(100vh-1rem)] w-full max-w-[1600px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:my-4 sm:min-h-[calc(100vh-2rem)] lg:min-h-[calc(100vh-3rem)]">
@@ -827,7 +831,6 @@ export default function NewsDashboard() {
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-gradient text-white">
                   <Newspaper className="h-5 w-5" />
                 </div>
-
                 <div className="min-w-0">
                   <h2 className="truncate font-semibold text-slate-900">
                     {editingId ? "แก้ไขข่าว" : "เพิ่มข่าว"}
@@ -847,7 +850,6 @@ export default function NewsDashboard() {
                   <Eye className="h-3.5 w-3.5" />
                   ดู Preview
                 </button>
-
                 <button
                   type="button"
                   onClick={() => !saving && setModalOpen(false)}
@@ -859,21 +861,10 @@ export default function NewsDashboard() {
             </div>
 
             <div className="flex-1 space-y-6 overflow-y-auto bg-slate-50/40 p-4 sm:p-6">
-              {error && !saving && (
-                <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-
               <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="mb-5">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    ข้อมูลหลักของข่าว
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    หัวข้อ URL หมวดหมู่ สถานะ และวันที่เผยแพร่
-                  </p>
+                  <h3 className="text-sm font-semibold text-slate-900">ข้อมูลหลักของข่าว</h3>
+                  <p className="text-xs text-slate-500">หัวข้อ URL หมวดหมู่ สถานะ และวันที่เผยแพร่</p>
                 </div>
 
                 <div className="space-y-5">
@@ -889,10 +880,7 @@ export default function NewsDashboard() {
 
                   <div>
                     <div className="mb-1 flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-700">
-                        Slug (URL)
-                      </label>
-
+                      <label className="text-sm font-medium text-slate-700">Slug (URL)</label>
                       <button
                         type="button"
                         onClick={() => set("slug", toSlug(form.title))}
@@ -901,12 +889,10 @@ export default function NewsDashboard() {
                         สร้างจากหัวข้อ
                       </button>
                     </div>
-
                     <div className="flex overflow-hidden rounded-xl border border-slate-200 bg-white focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-300">
                       <span className="shrink-0 border-r border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
                         /news/
                       </span>
-
                       <input
                         type="text"
                         value={form.slug}
@@ -923,11 +909,9 @@ export default function NewsDashboard() {
                         className="min-w-0 flex-1 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none"
                       />
                     </div>
-
                     {form.slug && (
                       <p className="mt-1 text-xs text-slate-400">
-                        URL:{" "}
-                        <span className="font-mono">/news/{form.slug}</span>
+                        URL: <span className="font-mono">/news/{form.slug}</span>
                       </p>
                     )}
                   </div>
@@ -939,15 +923,12 @@ export default function NewsDashboard() {
                       placeholder="ประกาศ / กิจกรรม / ทุน ..."
                       onChange={(e) => set("category", e.target.value)}
                     />
-
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
                       <div className="text-xs text-slate-400">ผู้เขียน</div>
                       <div className="font-medium text-slate-800">Admin</div>
                     </div>
-
                     <FormSelect
-
-                      label="สถานะ"
+                      label="Sub Status"
                       value={form.status}
                       onChange={(e) => set("status", e.target.value)}
                       options={[
@@ -956,60 +937,53 @@ export default function NewsDashboard() {
                         { value: "archived", label: "ซ่อน" },
                       ]}
                     />
-<ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-500">
-  <li>
-    เลือก “ฉบับร่าง” หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์
-  </li>
-  <li>
-    เลือก “เผยแพร่แล้ว” หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด
-  </li>
-</ul>
+                    <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-slate-500">
+                      {/* <li>เลือก "ฉบับร่าง" หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์</li>
+                      <li>เลือก "เผยแพร่แล้ว" หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด</li> */}
+                      <li>เลือก &ldquo;ฉบับร่าง&rdquo; หากยังไม่ต้องการให้ข่าวแสดงบนเว็บไซต์</li>
+                      <li>เลือก &ldquo;เผยแพร่แล้ว&rdquo; หากต้องการให้ข่าวแสดงทันที หรือแสดงตามเวลาที่กำหนด</li>
+                    </ul>
                   </div>
 
                   <div>
-  <label className="mb-2 block text-sm font-medium text-slate-700">
-    ตั้งเวลาเผยแพร่ล่วงหน้า
-  </label>
-
-  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
-    <input
-      type="datetime-local"
-      value={form.published_at}
-      onChange={(e) => set("published_at", e.target.value)}
-      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-site-primary focus:ring-4 focus:ring-site-primary/10"
-    />
-
-    <div>
-      {form.status === "draft" && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          ข่าวนี้เป็นฉบับร่าง ยังไม่แสดงบนหน้าเว็บไซต์
-        </div>
-      )}
-
-      {form.status === "published" &&
-        form.published_at &&
-        new Date(form.published_at).getTime() > Date.now() && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            ข่าวนี้ถูกตั้งเวลาเผยแพร่ไว้ และจะแสดงบนเว็บไซต์เมื่อถึงเวลาที่กำหนด
-          </div>
-        )}
-
-      {form.status === "published" &&
-        (!form.published_at ||
-          new Date(form.published_at).getTime() <= Date.now()) && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
-            ข่าวนี้จะเผยแพร่ทันทีหลังจากกดบันทึก
-          </div>
-        )}
-
-      {form.status === "archived" && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          ข่าวนี้ถูกซ่อน จะไม่แสดงบนหน้าเว็บไซต์
-        </div>
-      )}
-    </div>
-  </div>
-</div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      ตั้งเวลาเผยแพร่ล่วงหน้า
+                    </label>
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+                      <input
+                        type="datetime-local"
+                        value={form.published_at}
+                        onChange={(e) => set("published_at", e.target.value)}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-site-primary focus:ring-4 focus:ring-site-primary/10"
+                      />
+                      <div>
+                        {form.status === "draft" && (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                            ข่าวนี้เป็นฉบับร่าง ยังไม่แสดงบนหน้าเว็บไซต์
+                          </div>
+                        )}
+                        {form.status === "published" &&
+                          form.published_at &&
+                          new Date(form.published_at).getTime() > Date.now() && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              ข่าวนี้ถูกตั้งเวลาเผยแพร่ไว้ และจะแสดงบนเว็บไซต์เมื่อถึงเวลาที่กำหนด
+                            </div>
+                          )}
+                        {form.status === "published" &&
+                          (!form.published_at ||
+                            new Date(form.published_at).getTime() <= Date.now()) && (
+                            <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+                              ข่าวนี้จะเผยแพร่ทันทีหลังจากกดบันทึก
+                            </div>
+                          )}
+                        {form.status === "archived" && (
+                          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                            ข่าวนี้ถูกซ่อน จะไม่แสดงบนหน้าเว็บไซต์
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   <label className="flex items-center gap-2.5 text-sm text-slate-700">
                     <input
@@ -1028,15 +1002,11 @@ export default function NewsDashboard() {
 
               <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="mb-3">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    เนื้อหาข่าว
-                  </h3>
+                  <h3 className="text-sm font-semibold text-slate-900">เนื้อหาข่าว</h3>
                   <p className="text-xs text-slate-500">
-                    Editor ขยายเต็มความกว้าง ใช้จัดรูปภาพ ตาราง
-                    และเนื้อหาได้สะดวกขึ้น
+                    Editor ขยายเต็มความกว้าง ใช้จัดรูปภาพ ตาราง และเนื้อหาได้สะดวกขึ้น
                   </p>
                 </div>
-
                 <RichTextEditor
                   value={form.content_html}
                   onChange={(html) => set("content_html", html)}
@@ -1047,14 +1017,9 @@ export default function NewsDashboard() {
 
               <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    คำโปรยและรูปปกข่าว
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    จัดการ SEO สั้น ๆ และอัปโหลดรูปปกพร้อม Crop
-                  </p>
+                  <h3 className="text-sm font-semibold text-slate-900">คำโปรยและรูปปกข่าว</h3>
+                  <p className="text-xs text-slate-500">จัดการ SEO สั้น ๆ และอัปโหลดรูปปกพร้อม Crop</p>
                 </div>
-
                 <div className="space-y-5">
                   <FormTextarea
                     label="คำโปรย (สำหรับแสดงในรายการและ SEO)"
@@ -1063,19 +1028,16 @@ export default function NewsDashboard() {
                     placeholder="สรุปย่อของข่าว แสดงในหน้ารายการ 1-2 ประโยค"
                     onChange={(e) => set("excerpt", e.target.value)}
                   />
-
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
                       รูปปกข่าว
                     </label>
-
                     <CloudinaryImageUploader
                       value={form.image_url}
                       onChange={(url) => set("image_url", url)}
                       folder="news"
                       label="อัปโหลดรูปปก"
                     />
-
                     {form.image_url && (
                       <div className="mt-4 space-y-4">
                         <input
@@ -1085,7 +1047,6 @@ export default function NewsDashboard() {
                           placeholder="คำอธิบายรูป (Alt text)"
                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300"
                         />
-
                         <ImageCropControls
                           imageUrl={form.image_url}
                           alt={form.image_alt || form.title || "news cover"}
@@ -1103,34 +1064,19 @@ export default function NewsDashboard() {
 
             <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
               <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => saveWithStatus("draft")}
-                  disabled={saving}
-                >
+                <Button variant="secondary" onClick={() => saveWithStatus("draft")} disabled={saving}>
                   Save Draft
                 </Button>
-
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    saveWithStatus(
-                      form.status === "published" ? "draft" : "published",
-                    )
-                  }
+                  onClick={() => saveWithStatus(form.status === "published" ? "draft" : "published")}
                   disabled={saving}
                 >
                   {form.status === "published" ? "Unpublish" : "Publish"}
                 </Button>
-
-                <Button
-                  variant="ghost"
-                  onClick={() => setModalOpen(false)}
-                  disabled={saving}
-                >
+                <Button variant="ghost" onClick={() => setModalOpen(false)} disabled={saving}>
                   ยกเลิก
                 </Button>
-
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1142,20 +1088,17 @@ export default function NewsDashboard() {
               </div>
             </div>
 
+            {/* Preview overlay */}
             {previewOpen && (
               <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-950/70 p-2 sm:p-6">
                 <div className="mx-auto my-2 w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl sm:my-4">
                   <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
                     <div>
-                      <h3 className="font-semibold text-slate-900">
-                        Preview ข่าว
-                      </h3>
+                      <h3 className="font-semibold text-slate-900">Preview ข่าว</h3>
                       <p className="text-xs text-slate-500">
-                        แสดงผลจากข้อมูลที่กำลังกรอกอยู่
-                        ยังไม่จำเป็นต้องบันทึกก่อนดู
+                        แสดงผลจากข้อมูลที่กำลังกรอกอยู่ ยังไม่จำเป็นต้องบันทึกก่อนดู
                       </p>
                     </div>
-
                     <button
                       type="button"
                       onClick={() => setPreviewOpen(false)}
@@ -1174,7 +1117,6 @@ export default function NewsDashboard() {
                         className="aspect-[16/7] w-full rounded-none"
                       />
                     )}
-
                     <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-10">
                       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         {form.category && (
@@ -1182,57 +1124,50 @@ export default function NewsDashboard() {
                             {form.category}
                           </span>
                         )}
-
-                      <span
-  className={
-    form.status === "published" &&
-    form.published_at &&
-    new Date(form.published_at).getTime() > Date.now()
-      ? "rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
-      : form.status === "published"
-        ? "rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700"
-        : form.status === "archived"
-          ? "rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700"
-          : "rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600"
-  }
->
-  {form.status === "published" &&
-  form.published_at &&
-  new Date(form.published_at).getTime() > Date.now()
-    ? "ตั้งเวลาไว้"
-    : form.status === "published"
-      ? "เผยแพร่แล้ว"
-      : form.status === "archived"
-        ? "ซ่อน"
-        : "ฉบับร่าง"}
-</span>
-
-                       {form.published_at && (
-  <span>
-    ·{" "}
-    {form.status === "published" &&
-    new Date(form.published_at).getTime() > Date.now()
-      ? `ตั้งเวลาเผยแพร่: ${new Date(form.published_at).toLocaleString("th-TH", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        })}`
-      : formatDate(form.published_at)}
-  </span>
-)}
-
+                        <span
+                          className={
+                            form.status === "published" &&
+                              form.published_at &&
+                              new Date(form.published_at).getTime() > Date.now()
+                              ? "rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700"
+                              : form.status === "published"
+                                ? "rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700"
+                                : form.status === "archived"
+                                  ? "rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-700"
+                                  : "rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600"
+                          }
+                        >
+                          {form.status === "published" &&
+                            form.published_at &&
+                            new Date(form.published_at).getTime() > Date.now()
+                            ? "ตั้งเวลาไว้"
+                            : form.status === "published"
+                              ? "เผยแพร่แล้ว"
+                              : form.status === "archived"
+                                ? "ซ่อน"
+                                : "ฉบับร่าง"}
+                        </span>
+                        {form.published_at && (
+                          <span>
+                            ·{" "}
+                            {form.status === "published" &&
+                              new Date(form.published_at).getTime() > Date.now()
+                              ? `ตั้งเวลาเผยแพร่: ${new Date(form.published_at).toLocaleString(
+                                "th-TH",
+                                { dateStyle: "medium", timeStyle: "short" },
+                              )}`
+                              : formatDate(form.published_at)}
+                          </span>
+                        )}
                         <span>· Admin</span>
                       </div>
 
                       <h1 className="text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
                         {form.title || "หัวข้อข่าว"}
                       </h1>
-
                       {form.excerpt && (
-                        <p className="mt-4 text-lg leading-8 text-slate-600">
-                          {form.excerpt}
-                        </p>
+                        <p className="mt-4 text-lg leading-8 text-slate-600">{form.excerpt}</p>
                       )}
-
                       <div className="mt-8">
                         <NewsContentRenderer html={form.content_html} />
                       </div>
@@ -1254,9 +1189,41 @@ export default function NewsDashboard() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
+
+      {/* ── Toast notifications ───────────────────────────────── */}
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col-reverse gap-2 sm:bottom-8 sm:right-8">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={cn(
+              "flex min-w-[260px] max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-xl",
+              "animate-in slide-in-from-bottom-3 fade-in duration-200",
+              toast.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-rose-200 bg-rose-50 text-rose-800",
+            )}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            )}
+            <span className="flex-1 leading-relaxed">{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => dismissToast(toast.id)}
+              className="ml-1 mt-0.5 shrink-0 rounded-lg p-0.5 opacity-50 transition hover:opacity-100"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function NewsDropColumn({
   id,
@@ -1268,6 +1235,7 @@ function NewsDropColumn({
   onEdit,
   onDelete,
   onToggleStatus,
+  onOrderChange,
   featured = false,
   scrollable = true,
 }: {
@@ -1280,12 +1248,11 @@ function NewsDropColumn({
   onEdit: (item: NewsRow) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (item: NewsRow) => void;
+  onOrderChange?: (item: NewsRow, newOrder: number) => void;
   featured?: boolean;
   scrollable?: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-  });
+  const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
     <section
@@ -1305,7 +1272,6 @@ function NewsDropColumn({
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <p className="mt-1 text-xs text-slate-500">{description}</p>
         </div>
-
         {featured && (
           <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
             <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
@@ -1338,6 +1304,7 @@ function NewsDropColumn({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onToggleStatus={onToggleStatus}
+                onOrderChange={onOrderChange}
               />
             ))
           )}
@@ -1352,22 +1319,22 @@ function DraggableNewsCard({
   onEdit,
   onDelete,
   onToggleStatus,
+  onOrderChange,
 }: {
   item: NewsRow;
   onEdit: (item: NewsRow) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (item: NewsRow) => void;
+  onOrderChange?: (item: NewsRow, newOrder: number) => void;
 }) {
-const { attributes, listeners, setNodeRef, transform, isDragging } =
-  useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
   });
 
-const isScheduled =
-  item.status === "published" &&
-  item.published_at &&
-  new Date(item.published_at).getTime() > Date.now();
-
+  const isScheduled =
+    item.status === "published" &&
+    item.published_at &&
+    new Date(item.published_at).getTime() > Date.now();
 
   return (
     <article
@@ -1383,7 +1350,7 @@ const isScheduled =
           {...listeners}
           {...attributes}
           className="mt-0.5 cursor-grab touch-none rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-slate-400 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 active:cursor-grabbing"
-          title="ลากเพื่อย้ายข่าว"
+          title="ลากเพื่อย้ายหรือเรียงลำดับข่าว"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -1391,13 +1358,12 @@ const isScheduled =
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {item.is_featured && (
-              <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+              <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                {item.sort_order && item.sort_order > 0 ? `อันดับที่ ${item.sort_order}` : "ไม่มีลำดับ (อยู่ท้ายสุด)"}
+              </span>
             )}
-
-           <NewsStatus
-  status={item.status || "draft"}
-  isScheduled={Boolean(isScheduled)}
-/>
+            <NewsStatus status={item.status || "draft"} isScheduled={Boolean(isScheduled)} />
           </div>
 
           <h3 className="mt-2 line-clamp-2 text-sm font-semibold leading-6 text-slate-900">
@@ -1406,23 +1372,23 @@ const isScheduled =
 
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
             <span>{item.category || "ไม่ระบุหมวดหมู่"}</span>
-
-           {item.published_at && (
-  <>
-    <span>·</span>
-    <span>{formatDate(item.published_at)}</span>
-  </>
-)}
+            {item.published_at && (
+              <>
+                <span>·</span>
+                <span>{formatDate(item.published_at)}</span>
+              </>
+            )}
           </div>
+
           {isScheduled && item.published_at && (
-  <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
-    ตั้งเวลาเผยแพร่ไว้:{" "}
-    {new Date(item.published_at).toLocaleString("th-TH", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    })}
-  </div>
-)}
+            <div className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+              ตั้งเวลาเผยแพร่ไว้:{" "}
+              {new Date(item.published_at).toLocaleString("th-TH", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </div>
+          )}
 
           {item.slug && (
             <a
@@ -1437,75 +1403,65 @@ const isScheduled =
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onToggleStatus(item)}
-            className={
-              item.status === "archived"
-                ? "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
-                : "rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700"
-            }
-            title={
-              item.status === "archived"
-                ? "กดเพื่อเปิดแสดงข่าว"
-                : "กดเพื่อซ่อนข่าว"
-            }
-          >
-            {item.status === "archived" ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </button>
+        {/* Action Elements Box จัดวางขวาให้กระชับ */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onToggleStatus(item)}
+              className={
+                item.status === "archived"
+                  ? "rounded-lg p-2 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+                  : "rounded-lg p-2 text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+              }
+              title={item.status === "archived" ? "กดเพื่อเปิดแสดงข่าว" : "กดเพื่อซ่อนข่าว"}
+            >
+              {item.status === "archived" ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onEdit(item)}
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600"
-            title="แก้ไข"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="rounded-lg p-2 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600"
+              title="แก้ไข"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onDelete(item.id)}
-            className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-            title="ลบถาวร"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => onDelete(item.id)}
+              className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+              title="ลบถาวร"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* List Number Select Dropdown อยู่ใต้กลุ่มปุ่ม แสดงเฉพาะฝั่งข่าวเด่น */}
+          {item.is_featured && onOrderChange && (
+            <div className="w-28">
+              <select
+                value={item.sort_order ?? 0}
+                onChange={(e) => onOrderChange(item, Number(e.target.value))}
+                className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 outline-none shadow-sm transition focus:border-brand-400"
+              >
+                <option value={0}>ไม่มีลำดับ</option>
+                <option value={1}>ลำดับที่ 1</option>
+                <option value={2}>ลำดับที่ 2</option>
+                <option value={3}>ลำดับที่ 3</option>
+                <option value={4}>ลำดับที่ 4</option>
+                <option value={5}>ลำดับที่ 5</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
     </article>
-  );
-}
-
-function StatusBox({
-  type,
-  message,
-}: {
-  type: "success" | "error";
-  message: string;
-}) {
-  const ok = type === "success";
-
-  return (
-    <div
-      className={`mb-4 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${ok
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-rose-200 bg-rose-50 text-rose-700"
-        }`}
-    >
-      {ok ? (
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-      ) : (
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-      )}
-
-      <span>{message}</span>
-    </div>
   );
 }
 
