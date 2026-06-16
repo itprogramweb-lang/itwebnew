@@ -583,66 +583,101 @@ export default function NewsDashboard() {
     );
   };
 
-  // เปลี่ยนอันดับโดยใช้ Dropdown Select บนการ์ดโดยตรง
+
 // เปลี่ยนอันดับโดยใช้ Dropdown Select บนการ์ดโดยตรง
   const handleFeaturedOrderChange = async (item: NewsRow, newOrder: number) => {
     if (!item.is_featured) return;
 
-    // 1. ดึงรายการข่าวเด่นทั้งหมดมาจัดเรียงลำดับใน State ก่อน (ไม่รวมตัวที่กำลังเปลี่ยน)
-    const currentlyFeatured = items
-      .filter((n) => n.is_featured && n.id !== item.id)
-      .sort((a, b) => {
-        const orderA = a.sort_order === null || a.sort_order === 0 ? 999 : a.sort_order;
-        const orderB = b.sort_order === null || b.sort_order === 0 ? 999 : b.sort_order;
-        return orderA - orderB;
-      });
-
-    // 2. จัดตำแหน่งของ Item ตัวใหม่เข้าไปใน Array
-    let reordered = [...currentlyFeatured];
-    if (newOrder === 0) {
-      // ถ้าเลือก "ไม่มีลำดับ" ให้เอาไปไว้ท้ายสุด
-      reordered.push({ ...item, sort_order: 0 });
-    } else {
-      // ถ้ามีลำดับ ให้แทรกเข้าไปตามตำแหน่งที่เลือก (index = newOrder - 1)
-      reordered.splice(newOrder - 1, 0, { ...item, sort_order: newOrder });
-    }
-
-    // 3. คำนวณรันเลขลำดับ 1, 2, 3... ใหม่ให้ถูกต้อง เพื่อไม่ให้ลำดับชนกัน
-    const updatedFeatured = reordered.map((n, i) => {
-      // ถ้าตัวมันเองตั้งใจเลือกเป็น 0 (ไม่มีลำดับ) หรือตัวอื่นที่หลุดไปอยู่ท้ายและเคยเป็น 0 ให้คงค่า 0 ไว้
-      if (newOrder === 0 && n.id === item.id) {
-        return { ...n, sort_order: 0 };
-      }
-      // สำหรับตัวอื่นๆ ให้รันลำดับต่อกันไปตามจริง
-      return { ...n, sort_order: i + 1 };
-    });
-
-    // 4. 🔥 [จุดสำคัญที่ขาดไป] อัปเดต State ฝั่ง Frontend ทันทีเพื่อให้ Card เปลี่ยนแปลงตามจริง
-    setItems((prev) =>
-      sortNewsNewestFirst(
-        prev.map((n) => updatedFeatured.find((u) => u.id === n.id) || n)
-      )
-    );
-
-    // 5. ส่งค่าไปบันทึกบน Database ผ่าน API
     setSaving(true);
     try {
+      // 1. ดึงรายการข่าวเด่นทั้งหมด (ยกเว้นตัวที่กำลังเปลี่ยน) ออกมาเรียงตามลำดับเดิมก่อน
+      const currentlyFeatured = items
+        .filter((n) => n.is_featured && n.id !== item.id)
+        .sort((a, b) => {
+          const orderA = a.sort_order === null || a.sort_order === 0 ? 999 : a.sort_order;
+          const orderB = b.sort_order === null || b.sort_order === 0 ? 999 : b.sort_order;
+          return orderA - orderB;
+        });
+
+      // 2. แทรกไอเทมที่กำลังเปลี่ยนอันดับเข้าไปในตำแหน่งใหม่ตามความต้องการ
+      let reordered = [...currentlyFeatured];
+      if (newOrder === 0) {
+        // ถ้าเลือก "ไม่มีลำดับ" ให้ดันไปอยู่ท้ายสุด
+        reordered.push({ ...item, sort_order: 0 });
+      } else {
+        // ถ้าระบุลำดับ ให้แทรกเข้าไปตาม index (ลำดับที่ 1 = index 0)
+        reordered.splice(newOrder - 1, 0, { ...item, sort_order: newOrder });
+      }
+
+      // 3. รันเลขลำดับ 1, 2, 3, 4, 5 ใหม่ให้ถูกต้องเรียงกันไป ป้องกันลำดับชนกัน
+      const finalFeaturedMapping = reordered.map((n, i) => {
+        if (newOrder === 0 && n.id === item.id) {
+          return { id: n.id, sort_order: 0 };
+        }
+        return { id: n.id, sort_order: i + 1 };
+      });
+
+      // 4. เตรียมยิง API อัปเดตหลังบ้านแบบขนานด้วย Promise.all 
+      // ดึง JWT Headers มาใช้ร่วมกันทีเดียว
+      const headers = await getAuthHeaders();
+      
       await Promise.all(
-        updatedFeatured.map((n) =>
-          patchNewsItem(
-            n,
-            { sort_order: n.sort_order },
-            n.id === item.id ? (newOrder === 0 ? "ปรับเป็นแบบไม่มีลำดับเรียบร้อยแล้ว" : "เปลี่ยนลำดับข่าวเด่นเรียบร้อยแล้ว") : ""
-          )
+        finalFeaturedMapping.map(async (mapping) => {
+          // ค้นหาข้อมูลเต็มของไอเทมนั้นๆ จาก State หลัก
+          const targetItem = items.find((n) => n.id === mapping.id);
+          if (!targetItem) return;
+
+          // ยิง PATCH ตรงไปที่ API แทนการเรียกผ่านฟังก์ชัน patchNewsItem ซ้ำซ้อน
+          const res = await fetch("/api/admin/news", {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              id: targetItem.id,
+              title: targetItem.title,
+              slug: targetItem.slug,
+              excerpt: targetItem.excerpt,
+              content_html: targetItem.content_html,
+              category: targetItem.category,
+              image_url: targetItem.image_url,
+              image_alt: targetItem.image_alt,
+              image_crop_settings: targetItem.image_crop_settings,
+              author_name: "Admin",
+              status: targetItem.status,
+              published_at: targetItem.published_at,
+              is_featured: targetItem.is_featured,
+              sort_order: mapping.sort_order, // อัปเดตลำดับใหม่ที่คำนวณแล้ว
+            }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || "บันทึกลำดับไม่สำเร็จ");
+          }
+        })
+      );
+
+      // 5. 🔥 [อัปเดต State ทีเดียวอย่างปลอดภัย] เมื่อหลังบ้านผ่านหมดแล้ว ค่อยนำข้อมูลมาแมพลง State บนเว็บ
+      setItems((prev) =>
+        sortNewsNewestFirst(
+          prev.map((n) => {
+            const match = finalFeaturedMapping.find((f) => f.id === n.id);
+            return match ? { ...n, sort_order: match.sort_order } : n;
+          })
         )
       );
+
+      // 6. แสดงผลแจ้งเตือนความสำเร็จ
+      showToast(
+        "success",
+        newOrder === 0 ? "ปรับเป็นแบบไม่มีลำดับเรียบร้อยแล้ว" : `เปลี่ยนเป็นลำดับที่ ${newOrder} เรียบร้อยแล้ว`
+      );
+
     } catch (err) {
-      showToast("error", "เกิดข้อผิดพลาดในการบันทึกลำดับลงฐานข้อมูล");
+      showToast("error", err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึกลำดับ");
     } finally {
       setSaving(false);
     }
   };
-
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(String(event.active.id));
   };
