@@ -71,7 +71,7 @@ const services = [
 ];
 
 export default async function RegistrationPage() {
-  const ps = await getPageSetting("students_registration").catch(() => null);
+  const ps = await getPageSetting("students_registrar").catch(() => null);
 
   const pageTitle = ps?.title ?? "ทะเบียนนักศึกษา";
   const pageDescription =
@@ -81,6 +81,8 @@ export default async function RegistrationPage() {
   const heroImageUrl = ps?.hero_image_url ?? null;
   const heroImageCrop = ps?.hero_image_crop_settings ?? null;
   const rawHeroTemplate = ps?.hero_layout ?? null;
+  const ctaLabel = ps?.cta_label ?? null;
+  const ctaUrl = ps?.cta_url ?? null;
 
   const heroTemplate =
     rawHeroTemplate && rawHeroTemplate !== "default"
@@ -95,11 +97,24 @@ export default async function RegistrationPage() {
       <PageHero
         template={heroTemplate}
         imageUrl={heroImageUrl}
+        imageAlt={ps?.hero_image_alt}
         imageCropSettings={heroImageCrop}
         title={pageTitle}
         eyebrow={ps?.subtitle ?? "งานทะเบียน"}
         description={pageDescription}
-      />
+      >
+        {ctaLabel && ctaUrl && (
+          <Link
+            href={ctaUrl}
+            target={ps?.cta_external ? "_blank" : undefined}
+            rel={ps?.cta_external ? "noopener noreferrer" : undefined}
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-5 text-sm font-medium text-brand-600 shadow-sm transition hover:opacity-95"
+          >
+            {ctaLabel}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+      </PageHero>
 
       {/* Services grid */}
       <section className="section">

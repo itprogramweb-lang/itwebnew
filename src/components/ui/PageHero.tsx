@@ -8,6 +8,7 @@ import type { ImageCropSettings } from "@/lib/imageCrop";
 export type PageHeroProps = {
   template?: string | null;
   imageUrl: string | null;
+  imageAlt?: string | null;
   title: string;
   eyebrow: string;
   description: string;
@@ -50,6 +51,7 @@ const NON_CLICKABLE_PATHS = new Set([
 export default function PageHero({
   template,
   imageUrl,
+  imageAlt,
   title,
   eyebrow,
   description,
@@ -150,7 +152,7 @@ export default function PageHero({
         <div className="absolute inset-0 z-0 w-full h-full">
           <CroppedImage
             src={imageUrl}
-            alt={title}
+            alt={imageAlt || title}
             crop={imageCropSettings}
             className="h-full w-full object-cover object-center opacity-55 brightness-[0.85]"
           />
