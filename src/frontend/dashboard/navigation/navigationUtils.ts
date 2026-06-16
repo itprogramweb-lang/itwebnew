@@ -30,6 +30,7 @@ export const locationOptions: { value: NavigationLocation; label: string }[] = [
   { value: "navbar", label: "Navbar" },
   { value: "footer_main", label: "Footer: เมนูหลัก" },
   { value: "footer_students", label: "Footer: สำหรับนักศึกษา" },
+  { value: "footer_contact", label: "Footer: ติดต่อสาขา" },
   { value: "both", label: "Navbar และ Footer" },
 ];
 
@@ -37,6 +38,7 @@ export const locationLabels: Record<NavigationLocation, string> = {
   navbar: "Navbar",
   footer_main: "Footer เมนูหลัก",
   footer_students: "Footer สำหรับนักศึกษา",
+  footer_contact: "Footer ติดต่อสาขา",
   both: "Navbar และ Footer",
 };
 
@@ -146,7 +148,7 @@ export function getNavigationDisplayItems(items: NavigationItem[]) {
     }
   }
 
-  for (const location of ["navbar", "footer_main", "footer_students", "both"] as NavigationLocation[]) {
+  for (const location of ["navbar", "footer_main", "footer_students", "footer_contact", "both"] as NavigationLocation[]) {
     for (const root of sortNavigationGroup(rootsByLocation.get(location) ?? [])) {
       result.push(root);
       attached.add(root.id);
@@ -179,7 +181,17 @@ export function validateNavigationForm(form: NavigationForm): string[] {
     errors.push("ไม่อนุญาต URL scheme ที่ไม่ปลอดภัย");
   }
 
-  if (form.type === "link") {
+  if (form.location === "footer_contact") {
+    if (
+      href &&
+      !/^https?:\/\//i.test(href) &&
+      !/^tel:/i.test(href) &&
+      !/^mailto:/i.test(href) &&
+      (!href.startsWith("/") || href.startsWith("//"))
+    ) {
+      errors.push("ลิงก์ Footer ติดต่อสาขาต้องเป็น tel:, mailto:, https:// หรือขึ้นต้นด้วย /");
+    }
+  } else if (form.type === "link") {
     if (!href) {
       errors.push("เมนูชนิดลิงก์ต้องมี href");
     } else if (form.is_external) {

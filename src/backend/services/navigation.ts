@@ -14,6 +14,7 @@ export const navigationLocations: readonly NavigationLocation[] = [
   "navbar",
   "footer_main",
   "footer_students",
+  "footer_contact",
   "both",
 ];
 export const navigationTargets: readonly NavigationTarget[] = ["_self", "_blank"];
@@ -53,10 +54,28 @@ export function validateNavigationHref(input: {
   href: unknown;
   is_external?: unknown;
   type?: unknown;
+  location?: unknown;
 }): ValidationResult {
   const type = isNavigationItemType(input.type) ? input.type : "link";
+  const location = isNavigationLocation(input.location) ? input.location : "navbar";
   const href = typeof input.href === "string" ? input.href.trim() : "";
   const isExternal = input.is_external === true;
+
+  if (location === "footer_contact") {
+    if (!href) return { ok: true, href: null };
+    if (unsafeSchemePattern.test(href)) {
+      return { ok: false, error: "ไม่อนุญาต URL scheme ที่ไม่ปลอดภัย" };
+    }
+    if (
+      /^https?:\/\//i.test(href) ||
+      /^tel:/i.test(href) ||
+      /^mailto:/i.test(href) ||
+      (href.startsWith("/") && !href.startsWith("//"))
+    ) {
+      return { ok: true, href };
+    }
+    return { ok: false, error: "ลิงก์ Footer ติดต่อสาขาต้องเป็น tel:, mailto:, https:// หรือขึ้นต้นด้วย /" };
+  }
 
   if (type !== "link") {
     if (!href) return { ok: true, href: null };
@@ -168,7 +187,7 @@ export async function resetCoreNavigationItems(location?: NavigationLocation) {
 
 export function parseNavigationPayload(
   body: Record<string, unknown>,
-  current?: Pick<NavigationItem, "type" | "href" | "is_external" | "label" | "label_en">
+  current?: Pick<NavigationItem, "type" | "href" | "is_external" | "label" | "label_en" | "location">
 ): { payload: Partial<NavigationPayload> } | { error: string } {
   const payload: Partial<NavigationPayload> = {};
 
@@ -191,18 +210,16 @@ export function parseNavigationPayload(
   if (!isNavigationItemType(type)) return { error: "ชนิดเมนูไม่ถูกต้อง" };
   payload.type = type;
 
-  if ("location" in body || !current) {
-    const location = body.location ?? "navbar";
-    if (!isNavigationLocation(location)) return { error: "ตำแหน่งเมนูไม่ถูกต้อง" };
-    payload.location = location;
-  }
+  const location = "location" in body ? body.location : current?.location ?? "navbar";
+  if (!isNavigationLocation(location)) return { error: "ตำแหน่งเมนูไม่ถูกต้อง" };
+  if ("location" in body || !current) payload.location = location;
 
   const isExternal =
     "is_external" in body ? body.is_external === true : current?.is_external === true;
   payload.is_external = isExternal;
 
   const hrefInput = "href" in body ? body.href : current?.href ?? null;
-  const hrefResult = validateNavigationHref({ href: hrefInput, is_external: isExternal, type });
+  const hrefResult = validateNavigationHref({ href: hrefInput, is_external: isExternal, type, location });
   if (!hrefResult.ok) return { error: hrefResult.error };
   payload.href = hrefResult.href;
 

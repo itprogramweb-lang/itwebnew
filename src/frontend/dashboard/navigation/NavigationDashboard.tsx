@@ -59,6 +59,7 @@ const locationTabs = [
   { value: "navbar", label: "Navbar" },
   { value: "footer_main", label: "Footer เมนูหลัก" },
   { value: "footer_students", label: "Footer สำหรับนักศึกษา" },
+  { value: "footer_contact", label: "Footer ติดต่อสาขา" },
 ] as const;
 
 type LocationFilter = (typeof locationTabs)[number]["value"];
@@ -116,6 +117,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
   const [hardDeleteId, setHardDeleteId] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -199,8 +201,13 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
   }, []);
 
   function openAdd() {
+    const initialForm = emptyNavigationForm();
+    if (locationFilter !== "all") {
+      initialForm.location = locationFilter;
+    }
+
     setEditingId(null);
-    setForm(emptyNavigationForm());
+    setForm(initialForm);
     setFormErrors([]);
     setModalOpen(true);
   }
@@ -282,6 +289,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
 
     const targetItem = group[targetIndex];
 
+    setMovingId(item.id);
     try {
       const currentOrder = item.sort_order;
       const targetOrder = targetItem.sort_order;
@@ -302,9 +310,12 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
           return curr;
         })
       );
+      await loadItems();
       showToast("อัปเดตลำดับเมนูเรียบร้อยแล้ว");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "อัปเดตลำดับเมนูไม่สำเร็จ", false);
+    } finally {
+      setMovingId(null);
     }
   }
 
@@ -336,6 +347,10 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
   }
 
   const editingItem = editingId ? items.find((item) => item.id === editingId) ?? null : null;
+  const emptyLabel =
+    locationFilter === "footer_contact"
+      ? "ยังไม่มีข้อมูลติดต่อสาขา กดเพิ่มเมนูเพื่อเพิ่มที่อยู่ เบอร์โทร และเวลาทำการ"
+      : "ไม่พบเมนู";
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -423,7 +438,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.length === 0 ? (
-              <EmptyRow colSpan={9} label={listError ? "ยังโหลดข้อมูลไม่ได้" : "ไม่พบเมนู"} />
+              <EmptyRow colSpan={9} label={listError ? "ยังโหลดข้อมูลไม่ได้" : emptyLabel} />
             ) : (
               filtered.map((item) => {
                 const childCount = childCounts.get(item.id) ?? 0;
@@ -434,6 +449,7 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                 const groupIndex = group.findIndex((current) => current.id === item.id);
                 const canMoveUp = groupIndex > 0;
                 const canMoveDown = groupIndex >= 0 && groupIndex < group.length - 1;
+                const moving = movingId === item.id;
                 const isChild = Boolean(item.parent_id);
                 return (
                   <tr key={item.id} className="hover:bg-slate-50/50">
@@ -467,18 +483,18 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                         <button
                           type="button"
                           onClick={() => handleMove(item, "up")}
-                          disabled={!canMoveUp}
+                          disabled={!canMoveUp || !!movingId}
                           className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600"
                         >
-                          ขึ้น
+                          {moving ? "..." : "ขึ้น"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleMove(item, "down")}
-                          disabled={!canMoveDown}
+                          disabled={!canMoveDown || !!movingId}
                           className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-slate-200 disabled:hover:bg-white disabled:hover:text-slate-600"
                         >
-                          ลง
+                          {moving ? "..." : "ลง"}
                         </button>
                       </div>
                     </Td>
@@ -611,10 +627,16 @@ export default function NavigationDashboard({ embedded = false }: { embedded?: b
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormInput
                     label="Href"
-                    required={form.type === "link"}
+                    required={form.type === "link" && form.location !== "footer_contact"}
                     value={form.href}
                     onChange={(event) => setField("href", event.target.value)}
-                    placeholder={form.is_external ? "https://..." : "/about"}
+                    placeholder={
+                      form.location === "footer_contact"
+                        ? "เว้นว่างได้ หรือ tel:025494167"
+                        : form.is_external
+                        ? "https://..."
+                        : "/about"
+                    }
                   />
                   <FormSelect
                     label="ตำแหน่ง"

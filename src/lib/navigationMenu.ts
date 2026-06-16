@@ -182,9 +182,13 @@ function toChildMenuItem(item: NavigationItem): DropdownChildItem {
   };
 }
 
-export function navigationItemsToMenuItems(items: NavigationItem[]): MenuItem[] {
+export function navigationItemsToMenuItems(
+  items: NavigationItem[],
+  options: { locations?: NavigationItem["location"][] } = {}
+): MenuItem[] {
+  const allowedLocations = options.locations ?? ["navbar", "both"];
   const activeNavbarItems = items.filter(
-    (item) => item.is_active !== false && (item.location === "navbar" || item.location === "both")
+    (item) => item.is_active !== false && allowedLocations.includes(item.location)
   );
   const childrenByParent = new Map<string, NavigationItem[]>();
   const roots: NavigationItem[] = [];

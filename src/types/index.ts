@@ -223,7 +223,12 @@ export interface SiteSettings {
 
 export type NavigationItemType = "link" | "dropdown" | "heading";
 
-export type NavigationLocation = "navbar" | "footer_main" | "footer_students" | "both";
+export type NavigationLocation =
+  | "navbar"
+  | "footer_main"
+  | "footer_students"
+  | "footer_contact"
+  | "both";
 
 export type NavigationTarget = "_self" | "_blank";
 
