@@ -510,7 +510,7 @@ export default function PagesDashboard() {
                           หากปิดไว้ ระบบจะซ่อนการตั้งค่าหน้านี้จากส่วน public ที่อ้าง page_settings แต่จะไม่ลบข้อมูลหน้าออกจากฐานข้อมูล
                         </p>
 
-                        <div>
+                        {/* <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1.5">
                             ลำดับในตัวจัดการ
                           </label>
@@ -528,7 +528,7 @@ export default function PagesDashboard() {
                             placeholder="ไม่กำหนด"
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400"
                           />
-                        </div>
+                        </div> */}
                       </div>
                     </section>
 
