@@ -9,14 +9,13 @@ import {
   Image as ImageIcon,
   Loader2,
   Palette,
-  Phone,
   Save,
   Settings2,
   RotateCcw,
 } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { DashboardPageHeader } from "@/components/ui/DataTable";
-import { FormInput, FormTextarea } from "@/components/ui/Form";
+import { FormInput } from "@/components/ui/Form";
 import Button from "@/components/ui/Button";
 import CloudinaryImageUploader from "@/components/dashboard/CloudinaryImageUploader";
 import LogoCropEditor from "@/components/dashboard/LogoCropEditor";
@@ -460,7 +459,7 @@ export default function SettingsDashboard() {
     <div className="max-w-5xl mx-auto space-y-6">
       <DashboardPageHeader
         title="ตั้งค่าเว็บไซต์"
-        description="ข้อมูลพื้นฐาน, Branding, โลโก้ และช่องทางติดต่อ"
+        description="ข้อมูลพื้นฐาน, Branding และโลโก้เว็บไซต์"
         action={
           <div className="flex flex-wrap gap-2">
             {resetButton}
@@ -872,23 +871,22 @@ export default function SettingsDashboard() {
         </div>
       </Section>
 
-      {/* Contact */}
-      <Section icon={<Phone className="w-5 h-5" />} title="ช่องทางติดต่อ">
-        <div className="space-y-4">
-          <FormTextarea
-            label="ที่อยู่"
-            rows={3}
-            value={form.address}
-            onChange={(e) => setField("address")(e.target.value)}
-          />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <FormInput
-              label="เบอร์โทร"
-              value={form.phone}
-              onChange={(e) => setField("phone")(e.target.value)}
-            />
-          </div>
+      {/* Footer contact */}
+      <Section icon={<Settings2 className="w-5 h-5" />} title="ข้อมูลติดต่อใน Footer">
+        <div className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-4">
+          <p className="text-sm font-medium text-brand-800">
+            ข้อมูลติดต่อใน Footer จัดการได้ที่ จัดการหน้าเว็บ &gt; จัดการเมนู &gt; Footer ติดต่อสาขา
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-brand-700">
+            เพิ่มรายการสำหรับที่อยู่ เบอร์โทร และวันเวลาทำการได้จากเมนูนี้โดยตรง เพื่อไม่ให้มีหลายจุดแก้ข้อมูลซ้ำกัน
+          </p>
+          <Link
+            href="/dashboard/pages"
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-brand-gradient px-5 text-sm font-medium text-white shadow-brand transition hover:opacity-95"
+          >
+            ไปจัดการ Footer ติดต่อสาขา
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </Section>
 

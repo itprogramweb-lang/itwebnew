@@ -6,17 +6,188 @@ import { Facebook, Phone, MapPin, Clock } from "lucide-react";
 import type { BrandingData } from "@/lib/brandingTypes";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
 import { buildLogoStyle } from "@/lib/logoPresets";
-import { siteData } from "@/data/site";
+import type { MenuItem } from "@/lib/navigationMenu";
+import { getPublicNavLabel, usePublicLanguage } from "./PublicLanguageToggle";
+import type { NavigationItem } from "@/types";
 
-export default function Footer({ branding }: { branding?: BrandingData }) {
-  const b = branding ?? DEFAULT_BRANDING;
+type FooterLink = {
+  label: string;
+  labelEn?: string;
+  href: string;
+  external?: boolean;
+};
+
+type FooterContact = {
+  label: string;
+  href?: string | null;
+};
+
+const fallbackMainLinks: FooterLink[] = [
+  { label: "หน้าแรก", labelEn: "Home", href: "/" },
+  { label: "สมัครเรียน", labelEn: "Admissions", href: "/apply" },
+  { label: "ข่าวสาร", labelEn: "News", href: "/news" },
+  { label: "เกี่ยวกับสาขา", labelEn: "About the Department", href: "/about" },
+  { label: "อุปกรณ์การเรียนและห้องปฏิบัติการ", labelEn: "Facilities and Laboratories", href: "/about/facilities" },
+  { label: "ปริญญาตรี", labelEn: "Undergraduate Program", href: "/programs/bachelor" },
+  { label: "ปริญญาโท", labelEn: "Graduate Program", href: "/programs/master" },
+];
+
+function fallbackStudentLinks(loanUrl: string): FooterLink[] {
+  return [
+    { label: "ทะเบียน", labelEn: "Registration", href: "/students/registration" },
+    { label: "กยศ.", labelEn: "Student Loan Fund", href: loanUrl, external: true },
+    { label: "สวัสดิการ", labelEn: "Student Welfare", href: "/students/welfare" },
+    { label: "ร้องเรียน/ความคิดเห็น", labelEn: "Complaints and Feedback", href: "/students/complaint" },
+    { label: "ผลงานนักศึกษา", labelEn: "Student Works", href: "/works/students" },
+  ];
+}
+
+function flattenFooterLinks(items?: MenuItem[]): FooterLink[] {
+  if (!items?.length) return [];
+  return items.flatMap((item) => {
+    if (item.type === "link") {
+      return [{
+        label: item.label,
+        labelEn: item.labelEn,
+        href: item.href,
+        external: item.external,
+      }];
+    }
+    return item.items.map((child) => ({
+      label: child.label,
+      labelEn: child.labelEn,
+      href: child.href,
+      external: child.external,
+    }));
+  });
+}
+
+function FooterLinkList({ links }: { links: FooterLink[] }) {
+  const language = usePublicLanguage();
+
+  if (links.length === 0) {
+    return <p className="text-sm text-slate-400">ยังไม่มีรายการเมนู</p>;
+  }
+
+  return (
+    <ul className="space-y-2.5 text-sm">
+      {links.map((item) => {
+        const label = getPublicNavLabel({
+          href: item.href,
+          label: item.label,
+          labelEn: item.labelEn,
+          language,
+        });
+
+        if (item.external) {
+          return (
+            <li key={`${item.href}:${item.label}`}>
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                translate="no"
+                className="notranslate hover-site-accent transition-colors"
+              >
+                {label}
+              </a>
+            </li>
+          );
+        }
+
+        return (
+          <li key={`${item.href}:${item.label}`}>
+            <Link
+              href={item.href}
+              translate="no"
+              className="notranslate hover-site-accent transition-colors"
+            >
+              {label}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ContactValue({
+  item,
+  className,
+}: {
+  item: FooterContact;
+  className?: string;
+}) {
+  const href = item.href?.trim();
+  if (!href) return <span className={className}>{item.label}</span>;
+
+  if (href.startsWith("/") && !href.startsWith("//")) {
+    return (
+      <Link href={href} translate="no" className={`notranslate hover-site-accent transition-colors ${className ?? ""}`}>
+        {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target={/^https?:\/\//i.test(href) ? "_blank" : undefined}
+      rel={/^https?:\/\//i.test(href) ? "noopener noreferrer" : undefined}
+      translate="no"
+      className={`notranslate hover-site-accent transition-colors ${className ?? ""}`}
+    >
+      {item.label}
+    </a>
+  );
+}
+
+function FooterContactList({ items }: { items: FooterContact[] }) {
+  const icons = [
+    <MapPin key="address" className="w-4 h-4 mt-0.5 text-site-footer-accent shrink-0" />,
+    <Phone key="phone" className="w-4 h-4 text-site-footer-accent shrink-0" />,
+    <Clock key="hours" className="w-4 h-4 text-site-footer-accent shrink-0" />,
+  ];
+
+  return (
+    <ul className="space-y-3 text-sm">
+      {items.map((item, index) => (
+        <li
+          key={`${item.label}:${index}`}
+          className={`notranslate flex gap-2.5 ${index === 1 ? "items-center" : ""}`}
+          translate="no"
+        >
+          {icons[index] ?? <MapPin className="w-4 h-4 mt-0.5 text-site-footer-accent shrink-0" />}
+          <ContactValue item={item} className={index === 0 ? "leading-relaxed" : undefined} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function Footer({
+  branding,
+  mainLinks,
+  studentLinks,
+  contactItems,
+}: {
+  branding?: BrandingData;
+  mainLinks?: MenuItem[];
+  studentLinks?: MenuItem[];
+  contactItems?: NavigationItem[];
+}) {
+const b = branding ?? DEFAULT_BRANDING;
   const pathname = usePathname();
   if (pathname.startsWith("/dashboard") || pathname === "/login") return null;
 
-const phone = siteData.phone;
-const address = siteData.address;
-const facebookUrl = siteData.facebook;
+  const facebookUrl = b.facebookUrl;
   const loanUrl = b.loanExternalUrl;
+  const footerMainLinks = flattenFooterLinks(mainLinks);
+  const footerStudentLinks = flattenFooterLinks(studentLinks);
+  const footerContactItems = contactItems?.map((item) => ({
+    label: item.label,
+    href: item.href,
+  })) ?? [];
   const { wrapperStyle: logoWrapper, imgStyle: logoImgStyle } = buildLogoStyle({
     size: 44,
     preset: b.logoCropPreset,
@@ -78,60 +249,23 @@ const facebookUrl = siteData.facebook;
           {/* Quick links */}
           <div>
             <h4 className="text-white font-semibold mb-4">เมนูหลัก</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/" className="hover-site-accent transition-colors">หน้าแรก</Link></li>
-              <li><Link href="/apply" className="hover-site-accent transition-colors">สมัครเรียน</Link></li>
-              <li><Link href="/news" className="hover-site-accent transition-colors">ข่าวสาร</Link></li>
-              <li><Link href="/about" className="hover-site-accent transition-colors">เกี่ยวกับสาขา</Link></li>
-              <li><Link href="/about/facilities" className="hover-site-accent transition-colors">อุปกรณ์การเรียนและห้องปฏิบัติการ</Link></li>
-              <li><Link href="/programs/bachelor" className="hover-site-accent transition-colors">ปริญญาตรี</Link></li>
-              <li><Link href="/programs/master" className="hover-site-accent transition-colors">ปริญญาโท</Link></li>
-            </ul>
+            <FooterLinkList links={footerMainLinks.length > 0 ? footerMainLinks : fallbackMainLinks} />
           </div>
 
           {/* For students */}
           <div>
             <h4 className="text-white font-semibold mb-4">สำหรับนักศึกษา</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/students/registration" className="hover-site-accent transition-colors">ทะเบียน</Link></li>
-              <li>
-                <a
-                  href={loanUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover-site-accent transition-colors"
-                >
-                  กยศ.
-                </a>
-              </li>
-              <li><Link href="/students/welfare" className="hover-site-accent transition-colors">สวัสดิการ</Link></li>
-              <li><Link href="/students/complaint" className="hover-site-accent transition-colors">ร้องเรียน/ความคิดเห็น</Link></li>
-              <li><Link href="/works/students" className="hover-site-accent transition-colors">ผลงานนักศึกษา</Link></li>
-            </ul>
+            <FooterLinkList
+              links={footerStudentLinks.length > 0 ? footerStudentLinks : fallbackStudentLinks(loanUrl)}
+            />
           </div>
 
-          {/* Contact */}
-          <div>
-            <h4 className="text-white font-semibold mb-4">ติดต่อสาขา</h4>
-            <ul className="space-y-3 text-sm">
-              {address && (
-                <li className="notranslate flex gap-2.5" translate="no">
-                  <MapPin className="w-4 h-4 mt-0.5 text-site-footer-accent shrink-0" />
-                  <span className="leading-relaxed">{address}</span>
-                </li>
-              )}
-              {phone && (
-                <li className="notranslate flex items-center gap-2.5" translate="no">
-                  <Phone className="w-4 h-4 text-site-footer-accent shrink-0" />
-                  <span>{phone}</span>
-                </li>
-              )}
-              <li className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-site-footer-accent shrink-0" />
-                <span>{siteData.workingHours}</span>
-              </li>
-            </ul>
-          </div>
+          {footerContactItems.length > 0 && (
+            <div>
+              <h4 className="text-white font-semibold mb-4">ติดต่อสาขา</h4>
+              <FooterContactList items={footerContactItems} />
+            </div>
+          )}
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-center text-xs text-slate-400 sm:flex-row sm:text-left">

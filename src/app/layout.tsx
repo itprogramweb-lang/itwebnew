@@ -8,6 +8,7 @@ import { getPublicNavigationItems } from "@/backend/services/navigation";
 import { getBranding } from "@/lib/branding";
 import { DEFAULT_BRANDING } from "@/lib/brandingTypes";
 import { navigationItemsToMenuItems, type MenuItem } from "@/lib/navigationMenu";
+import type { NavigationItem } from "@/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   let branding = DEFAULT_BRANDING;
@@ -39,6 +40,9 @@ export default async function RootLayout({
 }) {
   let branding = DEFAULT_BRANDING;
   let navbarMenuItems: MenuItem[] | undefined;
+  let footerMainMenuItems: MenuItem[] | undefined;
+  let footerStudentMenuItems: MenuItem[] | undefined;
+  let footerContactItems: NavigationItem[] | undefined;
   try {
     branding = await getBranding();
   } catch {
@@ -53,6 +57,25 @@ export default async function RootLayout({
     }
   } catch {
     console.warn("Failed to load dynamic navigation, using fallback.");
+  }
+
+  try {
+    const [footerMainItems, footerStudentItems, contactItems] = await Promise.all([
+      getPublicNavigationItems("footer_main"),
+      getPublicNavigationItems("footer_students"),
+      getPublicNavigationItems("footer_contact"),
+    ]);
+    const convertedMainItems = navigationItemsToMenuItems(footerMainItems, {
+      locations: ["footer_main", "both"],
+    });
+    const convertedStudentItems = navigationItemsToMenuItems(footerStudentItems, {
+      locations: ["footer_students", "both"],
+    });
+    if (convertedMainItems.length > 0) footerMainMenuItems = convertedMainItems;
+    if (convertedStudentItems.length > 0) footerStudentMenuItems = convertedStudentItems;
+    footerContactItems = contactItems.filter((item) => item.location === "footer_contact");
+  } catch {
+    // ใช้ fallback footer เดิมเมื่อโหลดเมนูจากฐานข้อมูลไม่ได้
   }
 
   return (
@@ -70,7 +93,12 @@ export default async function RootLayout({
         <PublicAutoTranslateProvider />
         <Navbar branding={branding} menuItems={navbarMenuItems} />
         <main className="flex-1">{children}</main>
-        <Footer branding={branding} />
+        <Footer
+          branding={branding}
+          mainLinks={footerMainMenuItems}
+          studentLinks={footerStudentMenuItems}
+          contactItems={footerContactItems}
+        />
       </body>
     </html>
   );
