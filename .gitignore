@@ -53,6 +53,7 @@ old_schema*.sql
 old_data*.sql
 restore_log*.txt
 row_count*.txt
+migration-backups/
 
 # ===== Build / dependencies =====
 node_modules/
@@ -84,3 +85,8 @@ Thumbs.db
 
 # ===== Optional docs / temporary notes =====
 docs/
+!docs/
+docs/*
+!docs/line-news-creation.md
+!docs/migration/
+!docs/migration/**
