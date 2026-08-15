@@ -89,7 +89,8 @@ docs/
 docs/*
 !docs/line-news-creation.md
 !docs/migration/
-!docs/migration/***.key
+!docs/migration/**
+*.key
 *.p12
 *.pfx
 id_rsa

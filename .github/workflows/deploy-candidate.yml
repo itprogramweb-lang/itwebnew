@@ -49,8 +49,8 @@ jobs:
             --exclude='_migration_backup' \
             --exclude='migration-backups' \
             --exclude='supabase' \
-            -czf candidate-next.tar.gz .
-          test -s candidate-next.tar.gz
+            -czf "${RUNNER_TEMP}/candidate-next.tar.gz" .
+          test -s "${RUNNER_TEMP}/candidate-next.tar.gz"
 
       - name: Prepare SSH material
         shell: bash
@@ -81,7 +81,7 @@ jobs:
             -o UserKnownHostsFile="${HOME}/.ssh/known_hosts" \
             -o IdentitiesOnly=yes \
             -P "${CANDIDATE_PORT}" \
-            candidate-next.tar.gz \
+            "${RUNNER_TEMP}/candidate-next.tar.gz" \
             "${CANDIDATE_USER}@${CANDIDATE_HOST}:/srv/itweb-candidate/staging/${REMOTE_TMP}"
 
       - name: Activate uploaded archive
