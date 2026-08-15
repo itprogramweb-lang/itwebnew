@@ -1,0 +1,117 @@
+name: Deploy Candidate
+
+on:
+  push:
+    branches:
+      - candidate
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itweb-candidate-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: candidate
+      url: https://203.158.101.84
+    steps:
+      - name: Check out source
+        # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Build source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude=.git \
+            --exclude=.github \
+            --exclude=.env \
+            --exclude=.env.* \
+            --exclude=node_modules \
+            --exclude=.next \
+            --exclude=.vercel \
+            --exclude='*.pem' \
+            --exclude='*.key' \
+            --exclude='*.p12' \
+            --exclude='*.pfx' \
+            --exclude='id_rsa*' \
+            --exclude='id_ed25519*' \
+            --exclude='*.bak' \
+            --exclude='*.backup' \
+            --exclude='*.dump' \
+            --exclude='_migration_backup' \
+            --exclude='migration-backups' \
+            --exclude='supabase' \
+            -czf candidate-next.tar.gz .
+          test -s candidate-next.tar.gz
+
+      - name: Prepare SSH material
+        shell: bash
+        env:
+          CANDIDATE_SSH_PRIVATE_KEY: ${{ secrets.CANDIDATE_SSH_PRIVATE_KEY }}
+          CANDIDATE_KNOWN_HOSTS: ${{ vars.CANDIDATE_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "${HOME}/.ssh"
+          printf '%s\n' "${CANDIDATE_SSH_PRIVATE_KEY}" > "${HOME}/.ssh/candidate_key"
+          chmod 600 "${HOME}/.ssh/candidate_key"
+          printf '%s\n' "${CANDIDATE_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          chmod 600 "${HOME}/.ssh/known_hosts"
+
+      - name: Upload archive to staging
+        shell: bash
+        env:
+          CANDIDATE_HOST: ${{ vars.CANDIDATE_HOST }}
+          CANDIDATE_PORT: ${{ vars.CANDIDATE_PORT }}
+          CANDIDATE_USER: ${{ vars.CANDIDATE_USER }}
+          RUN_TOKEN: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          REMOTE_TMP="candidate-next.tar.gz.upload-${RUN_TOKEN}"
+          scp \
+            -i "${HOME}/.ssh/candidate_key" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${HOME}/.ssh/known_hosts" \
+            -o IdentitiesOnly=yes \
+            -P "${CANDIDATE_PORT}" \
+            candidate-next.tar.gz \
+            "${CANDIDATE_USER}@${CANDIDATE_HOST}:/srv/itweb-candidate/staging/${REMOTE_TMP}"
+
+      - name: Activate uploaded archive
+        shell: bash
+        env:
+          CANDIDATE_HOST: ${{ vars.CANDIDATE_HOST }}
+          CANDIDATE_PORT: ${{ vars.CANDIDATE_PORT }}
+          CANDIDATE_USER: ${{ vars.CANDIDATE_USER }}
+          RUN_TOKEN: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          REMOTE_TMP="candidate-next.tar.gz.upload-${RUN_TOKEN}"
+          ssh \
+            -i "${HOME}/.ssh/candidate_key" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="${HOME}/.ssh/known_hosts" \
+            -o IdentitiesOnly=yes \
+            -p "${CANDIDATE_PORT}" \
+            "${CANDIDATE_USER}@${CANDIDATE_HOST}" \
+            "cd /srv/itweb-candidate/staging && test -f '${REMOTE_TMP}' && test ! -L '${REMOTE_TMP}' && mv -f '${REMOTE_TMP}' candidate-next.tar.gz && sudo -n /srv/itweb-candidate/bin/deploy-candidate-release"
+
+      - name: Verify candidate endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            "https://203.158.101.84/" \
+            "https://203.158.101.84/login" \
+            "https://203.158.101.84/api/public/navigation"
+          do
+            code="$(curl -sS -o /tmp/candidate-verify.out -w '%{http_code}' --max-time 15 "${url}")"
+            test "${code}" = "200"
+          done
