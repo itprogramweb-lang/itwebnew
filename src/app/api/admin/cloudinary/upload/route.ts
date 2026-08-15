@@ -3,6 +3,8 @@ import { hasPermissionFromList, type Permission } from "@/lib/permissions";
 import { getAuthenticatedProfileWithPermissions } from "@/lib/serverAuth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 
+export const runtime = "nodejs";
+
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FOLDERS = new Set([
@@ -112,10 +114,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadToCloudinary(buffer, { folder });
+    const result = await uploadToCloudinary(buffer, {
+      folder,
+      contentType: file.type,
+    });
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Upload failed";
+    const message =
+      err instanceof Error &&
+      (err.name === "SiteMediaConfigError" || err.name === "SiteMediaUploadError")
+        ? "อัปโหลดไม่สำเร็จ"
+        : err instanceof Error
+          ? err.message
+          : "Upload failed";
     return NextResponse.json(
       { error: `อัปโหลดไม่สำเร็จ: ${message}` },
       { status: 500 }

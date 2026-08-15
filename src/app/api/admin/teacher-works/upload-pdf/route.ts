@@ -92,14 +92,6 @@ function sanitizePdfFilename(file: File) {
 
 function getR2UploadErrorMessage(error: R2UploadError) {
   switch (error.details.code) {
-    case "AccessDenied":
-      return "อัปโหลดไฟล์ PDF ไม่สำเร็จ: R2 API Token ไม่มีสิทธิ์เขียนไฟล์ใน bucket นี้";
-    case "InvalidAccessKeyId":
-      return "อัปโหลดไฟล์ PDF ไม่สำเร็จ: R2 Access Key ID ไม่ถูกต้อง";
-    case "SignatureDoesNotMatch":
-      return "อัปโหลดไฟล์ PDF ไม่สำเร็จ: Access Key และ Secret Key ของ R2 ไม่ตรงกัน";
-    case "NoSuchBucket":
-      return "อัปโหลดไฟล์ PDF ไม่สำเร็จ: ไม่พบ bucket ของ Cloudflare R2";
     default:
       return "อัปโหลดไฟล์ PDF ไม่สำเร็จ";
   }
@@ -160,7 +152,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof R2ConfigError) {
-      return NextResponse.json({ error: "ตั้งค่า Cloudflare R2 ยังไม่ครบ" }, { status: 500 });
+      return NextResponse.json({ error: "ตั้งค่าระบบจัดเก็บไฟล์ยังไม่ครบ" }, { status: 500 });
     }
     if (error instanceof R2UploadError) {
       return NextResponse.json({ error: getR2UploadErrorMessage(error) }, { status: 500 });

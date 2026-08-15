@@ -33,6 +33,12 @@ export function validateLineNewsImage(input: {
   return { ok: true };
 }
 
-export async function uploadLineNewsCoverImage(buffer: Buffer) {
-  return uploadToCloudinary(buffer, { folder: "news" });
+export async function uploadLineNewsCoverImage(
+  buffer: Buffer,
+  contentType: string
+) {
+  return uploadToCloudinary(buffer, {
+    folder: "line-news",
+    contentType,
+  });
 }

@@ -1,30 +1,24 @@
-// server-only: ห้าม import ใน client component
-import { v2 as cloudinary } from "cloudinary";
+import "server-only";
 
-function getCloudinaryConfig() {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error(
-      "Missing Cloudinary env vars: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET"
-    );
-  }
-  return { cloudName, apiKey, apiSecret };
-}
+import { uploadToSiteMedia } from "@/lib/storageUpload";
 
-let _configured = false;
-function ensureConfigured() {
-  if (_configured) return;
-  const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
-    secure: true,
-  });
-  _configured = true;
-}
+const IMAGE_PREFIX_BY_FOLDER: Record<string, string> = {
+  uploads: "uploads/images/uploads",
+  logos: "uploads/images/logos",
+  news: "uploads/images/news",
+  "news/content": "uploads/images/news/content",
+  apply: "uploads/images/apply",
+  programs: "uploads/images/programs",
+  staff: "uploads/images/staff",
+  "student-works": "uploads/images/student-works",
+  "teacher-works": "uploads/images/teacher-works",
+  "hero-slides": "uploads/images/hero-slides",
+  "page-heroes": "uploads/images/page-heroes",
+  facilities: "uploads/images/facilities",
+  "facilities/gallery": "uploads/images/facilities/gallery",
+  complaints: "uploads/complaints/attachments",
+  "line-news": "uploads/line-news/covers",
+};
 
 export type CloudinaryUploadResult = {
   secure_url: string;
@@ -37,34 +31,30 @@ export type CloudinaryUploadResult = {
 
 export async function uploadToCloudinary(
   buffer: Buffer,
-  options: { folder?: string; publicId?: string } = {}
+  options: { folder?: string; publicId?: string; contentType?: string } = {}
 ): Promise<CloudinaryUploadResult> {
-  ensureConfigured();
-  const baseFolder = process.env.CLOUDINARY_FOLDER || "it-rmutt";
-  const folder = options.folder
-    ? `${baseFolder}/${options.folder}`
-    : baseFolder;
+  const folder = options.folder?.trim() || "uploads";
+  const prefix = IMAGE_PREFIX_BY_FOLDER[folder];
+  if (!prefix) {
+    throw new Error("Unsupported image upload folder");
+  }
+  if (!options.contentType) {
+    throw new Error("Missing image content type");
+  }
 
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "image",
-        ...(options.publicId ? { public_id: options.publicId } : {}),
-      },
-      (error, result) => {
-        if (error || !result) reject(error || new Error("Upload failed"));
-        else
-          resolve({
-            secure_url: result.secure_url,
-            public_id: result.public_id,
-            width: result.width,
-            height: result.height,
-            format: result.format,
-            bytes: result.bytes,
-          });
-      }
-    );
-    stream.end(buffer);
+  const uploaded = await uploadToSiteMedia({
+    body: buffer,
+    contentType: options.contentType,
+    prefix,
+    filenameHint: options.publicId,
   });
+
+  return {
+    secure_url: uploaded.publicUrl,
+    public_id: uploaded.objectPath,
+    width: 0,
+    height: 0,
+    format: uploaded.extension,
+    bytes: uploaded.bytes,
+  };
 }

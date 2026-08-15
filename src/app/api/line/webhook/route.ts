@@ -324,7 +324,10 @@ async function handleImageMessageEvent(event: LineWebhookEvent) {
 
   let uploadResult;
   try {
-    uploadResult = await uploadLineNewsCoverImage(downloaded.buffer);
+    uploadResult = await uploadLineNewsCoverImage(
+      downloaded.buffer,
+      downloaded.contentType
+    );
   } catch (error) {
     console.warn("LINE news cover upload failed", {
       reason: error instanceof Error ? error.message : "unknown_error",
