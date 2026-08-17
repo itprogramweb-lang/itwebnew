@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { upsertLineConnection } from "@/lib/line/connection";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import {
   consumeLineOAuthState,
   exchangeLineCodeForToken,
@@ -15,11 +16,10 @@ function getSafeRedirectPath(value: string | null) {
 }
 
 function buildRedirect(
-  request: NextRequest,
   path: string,
   status: "connected" | "error"
 ) {
-  const url = new URL(getSafeRedirectPath(path), request.nextUrl.origin);
+  const url = new URL(getSafeRedirectPath(path), getCanonicalSiteUrl());
   url.searchParams.set("line", status);
   return url;
 }
@@ -29,12 +29,12 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state");
 
   if (!getLineLoginEnv() || !code || !state) {
-    return NextResponse.redirect(buildRedirect(request, "/dashboard", "error"));
+    return NextResponse.redirect(buildRedirect("/dashboard", "error"));
   }
 
   const stateRow = await consumeLineOAuthState(state);
   if (!stateRow) {
-    return NextResponse.redirect(buildRedirect(request, "/dashboard", "error"));
+    return NextResponse.redirect(buildRedirect("/dashboard", "error"));
   }
 
   const redirectPath = getSafeRedirectPath(stateRow.redirect_path);
@@ -44,12 +44,12 @@ export async function GET(request: NextRequest) {
     const lineProfile = await fetchLineProfile(token.accessToken);
     await upsertLineConnection(stateRow.user_id, lineProfile);
 
-    return NextResponse.redirect(buildRedirect(request, redirectPath, "connected"));
+    return NextResponse.redirect(buildRedirect(redirectPath, "connected"));
   } catch (error) {
     console.warn("LINE callback failed", {
       userId: stateRow.user_id,
       reason: error instanceof Error ? error.message : "unknown_error",
     });
-    return NextResponse.redirect(buildRedirect(request, redirectPath, "error"));
+    return NextResponse.redirect(buildRedirect(redirectPath, "error"));
   }
 }
